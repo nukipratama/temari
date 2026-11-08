@@ -63,7 +63,7 @@ whose origin is not `User` (a webhook, a devtools re-arm) still declares itself 
 wins because it runs after the middleware default. A job or console command, which never runs
 through that middleware, always declares itself with
 [`NarrationOrigin::set()`](../../app/Services/AI/NarrationOrigin.php). Either way,
-[`AnalysisService::stamped()`](../../app/Services/AI/AnalysisService.php) writes the current
+[`AnalysisDispatcher::stamped()`](../../app/Services/AI/AnalysisDispatcher.php) writes the current
 [`AnalysisOrigin`](../../app/Services/AI/AnalysisOrigin.php) onto the job it dispatches, and the
 job restores it before generating, so the metering row records what started the call rather than
 only which narrator answered. A dispatch site that is not an authenticated web request and declares
@@ -136,7 +136,7 @@ fires from the onboarding wizard, before the backfill sync has written a single 
 there is nothing yet to narrate against. `users.backfilled_at` (stamped by `KickoffRecapsJob`
 right before it calls `afterBackfill()`) is null for exactly that window; `RequestTodaysBriefing`
 holds on it alone. Once it's set, the briefing narrates right away even if older history is
-still hydrating: `AnalysisService::markDone()` detects that live, at generation time
+still hydrating: `AnalysisRowState::markDone()` detects that live, at generation time
 ([`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php)),
 and flags the row for `SettleEarlyNarrationAction`'s one-time replay once that history lands — see
 [[history-narrates-on-demand]]. The once-per-day `Cache::add` guard in `afterBackfill()` only runs
@@ -196,7 +196,7 @@ run is today's, and dispatched 120 s late so a burst of same-day ingests collaps
 then `ProfileVoice` keyed by the current ISO week with `invalidate: false` so it
 never re-bills. Both of those two narrate right away even while history their own narrator reads
 is still hydrating — a fresh connect's early pass, per [[history-narrates-on-demand]]:
-`AnalysisService::markDone()` detects it live, at generation time (the briefing on past-you's
+`AnalysisRowState::markDone()` detects it live, at generation time (the briefing on past-you's
 bounded reach via [`HydrationBacklog::awaitsOlderHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
 anchored on now rather than the ingested run's own date; the profile voice on the whole backlog via
 [`HydrationBacklog::awaitsFullHydration()`](../../app/Services/Run/Ingest/HydrationBacklog.php),
@@ -240,7 +240,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   the stored briefing as it was. A restore requests today's `briefing_mascot_voice` once, without
   `invalidate`, so it narrates only when today has no briefing yet; a narrated one shows again
   unchanged. The demo athlete is skipped. **No trigger generates a briefing for a skipped day:**
-  [`AnalysisService`](../../app/Services/AI/AnalysisService.php)'s `dispatchRow()` hands back the
+  [`AnalysisDispatcher`](../../app/Services/AI/AnalysisDispatcher.php)'s `dispatchRow()` hands back the
   existing row untouched, staging none, when the athlete's session on the briefing's date is skipped,
   before any pause check or cost-ceiling fill, so the kickoff, post-run, catch-up, self-heal and
   Reread paths all pass it by. `SelfHealer` leaves a stalled briefing on a skipped day out of its
@@ -273,7 +273,7 @@ pending runs and cards and the latest closed week's and month's recaps to the LL
 `invalidate: false`, and fills anything older still `Pending` rule-based, as
 well as a latest closed month that ended before the athlete connected. An older week waits on
 [RecapHydrationReadiness](../../app/Services/AI/RecapHydrationReadiness.php) before that fill. The
-origin is `return`, and `AnalysisService::markDone()` sends no notification for it. See
+origin is `return`, and `AnalysisRowState::markDone()` sends no notification for it. See
 [[narration-spends-only-on-active-athletes]].
 
 ## The ten surfaces
@@ -314,7 +314,7 @@ an attempt.
 
 **The cost ceiling is the exception in three ways.** It does not pause: a `pending` row is filled
 from the rule-based filler and marked `Done` by
-[`degradeToRuleBased()`](../../app/Services/AI/AnalysisService.php), so a capped day is not a
+[`degradeToRuleBased()`](../../app/Services/AI/AnalysisRowState.php), so a capped day is not a
 day of empty blocks. A `Failed` row is explicitly excluded and stays failed, keeping its dead-letter
 visibility. And a *manual* trigger past the ceiling is refused with a 409 rather than degraded,
 because [`generationPaused()`](../../app/Services/AI/NarrationGate.php) asks with the budget
@@ -347,7 +347,7 @@ Three more limits:
   trigger with 409 until then. See [[history-narrates-on-demand]].
 - **Cooldown and idempotency are two different defences for the same goal.** The
   [900s cooldown](../../app/Support/Cooldown.php) stops a human clicking twice, at the
-  controller, before a job exists. `AnalysisService::markDone()` opens it only for a narration whose
+  controller, before a job exists. `AnalysisRowState::markDone()` opens it only for a narration whose
   origin is `user`, so a system narration (scheduled, ingest, recovery, replay, return) leaves
   Reread available at once: at most one extra click-driven narration per system narration, still
   under the per-user rate limit and the daily ceiling. The `Done` check at the top of

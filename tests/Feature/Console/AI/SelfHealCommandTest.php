@@ -7,7 +7,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisOrigin;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\NarrationGate;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -101,10 +101,10 @@ it('gives a block that failed during a pause one fresh attempt when generation r
         ->and($longBefore->refresh()->status)->toBe(AnalysisStatus::Failed)
         ->and($longBefore->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 
-    $service = app(AnalysisService::class);
+    $rowState = app(AnalysisRowState::class);
     $row = $during->refresh();
-    $service->markProcessing($row);
-    $service->markFailed($row, 'still broken');
+    $rowState->markProcessing($row);
+    $rowState->markFailed($row, 'still broken');
 
     Carbon::setTestNow('2026-06-17 10:00:00');
     $this->artisan('ai:self-heal')->assertSuccessful();

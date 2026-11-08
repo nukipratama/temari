@@ -49,7 +49,7 @@ The notification classes live in `app/Notifications/`. What differs between them
 
 | Notification | Triggered by | Channels | Master switch | Delivery key | Stale after |
 |---|---|---|---|---|---|
-| [AnalysisReadyNotification](app/Notifications/AnalysisReadyNotification.php) | `AnalysisService::markDone()` for a post-run, weekly or monthly recap | inbox + outbound | yes, plus the recency gate | the analysis id | — |
+| [AnalysisReadyNotification](app/Notifications/AnalysisReadyNotification.php) | `AnalysisRowState::markDone()` for a post-run, weekly or monthly recap | inbox + outbound | yes, plus the recency gate | the analysis id | — |
 | [MorningBriefingNotification](app/Notifications/MorningBriefingNotification.php) | `briefing:morning-push` | outbound only | yes, plus its own `briefing_push_enabled` | the briefing row's id | its slot + 2 h, at most the day's end |
 | [StreakReminderNotification](app/Notifications/StreakReminderNotification.php) | `streak:remind`, Saturday 18:00 | inbox + outbound | yes | — | end of the week |
 | [RaceTomorrowNotification](app/Notifications/RaceTomorrowNotification.php) | `race:remind`, hourly 18:00–21:00 | inbox + outbound | yes | — | end of the day before the race |

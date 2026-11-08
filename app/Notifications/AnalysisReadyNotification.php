@@ -26,7 +26,7 @@ use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushMessage;
 
 /**
- * Fired from {@see \App\Services\AI\AnalysisService::markDone()} when a notifiable
+ * Fired from {@see \App\Services\AI\AnalysisRowState::markDone()} when a notifiable
  * analysis completes. `via()` honours the recency gate and the master-switch
  * opt-in, then reaches every wired channel (Telegram if connected, web push if
  * subscribed). Delivery + idempotency live in {@see TelegramChannel} /

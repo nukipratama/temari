@@ -11,6 +11,7 @@ use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Models\AI\TokenUsage;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -188,7 +189,7 @@ function makeRowForRowJobTest(string $discriminator = '2026-05-18'): Analysis
 it('marks row Done with content on successful generation', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
@@ -206,7 +207,7 @@ it('does not reclaim a Processing row on a duplicate delivery but permits a queu
 
     $duplicate = fakeSuccessRowJob($row->id);
     attachFakeJob($duplicate, 1);
-    $duplicate->handle(app(AnalysisService::class));
+    $duplicate->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Processing)
         ->and($row->refresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
@@ -219,7 +220,7 @@ it('does not reclaim a Processing row on a duplicate delivery but permits a queu
     ]);
     $retry = fakeSuccessRowJob($retryRow->id);
     attachFakeJob($retry, 2);
-    $retry->handle(app(AnalysisService::class));
+    $retry->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($retryRow->refresh()->status)->toBe(AnalysisStatus::Done)
         ->and($retryRow->refresh()->attempts)->toBe(2)
@@ -231,7 +232,7 @@ it('does not run the completion hook after a newer generation takes ownership', 
     $row->update(['generation_token' => 'older-generation']);
     $afterDoneCalls = new ArrayObject();
 
-    fakeSupersededRowJob($row->id, 'newer-generation', $afterDoneCalls)->handle(app(AnalysisService::class));
+    fakeSupersededRowJob($row->id, 'newer-generation', $afterDoneCalls)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($row->refresh()->generation_token)->toBe('newer-generation')
@@ -246,7 +247,7 @@ it('does not record or advance a fallback after a newer generation takes ownersh
     $eventCount = ContentFilterEvent::query()->count();
 
     fakeSupersededRowJob($row->id, 'newer-generation', $afterDoneCalls, contentFilter: true)
-        ->handle(app(AnalysisService::class));
+        ->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($row->refresh()->generation_token)->toBe('newer-generation')
@@ -261,7 +262,7 @@ it('reverts the row to Pending without billing when generation is paused', funct
     config(['azure_openai.uri' => '', 'azure_openai.api_key' => '']);
     $row = makeRowForRowJobTest();
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Pending)
@@ -289,7 +290,7 @@ it('serves the row rule-based without billing when the spend ceiling tripped mid
     breachTheCeilingForRowJobTest();
     $row = makeRowForRowJobTest();
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
@@ -305,7 +306,7 @@ it('leaves a Failed row Failed when the spend ceiling tripped mid-flight', funct
     $row = makeRowForRowJobTest();
     $row->update(['status' => AnalysisStatus::Failed, 'error' => 'narator meledak', 'attempts' => 1]);
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Failed)
@@ -317,7 +318,7 @@ it('leaves a Failed row Failed when the spend ceiling tripped mid-flight', funct
 it('marks row Failed without rethrowing for UnavailableException', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeUnavailableRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeUnavailableRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Failed)
@@ -327,7 +328,7 @@ it('marks row Failed without rethrowing for UnavailableException', function (): 
 it('falls back to rule-based content (row Done) when generation content-filters', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $fresh = $row->refresh();
     expect($fresh->status)->toBe(AnalysisStatus::Done)
@@ -340,7 +341,7 @@ it('falls back to rule-based content (row Done) when generation content-filters'
 it('records a content-filter event on fallback so the rate is queryable', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect(ContentFilterEvent::query()->where('kind', $row->analysis_type->value)->count())->toBe(1);
 });
@@ -348,14 +349,14 @@ it('records a content-filter event on fallback so the rate is queryable', functi
 it('re-raises unexpected throwables so the queue can apply retry policy', function (): void {
     $row = makeRowForRowJobTest();
 
-    expect(fn () => fakeBoomRowJob($row->id)->handle(app(AnalysisService::class)))
+    expect(fn () => fakeBoomRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class)))
         ->toThrow(RuntimeException::class, 'boom');
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
 });
 
 it('no-ops when the row id no longer exists', function (): void {
-    fakeSuccessRowJob(99999)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob(99999)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect(Analysis::query()->count())->toBe(0);
 });
@@ -364,7 +365,7 @@ it('skips re-execution when status is already Done (idempotent)', function (): v
     $row = makeRowForRowJobTest();
     $row->update(['status' => AnalysisStatus::Done, 'content' => 'previous']);
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->content)->toBe('previous');
 });
@@ -374,7 +375,7 @@ it('requeues (not fails) and releases on a transient error without Retry-After w
 
     $job = fakeTransientRowJob($row->id);
     $released = attachFakeJob($job, attempts: 1);
-    $job->handle(app(AnalysisService::class));
+    $job->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($released->getArrayCopy())->toBe([10]); // falls back to first backoff step
@@ -385,7 +386,7 @@ it('requeues and releases with the capped Retry-After when the upstream supplies
 
     $job = fakeTransientRowJob($row->id, retryAfter: 9999);
     $released = attachFakeJob($job, attempts: 1);
-    $job->handle(app(AnalysisService::class));
+    $job->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($released->getArrayCopy())->toBe([600]); // capped at MAX_RETRY_AFTER_SECONDS
@@ -397,7 +398,7 @@ it('marks Failed and rethrows on a transient error once tries are exhausted', fu
     $job = fakeTransientRowJob($row->id);
     attachFakeJob($job, attempts: 3); // attempts() == tries, no slot left
 
-    expect(fn () => $job->handle(app(AnalysisService::class)))
+    expect(fn () => $job->handle(app(AnalysisService::class), app(AnalysisRowState::class)))
         ->toThrow(TransientUpstreamException::class);
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Failed);
@@ -429,32 +430,33 @@ it('bounds total billed runs at MAX_SELF_HEAL_ATTEMPTS across self-heal re-dispa
     $row = makeRowForRowJobTest();
     $calls = new ArrayObject();
     $service = app(AnalysisService::class);
+    $rowState = app(AnalysisRowState::class);
 
     // Walk `attempts` up one billed run at a time: a swallowed
     // UnavailableException is never retried by the queue, so each of these costs
     // exactly one call and leaves the row stalled-but-under-budget. The first is
     // the original dispatch, the second a self-heal re-dispatch.
-    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service);
+    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service, $rowState);
     expect($row->refresh()->attempts)->toBe(1)
         ->and(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
 
-    $service->markQueued($row->refresh());
-    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service);
+    $rowState->markQueued($row->refresh());
+    countingRowJob($row->id, $calls, fn (): Throwable => new UnavailableException('Azure down'))->handle($service, $rowState);
     expect($row->refresh()->attempts)->toBe(2);
 
     // Last re-dispatch still under budget, now failing transiently with a full
     // set of its own `$tries` untouched. Only the shared budget can stop it
     // from releasing two more billed runs on top of the two already spent.
     expect(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
-    $service->markQueued($row->refresh());
+    $rowState->markQueued($row->refresh());
     $job = countingRowJob($row->id, $calls, fn (): Throwable => new TransientUpstreamException('rate limited'));
     $released = attachFakeJob($job, attempts: 1);
 
-    expect(fn () => $job->handle($service))->toThrow(TransientUpstreamException::class);
+    expect(fn () => $job->handle($service, $rowState))->toThrow(TransientUpstreamException::class);
     expect($released->getArrayCopy())->toBe([]);
 
     // The queue still retries that rethrow; the row must refuse to bill again.
-    $job->handle($service);
+    $job->handle($service, $rowState);
 
     $fresh = $row->refresh();
     expect($calls->count())->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
@@ -469,11 +471,12 @@ it('never spends the retry budget while generation is paused, so a pause cannot 
     $row = makeRowForRowJobTest();
     $calls = new ArrayObject();
     $service = app(AnalysisService::class);
+    $rowState = app(AnalysisRowState::class);
 
     // More paused runs than the whole budget: a cost ceiling that outlasts
     // several self-heal passes must still cost nothing and stay recoverable.
     foreach (range(1, Analysis::MAX_SELF_HEAL_ATTEMPTS + 2) as $ignored) {
-        countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service);
+        countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service, $rowState);
     }
 
     $paused = $row->refresh();
@@ -483,8 +486,8 @@ it('never spends the retry budget while generation is paused, so a pause cannot 
         ->and(Analysis::query()->stalled()->whereKey($row->id)->exists())->toBeTrue();
 
     config(['azure_openai.uri' => 'https://azure.test', 'azure_openai.api_key' => 'key']);
-    $service->markQueued($row->refresh());
-    fakeSuccessRowJob($row->id)->handle($service);
+    $rowState->markQueued($row->refresh());
+    fakeSuccessRowJob($row->id)->handle($service, $rowState);
 
     $resumed = $row->refresh();
     expect($resumed->status)->toBe(AnalysisStatus::Done)
@@ -495,16 +498,17 @@ it('still bills a manual re-trigger of a dead-lettered block, only refusing queu
     $row = makeRowForRowJobTest();
     $row->update(['status' => AnalysisStatus::Failed, 'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS]);
     $service = app(AnalysisService::class);
+    $rowState = app(AnalysisRowState::class);
 
     $calls = new ArrayObject();
-    countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service);
+    countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'))->handle($service, $rowState);
 
     expect($calls->count())->toBe(0);
 
     // Every dispatch path marks the row Queued first, which is what separates a
     // human "Try again" from the queue re-entering a row it already failed.
-    $service->markQueued($row->refresh());
-    fakeSuccessRowJob($row->id)->handle($service);
+    $rowState->markQueued($row->refresh());
+    fakeSuccessRowJob($row->id)->handle($service, $rowState);
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Done);
 });
@@ -516,7 +520,7 @@ it('settles a budget-spent row stranded in Processing to Failed so it dead-lette
     $calls = new ArrayObject();
     $job = countingRowJob($row->id, $calls, fn (): Throwable => new RuntimeException('never reached'));
     attachFakeJob($job, 2);
-    $job->handle(app(AnalysisService::class));
+    $job->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($calls->count())->toBe(0)
         ->and($row->refresh()->status)->toBe(AnalysisStatus::Failed)
@@ -531,7 +535,7 @@ it('settles a budget-spent row stranded in Processing to Failed so it dead-lette
 it('deletes an obsolete row instead of failing it forever', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeObsoleteRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeObsoleteRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->fresh())->toBeNull();
 });
@@ -552,7 +556,7 @@ it('does not delete a newer generation when an obsolete job settles', function (
         }
     };
 
-    $job->handle(app(AnalysisService::class));
+    $job->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->status)->toBe(AnalysisStatus::Queued)
         ->and($row->refresh()->generation_token)->toBe('newer-generation')
@@ -562,7 +566,7 @@ it('does not delete a newer generation when an obsolete job settles', function (
 it('attributes the content-filter event to the athlete whose narration tripped it', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect(ContentFilterEvent::query()->sole()->user_id)->toBe($row->subject_id);
 });
@@ -570,7 +574,7 @@ it('attributes the content-filter event to the athlete whose narration tripped i
 it('marks a content-filter fallback as rule-based, so filler prose never reads as a narration', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeContentFilterRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->served_by)->toBe(ServedBy::RuleBased);
 });
@@ -578,7 +582,7 @@ it('marks a content-filter fallback as rule-based, so filler prose never reads a
 it('marks a generated row as LLM-served', function (): void {
     $row = makeRowForRowJobTest();
 
-    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class));
+    fakeSuccessRowJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->served_by)->toBe(ServedBy::Llm);
 });
@@ -599,7 +603,7 @@ it('stamps the row being narrated so its usage row can be joined back to it', fu
 
             return 'generated';
         }
-    }->handle(app(AnalysisService::class));
+    }->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($seen)->toBe($row->id)
         ->and(app(NarratedAnalysis::class)->current())->toBeNull();

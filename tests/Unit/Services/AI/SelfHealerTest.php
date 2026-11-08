@@ -13,6 +13,7 @@ use App\Models\RunCard;
 use App\Models\StravaConnection;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -85,7 +86,7 @@ function nonDispatchingResumeService(): AnalysisService
 
 function selfHealer(AnalysisService $service): SelfHealer
 {
-    return new SelfHealer($service, new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HydrationBacklog());
+    return new SelfHealer($service, app(AnalysisRowState::class), new ChainResolver(), new BackfillAgeGate(), new RecapHydrationReadiness(new HydrationBacklog()), new RecentlyActiveUsers(), new HydrationBacklog());
 }
 
 /** Seed an activity for $user dated $startDate whose post-run speech is Pending. */

@@ -61,7 +61,7 @@ $alertOnFailure(Schedule::command('ai:weekly-recap')->weeklyOn(1, '00:16')->with
 // the voice is invalidated weekly. Demo excluded. Mid-week freshness stays on
 // "Reread". The voice quotes the settled weekly streak, so an athlete whose
 // streak:settle has not finished keeps the row Pending and ai:self-heal
-// narrates it once they are settled (AnalysisService::dispatchRow).
+// narrates it once they are settled (AnalysisDispatcher::dispatchRow).
 Schedule::command('ai:weekly-profile')->weeklyOn(1, '00:21')->withoutOverlapping(20);
 
 // 00:04 daily, ahead of plan:regenerate (Monday 00:26): retire a race the

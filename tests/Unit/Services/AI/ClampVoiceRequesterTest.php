@@ -9,7 +9,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\User;
-use App\Services\AI\AnalysisService;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\ClampVoiceRequester;
 use App\Services\AI\MaterialFingerprint;
@@ -60,7 +60,7 @@ it('regenerates only when the clamp it explains changed', function (): void {
 
     $context = nonNull(app(ClampNarrationContext::class)->forUserOn($user->id, Carbon::today()));
     $row = Analysis::query()->where('analysis_type', AnalysisType::PlanClampVoice)->firstOrFail();
-    app(AnalysisService::class)->markDone(
+    app(AnalysisRowState::class)->markDone(
         $row,
         'eased.',
         ServedBy::Llm,

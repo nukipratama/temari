@@ -31,6 +31,7 @@ use App\Models\WeeklySnapshot;
 use App\Notifications\DayClampedNotification;
 use App\Notifications\EasyTooHardNotification;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\ServedBy;
@@ -179,7 +180,7 @@ it('re-narrates card flavor on a re-ingest whose run material changed, without m
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: 'stale-material');
+    app(AnalysisRowState::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: 'stale-material');
 
     fire($activity);
 
@@ -193,7 +194,7 @@ it('does not re-bill card flavor on a re-ingest of an unchanged run', function (
 
     fire($activity);
     $row = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: MaterialFingerprint::forActivity($activity->refresh()));
+    app(AnalysisRowState::class)->markDone($row, 'card pertama', ServedBy::Llm, fingerprint: MaterialFingerprint::forActivity($activity->refresh()));
 
     Bus::fake();
     fire($activity);
@@ -209,7 +210,7 @@ it('delays the invalidating briefing request so a burst of same-day ingests bill
     Analysis::query()
         ->where('analysis_type', AnalysisType::BriefingMascotVoice->value)
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
+        ->each(fn (Analysis $row) => app(AnalysisRowState::class)->markDone($row, 'done', ServedBy::Llm));
 
     Bus::fake();
     fire(analyzedActivity('2026-05-19 05:40:00', $first->user_id));
@@ -241,7 +242,7 @@ it('does not re-bill a Done ProfileVoice row on re-ingest (invalidate:false)', f
         ->where('subject_id', $activity->user_id)
         ->where('analysis_type', AnalysisType::ProfileVoice)
         ->firstOrFail();
-    app(AnalysisService::class)->markDone($row, 'first Temari note', ServedBy::Llm);
+    app(AnalysisRowState::class)->markDone($row, 'first Temari note', ServedBy::Llm);
 
     fire($activity);
 
@@ -386,7 +387,7 @@ it('refreshes the daily briefing set on the second run of the day', function ():
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
+        ->each(fn (Analysis $row) => app(AnalysisRowState::class)->markDone($row, 'done', ServedBy::Llm));
 
     Bus::fake();
     Carbon::setTestNow('2026-05-19 17:45:00');
@@ -428,7 +429,7 @@ it('does not re-bill the daily set when backfilling a previous-day run', functio
             AnalysisType::BriefingMascotVoice->value,
         ])
         ->get()
-        ->each(fn (Analysis $row) => app(AnalysisService::class)->markDone($row, 'done', ServedBy::Llm));
+        ->each(fn (Analysis $row) => app(AnalysisRowState::class)->markDone($row, 'done', ServedBy::Llm));
 
     Bus::fake();
     // Backfilling a run from two days ago must not re-bill today's daily set.
@@ -712,7 +713,7 @@ it('holds off re-narrating while an ingest narration of the run is still inside 
     $activity = analyzedActivity('2026-06-10 06:00:00');
     narratedGroup($activity, 'stale-fingerprint');
     app(NarrationOrigin::class)->set(AnalysisOrigin::Ingest);
-    app(AnalysisService::class)->markDone(postRunSpeechRow($activity), 'narasi baru', ServedBy::Llm, fingerprint: 'stale-fingerprint');
+    app(AnalysisRowState::class)->markDone(postRunSpeechRow($activity), 'narasi baru', ServedBy::Llm, fingerprint: 'stale-fingerprint');
 
     fire($activity);
 

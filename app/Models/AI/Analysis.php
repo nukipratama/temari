@@ -207,7 +207,7 @@ class Analysis extends Model
      * Seconds left before this row may be re-triggered, or null if no cooldown
      * applies. Only a Done row can cool; the window is a Redis-backed
      * {@see Cooldown} started at
-     * {@see \App\Services\AI\AnalysisService::markDone()}.
+     * {@see \App\Services\AI\AnalysisRowState::markDone()}.
      */
     public function cooldownRemaining(): ?int
     {
@@ -220,7 +220,7 @@ class Analysis extends Model
 
     /**
      * Opens this row's re-trigger cooldown window. Called from
-     * {@see \App\Services\AI\AnalysisService::markDone()} so a "Reread"
+     * {@see \App\Services\AI\AnalysisRowState::markDone()} so a "Reread"
      * can't re-fire the LLM for the same block until the window elapses.
      */
     public function startCooldown(): void

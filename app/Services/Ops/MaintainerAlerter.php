@@ -87,7 +87,7 @@ class MaintainerAlerter
 
     /**
      * A block just crossed into dead-letter (ai:self-heal gave up after burning the retry budget).
-     * Fired from {@see \App\Services\AI\AnalysisService::markFailed()} only at the crossing, and
+     * Fired from {@see \App\Services\AI\AnalysisRowState::markFailed()} only at the crossing, and
      * coalesced into one summary push per window so a rate-limit storm cannot flood every admin's
      * Telegram. Serialised against flushDeadLetterWindow() via {@see self::withDeadLetterLock()}.
      */
