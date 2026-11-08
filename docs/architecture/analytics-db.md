@@ -56,7 +56,7 @@ These Eloquent models pin themselves to it via `#[Connection('analytics')]`:
   [RecordScheduledTaskRun](app/Listeners/RecordScheduledTaskRun.php); see [[scheduler]].
 
 Read-side services skip Eloquent and go straight through the query builder with
-`DB::connection('analytics')` — see `LlmCostCalculator`, `TokenUsageReport`, and the
+`DB::connection('analytics')` — see `LlmCostCalculator`, `TokenUsageQuery`, and the
 `StravaHealth` Pulse card. If you add a query, use the same explicit connection name;
 a bare query will hit the app DB where these tables don't exist.
 
