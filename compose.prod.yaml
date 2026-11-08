@@ -46,6 +46,8 @@ x-app-env: &app-env
   CACHE_STORE: redis
   # Fixed literals, not derived from APP_NAME: docs/decisions/fixed-session-cookie.md.
   SESSION_COOKIE: temari-setiap-langkah-berarti-session
+  SESSION_SECURE_COOKIE: "true"
+  SESSION_SAME_SITE: lax
   REDIS_PREFIX: temari-setiap-langkah-berarti-database-
   CACHE_PREFIX: temari-setiap-langkah-berarti-cache-
   PULSE_ENABLED: "true"

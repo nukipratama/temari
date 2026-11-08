@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Notifications\AnalysisReadyNotification;
 use App\Notifications\Messages\InboxMessage;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -76,6 +77,7 @@ class DemoRunSeeder
         private readonly Vibe $vibe,
         private readonly WeeklyAggregator $weeklyAggregator,
         private readonly AnalysisService $analysisService,
+        private readonly AnalysisRowState $rowState,
         private readonly RuleBasedNarrationFiller $filler,
         private readonly Periodizer $periodizer,
         private readonly TrainingBaseline $trainingBaseline,
@@ -355,7 +357,7 @@ class DemoRunSeeder
         $demoGeneratedAt = Carbon::now()->subHours(2);
 
         foreach ($rows as $row) {
-            $this->analysisService->markDone($row, $this->filler->fillFor($row), ServedBy::RuleBased, $demoGeneratedAt);
+            $this->rowState->markDone($row, $this->filler->fillFor($row), ServedBy::RuleBased, $demoGeneratedAt);
         }
 
         return $rows->count();

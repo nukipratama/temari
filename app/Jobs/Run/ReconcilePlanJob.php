@@ -13,6 +13,7 @@ use App\Services\Run\Plan\PlanReconciliationService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 
@@ -20,6 +21,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 #[MaxExceptions(3)]
 #[Tries(10)]
 #[UniqueFor(3600)]
+#[Timeout(60)]
 final class ReconcilePlanJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;

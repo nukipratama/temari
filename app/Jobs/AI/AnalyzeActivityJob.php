@@ -11,6 +11,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\StoryLine;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -194,7 +195,7 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
                 throw new UnavailableException("Speech row for activity {$subject->id} missing");
             }
 
-            app(AnalysisService::class)->revertToPendingWithoutAttempt($speech, $this->generationToken);
+            app(AnalysisRowState::class)->revertToPendingWithoutAttempt($speech, $this->generationToken);
 
             return [AnalysisType::RunInsight->value => $insight];
         }

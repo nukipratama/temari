@@ -8,11 +8,13 @@ use App\Exceptions\AI\TransientUpstreamException;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\NarrationOrigin;
 use App\Services\AI\AnalysisStatus;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Backoff;
 use Illuminate\Queue\Attributes\Queue;
 use Illuminate\Queue\Attributes\Tries;
@@ -22,6 +24,7 @@ use Throwable;
 #[Backoff(self::BACKOFF_SECONDS)]
 #[Queue(self::QUEUE)]
 #[Tries(self::TRIES)]
+#[Timeout(360)]
 abstract class AnalyzeBaseJob implements ShouldQueue
 {
     use Queueable;
@@ -40,7 +43,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
     private const array BACKOFF_SECONDS = [10, 60];
 
     /**
-     * What started this job, stamped by {@see \App\Services\AI\AnalysisService}
+     * What started this job, stamped by {@see \App\Services\AI\AnalysisDispatcher}
      * at dispatch and restored into {@see NarrationOrigin} before generating, so
      * the metering row can attribute the call to its trigger rather than only to
      * the narrator that answered it. Serialized with the job, so it survives the
@@ -133,7 +136,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      *
      * @param  iterable<Analysis>  $rows
      */
-    protected function haltForSpentRetryBudget(AnalysisService $service, iterable $rows): bool
+    protected function haltForSpentRetryBudget(AnalysisRowState $rowState, iterable $rows): bool
     {
         $spent = [];
 
@@ -151,7 +154,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         foreach ($spent as $row) {
             if ($row->status !== AnalysisStatus::Failed) {
-                $service->markFailed($row, self::SPENT_BUDGET_ERROR, $this->generationToken);
+                $rowState->markFailed($row, self::SPENT_BUDGET_ERROR, $this->generationToken);
             }
         }
 
@@ -193,7 +196,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
      *
      * @param  iterable<array-key, Analysis>  $rows
      */
-    protected function haltForPausedGeneration(AnalysisService $service, iterable $rows): bool
+    protected function haltForPausedGeneration(AnalysisService $service, AnalysisRowState $rowState, iterable $rows): bool
     {
         $rows = collect($rows);
         $first = $rows->first();
@@ -203,7 +206,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         if ($service->costCeilingDegraded($ownerId)) {
             foreach ($rows as $row) {
-                $service->degradeToRuleBased($row, $this->generationToken);
+                $rowState->degradeToRuleBased($row, $this->generationToken);
             }
 
             return true;
@@ -215,7 +218,7 @@ abstract class AnalyzeBaseJob implements ShouldQueue
 
         foreach ($rows as $row) {
             if ($row->status !== AnalysisStatus::Pending) {
-                $service->revertToPending($row, $this->generationToken);
+                $rowState->revertToPending($row, $this->generationToken);
             }
         }
 

@@ -9,6 +9,7 @@ use App\Exceptions\AI\ObsoleteAnalysisException;
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
@@ -27,7 +28,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
         parent::__construct($generationToken);
     }
 
-    final public function handle(AnalysisService $service): void
+    final public function handle(AnalysisService $service, AnalysisRowState $rowState): void
     {
         $this->applyOrigin();
 
@@ -40,16 +41,16 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             return;
         }
 
-        if ($this->haltForSpentRetryBudget($service, [$row])) {
+        if ($this->haltForSpentRetryBudget($rowState, [$row])) {
             return;
         }
 
-        if ($this->haltForPausedGeneration($service, [$row])) {
+        if ($this->haltForPausedGeneration($service, $rowState, [$row])) {
             return;
         }
 
-        $startedEarly = $service->isEarlyPassRow($row);
-        if (! $service->markProcessing(
+        $startedEarly = $rowState->isEarlyPassRow($row);
+        if (! $rowState->markProcessing(
             $row,
             $this->generationToken,
             allowProcessing: $this->attempts() > 1,
@@ -62,7 +63,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
                 $row->id,
                 fn (): string => $this->generateContent($row),
             );
-            if ($service->markDone(
+            if ($rowState->markDone(
                 $row,
                 $content,
                 ServedBy::Llm,
@@ -77,7 +78,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             // Failed it would sit in /devtools/narration as "still auto-retrying" behind a
             // Try again that can never succeed, and burn a self-heal attempt
             // every hour proving it.
-            if ($service->deleteObsoleteRow($row, $this->generationToken)) {
+            if ($rowState->deleteObsoleteRow($row, $this->generationToken)) {
                 Log::info('narrator.row.obsolete_deleted', [
                     'kind' => $row->analysis_type->value,
                     'subject' => $row->subject_id,
@@ -90,7 +91,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             // rule-based content instead of dead-lettering: the user gets a
             // benign line, and (for chained narrators) that benign line becomes
             // the next prev_narrative, breaking the poison loop at its source.
-            if ($service->markDone(
+            if ($rowState->markDone(
                 $row,
                 app(RuleBasedNarrationFiller::class)->fillFor($row),
                 ServedBy::RuleBased,
@@ -108,8 +109,8 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             $this->settleFailure(
                 $e,
                 [$row],
-                markFailed: fn () => $service->markFailed($row, $e->getMessage(), $this->generationToken),
-                markRequeued: fn () => $service->markQueued($row, $this->generationToken),
+                markFailed: fn () => $rowState->markFailed($row, $e->getMessage(), $this->generationToken),
+                markRequeued: fn () => $rowState->markQueued($row, $this->generationToken),
             );
         }
     }
@@ -129,7 +130,7 @@ abstract class AnalyzeRowJob extends AnalyzeBaseJob
             return;
         }
 
-        app(AnalysisService::class)->markFailed($row, $e->getMessage(), $this->generationToken);
+        app(AnalysisRowState::class)->markFailed($row, $e->getMessage(), $this->generationToken);
     }
 
     abstract protected function generateContent(Analysis $row): string;

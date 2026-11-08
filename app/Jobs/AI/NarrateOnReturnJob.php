@@ -20,6 +20,8 @@ use App\Services\AI\NarrationOrigin;
 use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\RecapPeriod;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Carbon;
@@ -33,12 +35,14 @@ use Illuminate\Support\Carbon;
  *
  * Every request is invalidate:false and every fill skips a Done row, so a second
  * run bills nothing. Stamped {@see AnalysisOrigin::Return}, which
- * {@see AnalysisService::markDone()} never notifies for; its rule-based fills
+ * {@see \App\Services\AI\AnalysisRowState::markDone()} never notifies for; its rule-based fills
  * carry `reason: AnalysisOrigin::Return` ({@see Analysis::$rule_based_reason}),
  * so the UI can cue "temari hasn't read this one yet" on exactly those blocks.
  *
  * @see docs/decisions/narration-spends-only-on-active-athletes.md
  */
+#[Timeout(60)]
+#[Tries(3)]
 class NarrateOnReturnJob implements ShouldQueue
 {
     use Queueable;

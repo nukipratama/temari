@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Models\User;
+use App\Services\AI\AnalysisDispatcher;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Support\Config\AppConfig;
@@ -130,6 +132,19 @@ it('binds AnalysisService as scoped, not a cross-request singleton', function ()
 
     expect(app(AnalysisService::class))->not->toBe($first);
 });
+
+it('binds the narration dispatch layers as scoped, one instance per request/CLI scope', function (string $class): void {
+    $first = app($class);
+
+    expect(app($class))->toBe($first);
+
+    app()->forgetScopedInstances();
+
+    expect(app($class))->not->toBe($first);
+})->with([
+    'dispatcher' => [AnalysisDispatcher::class],
+    'row state' => [AnalysisRowState::class],
+]);
 
 it('binds AppConfig as scoped, not a cross-request singleton', function (): void {
     $first = app(AppConfig::class);

@@ -13,6 +13,7 @@ use App\Models\AI\Analysis;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
@@ -93,7 +94,7 @@ it('writes speech + insight rows Done from one job run', function (): void {
         ->andReturn(['claims' => [sampleClaim('tech text')]]);
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
@@ -141,7 +142,7 @@ it('uses a shortened speech deadline when enough worker time remains', function 
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
     try {
-        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
         $rows = Analysis::query()
             ->where('subject_type', Activity::class)
@@ -182,7 +183,7 @@ it('persists insight and leaves speech Pending when less than its minimum deadli
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
     try {
-        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+        new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
         $rows = Analysis::query()
             ->where('subject_id', $activity->id)
@@ -220,7 +221,7 @@ it('ignores a group job after a newer generation owns its rows', function (): vo
     $insightMock->shouldNotReceive('generate');
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    new AnalyzeActivityJob($activity->id, null, 'stale-generation')->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id, null, 'stale-generation')->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(2)
@@ -236,7 +237,7 @@ it('stamps every group row with the activity material fingerprint at generation'
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator([sampleClaim()]);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $expected = MaterialFingerprint::forActivity(nonNull($activity->fresh(['detail'])));
     $rows = Analysis::query()
@@ -262,7 +263,7 @@ it('reverts group rows to Pending without billing when generation is paused', fu
         ]);
     }
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->toHaveCount(2)
@@ -283,7 +284,7 @@ it('fails the whole group rather than templating run-insight when the LLM is una
     $insightMock->shouldReceive('generate')->andThrow(new UnavailableException('llm down'));
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     expect($rows)->not->toBeEmpty();
@@ -313,7 +314,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a st
     $insightMock->shouldNotReceive('generate');
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_id', $activity->id)
@@ -326,7 +327,7 @@ it('reuses the Done insight row instead of re-billing RunInsightNarrator on a st
 });
 
 it('marks all 2 rows failed when the activity is missing', function (): void {
-    new AnalyzeActivityJob(99999)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob(99999)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', 99999)->get();
     expect($rows)->toHaveCount(2);
@@ -341,7 +342,7 @@ it('marks all rows failed when the story line is missing', function (): void {
     ActivityDetail::factory()->for($activity)->create();
     // No StoryLine created — speech narrator can't run.
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     foreach ($rows as $row) {
@@ -368,7 +369,7 @@ it('no-ops when all rows already Done (idempotent)', function (): void {
     $speechMock->shouldNotReceive('generate');
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
     foreach ($rows as $row) {
@@ -387,7 +388,7 @@ it('keeps the completed insight Done when speech generation throws', function ()
     $speechMock->shouldReceive('generate')->andThrow(new RuntimeException('boom'));
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
 
-    expect(fn () => new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class)))
+    expect(fn () => new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class)))
         ->toThrow(RuntimeException::class, 'boom');
 
     $rows = Analysis::query()
@@ -446,7 +447,7 @@ it('advances the chain to the next chronological Pending activity group on compl
     mockInsightNarrator([sampleClaim()]);
 
     Bus::fake();
-    new AnalyzeActivityJob($first->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($first->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     // The next chronological activity's group is dispatched as the chain link.
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $next->id);
@@ -465,7 +466,7 @@ it('does not advance the chain when no later activity group is Pending', functio
     mockInsightNarrator([sampleClaim()]);
 
     Bus::fake();
-    new AnalyzeActivityJob($only->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($only->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
@@ -490,7 +491,7 @@ it('marks a group the LLM answered as LLM-served, each narrator call attributed 
     });
     app()->instance(RunInsightNarrator::class, $insightMock);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
@@ -512,7 +513,7 @@ it('keeps the generated insight and fills only filtered speech from the rule-bas
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator([sampleClaim()]);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)
@@ -536,7 +537,7 @@ it('fills the speech rule-based when it was rejected twice, keeping the generate
     app()->instance(PostRunSpeechNarrator::class, $speechMock);
     mockInsightNarrator([sampleClaim()]);
 
-    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class));
+    new AnalyzeActivityJob($activity->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     $rows = Analysis::query()
         ->where('subject_type', Activity::class)

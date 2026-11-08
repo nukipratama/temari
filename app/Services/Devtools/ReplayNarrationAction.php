@@ -15,7 +15,7 @@ use App\Services\AI\NarrationOrigin;
  * compare against the one the athlete complained about.
  *
  * A replay is the operator's spend, so it is measured against its own app-wide daily cap;
- * {@see AnalysisService} enforces the cap again at dispatch, and this reads the same numbers so
+ * {@see \App\Services\AI\AnalysisDispatcher} enforces the cap again at dispatch, and this reads the same numbers so
  * the button can refuse first.
  */
 class ReplayNarrationAction
@@ -48,7 +48,7 @@ class ReplayNarrationAction
     }
 
     /**
-     * Re-dispatch the block. {@see AnalysisService} serves the demo athlete from
+     * Re-dispatch the block. {@see \App\Services\AI\AnalysisDispatcher} serves the demo athlete from
      * the rule-based filler, so a public demo account can never be replayed onto
      * the bill.
      */

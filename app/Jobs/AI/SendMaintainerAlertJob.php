@@ -6,6 +6,8 @@ namespace App\Jobs\AI;
 
 use App\Services\Ops\MaintainerAlerter;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -15,6 +17,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * unreachable Telegram never blocks the caller — including a FrankenPHP
  * worker, for the alerts reachable from the Inertia shared-prop path.
  */
+#[Timeout(60)]
+#[Tries(3)]
 class SendMaintainerAlertJob implements ShouldQueue
 {
     use Queueable;

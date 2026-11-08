@@ -53,7 +53,9 @@ it('lets an admin reach the Pulse page in production, so maintenance can always 
 });
 
 it('lets the Pulse toggle switch maintenance off over HTTP while it is on', function (): void {
-    $page = $this->actingAs(User::factory()->admin()->create())->get('/devtools/pulse')->assertOk();
+    config(['devtools.password' => 'secret']);
+    $devtoolsCredentials = ['Authorization' => 'Basic '.base64_encode('owner:secret')];
+    $page = $this->actingAs(User::factory()->admin()->create())->get('/devtools/pulse', $devtoolsCredentials)->assertOk();
 
     preg_match_all('/wire:snapshot="([^"]+)"/', (string) $page->getContent(), $matches);
     $snapshot = collect($matches[1])
@@ -66,7 +68,7 @@ it('lets the Pulse toggle switch maintenance off over HTTP while it is on', func
         'snapshot' => $snapshot,
         'updates' => [],
         'calls' => [['path' => '', 'method' => 'toggleMaintenance', 'params' => []]],
-    ]]], ['X-Livewire' => '1'])->assertOk();
+    ]]], ['X-Livewire' => '1', ...$devtoolsCredentials])->assertOk();
 
     expect(app()->isDownForMaintenance())->toBeFalse();
 });

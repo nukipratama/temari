@@ -4,21 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\AI;
 
-use Illuminate\Support\Collection;
 use App\Actions\AI\RecentlyActiveUsers;
-use App\Models\AI\Analysis;
-use App\Models\AI\ContentFilterEvent;
-use App\Models\AI\TokenUsage;
-use App\Models\Feedback;
-use App\Models\User;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 
 /**
- * Builds the /devtools/narration reporting payload from the analytics-schema `ai_token_usages`
- * table: totals, per-kind, per-deployment, per-origin, the filter options, the stacked daily cost
- * series, and the per-athlete rows. Each side of the schema split is aggregated first and stitched
- * in PHP, to avoid a cross-schema join.
+ * Builds the /devtools/narration reporting payload from the rows {@see TokenUsageQuery} reads:
+ * totals, per-kind, per-deployment, per-origin, the filter options, the stacked daily cost series,
+ * and the per-athlete rows.
  *
  * Rates are per-deployment, so any cross-deployment row is grouped by the `model` column first,
  * costed per deployment, then rolled up.
@@ -39,6 +31,7 @@ class TokenUsageReport
     private const array RULE_BASED_REASONS = ['demo', 'capped', 'return', 'content_filter', 'rejected_output', 'unattributed'];
 
     public function __construct(
+        private readonly TokenUsageQuery $query,
         private readonly LlmCostCalculator $costCalculator,
         private readonly CostCeilingLedger $ceilingLedger,
         private readonly CeilingOverride $ceilingOverride,
@@ -60,18 +53,7 @@ class TokenUsageReport
      */
     public function build(Carbon $from, Carbon $to, ?string $kind, ?string $origin = null): array
     {
-        $baseQuery = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [$from, $to]);
-
-        if ($kind !== null) {
-            $baseQuery->where('kind', $kind);
-        }
-
-        if ($origin !== null) {
-            $baseQuery->where('origin', $origin);
-        }
-
-        $aggregate = $this->aggregate($baseQuery);
+        $aggregate = $this->aggregate($from, $to, $kind, $origin);
         $perUserCeiling = config('azure_openai.daily_cost_ceiling_per_user');
         assert($perUserCeiling === null || is_numeric($perUserCeiling));
         $totalCeiling = config('azure_openai.daily_cost_ceiling_total');
@@ -79,13 +61,13 @@ class TokenUsageReport
         // `dailyCeiling` is the per-athlete slice times the athlete count: what
         // the bill would reach if every athlete spent theirs. `totalCeiling` is
         // the configured app-wide stop that binds before it.
-        $athletes = User::query()->notDemo()->count();
+        $athletes = $this->query->athleteCount();
 
         return [
             'totals' => $aggregate['totals'],
             'byKind' => $aggregate['byKind'],
             'byDeployment' => $aggregate['byDeployment'],
-            'byOrigin' => $this->byOrigin($baseQuery),
+            'byOrigin' => $this->byOrigin($from, $to, $kind, $origin),
             'availableKinds' => $this->availableKinds($from, $to),
             'availableOrigins' => $this->availableOrigins($from, $to),
             'budget' => [
@@ -111,13 +93,7 @@ class TokenUsageReport
      */
     private function todayTokens(): array
     {
-        $row = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()])
-            ->selectRaw(
-                'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-                'SUM(cached_tokens) as cached, SUM(total_tokens) as total'
-            )
-            ->first();
+        $row = $this->query->todayTokens();
 
         return [
             'prompt' => (int) ($row->prompt ?? 0),
@@ -137,9 +113,7 @@ class TokenUsageReport
      */
     private function contentFilter(Carbon $from, Carbon $to, int $calls): array
     {
-        $trips = ContentFilterEvent::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->count();
+        $trips = $this->query->contentFilterTrips($from, $to);
 
         return [
             'trips' => $trips,
@@ -158,18 +132,9 @@ class TokenUsageReport
      *     byDeployment: list<array{deployment:string, prompt:int, completion:int, total:int, calls:int, cost:float, inputPer1m:float|null, outputPer1m:float|null}>,
      * }
      */
-    private function aggregate(Builder $baseQuery): array
+    private function aggregate(Carbon $from, Carbon $to, ?string $kind, ?string $origin): array
     {
-        $rows = (clone $baseQuery)
-            ->selectRaw(
-                'kind, model, SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-                'SUM(total_tokens) as total, COUNT(*) as calls, '.
-                'SUM(cached_tokens) as cached, SUM(reasoning_tokens) as reasoning, SUM(steps) as steps, '.
-                'SUM(CASE WHEN truncated = 1 THEN 1 ELSE 0 END) as truncated_calls, '.
-                'AVG(latency_ms) as avg_latency_ms, MAX(latency_ms) as max_latency_ms'
-            )
-            ->groupBy('kind', 'model')
-            ->get();
+        $rows = $this->query->kindModelRows($from, $to, $kind, $origin);
 
         $totals = ['prompt' => 0, 'completion' => 0, 'total' => 0, 'cached' => 0, 'calls' => 0, 'truncated_calls' => 0, 'cost' => 0.0];
 
@@ -321,15 +286,9 @@ class TokenUsageReport
      *
      * @return list<array{origin:string, label:string, prompt:int, completion:int, total:int, calls:int, cost:float}>
      */
-    private function byOrigin(Builder $baseQuery): array
+    private function byOrigin(Carbon $from, Carbon $to, ?string $kind, ?string $origin): array
     {
-        $rows = (clone $baseQuery)
-            ->selectRaw(
-                'origin, model, SUM(prompt_tokens) AS prompt, SUM(cached_tokens) AS cached, '
-                .'SUM(completion_tokens) AS completion, SUM(total_tokens) AS total, COUNT(*) AS calls'
-            )
-            ->groupBy('origin', 'model')
-            ->get();
+        $rows = $this->query->originModelRows($from, $to, $kind, $origin);
 
         $byOrigin = [];
         foreach ($rows as $row) {
@@ -368,14 +327,7 @@ class TokenUsageReport
      */
     private function availableOrigins(Carbon $from, Carbon $to): array
     {
-        /** @var Collection<int, string> $origins */
-        $origins = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [$from, $to])
-            ->distinct()
-            ->orderBy('origin')
-            ->pluck('origin');
-
-        return array_values($origins
+        return array_values($this->query->origins($from, $to)
             ->map(fn (string $o): array => [
                 'value' => $o,
                 'label' => AnalysisOrigin::tryFrom($o)?->label() ?? $o,
@@ -390,14 +342,7 @@ class TokenUsageReport
      */
     private function availableKinds(Carbon $from, Carbon $to): array
     {
-        /** @var Collection<int, string> $kinds */
-        $kinds = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [$from, $to])
-            ->distinct()
-            ->orderBy('kind')
-            ->pluck('kind');
-
-        return array_values($kinds
+        return array_values($this->query->kinds($from, $to)
             ->map(fn (string $k): array => [
                 'value' => $k,
                 'label' => AnalysisType::tryFrom($k)?->name ?? $k,
@@ -417,16 +362,7 @@ class TokenUsageReport
      */
     public function dailyCostByKind(Carbon $from, Carbon $to, ?int $userId = null): array
     {
-        $rows = TokenUsage::query()->toBase()
-            ->whereBetween('created_at', [$from, $to])
-            ->when($userId !== null, fn (Builder $query): Builder => $query->where('user_id', $userId))
-            ->selectRaw(
-                'DATE(created_at) as day, kind, model, SUM(prompt_tokens) as prompt, '.
-                'SUM(completion_tokens) as completion, SUM(cached_tokens) as cached'
-            )
-            ->groupByRaw('DATE(created_at), kind, model')
-            ->orderBy('day')
-            ->get();
+        $rows = $this->query->dailyKindModelRows($from, $to, $userId);
 
         /** @var array<string, array{day:string, cost:float, tokens:int, byKind: array<string, float>}> $days */
         $days = [];
@@ -498,7 +434,7 @@ class TokenUsageReport
 
         /** @var array<int, array{name:string|null, is_demo:bool, deleted:bool, last_seen_at:string|null, away:bool}> $identities */
         $identities = [];
-        foreach (User::query()->orderBy('id')->get(['id', 'name', 'is_demo', 'last_seen_at']) as $user) {
+        foreach ($this->query->users() as $user) {
             $identities[(int) $user->id] = [
                 'name' => $user->name,
                 'is_demo' => (bool) $user->is_demo,
@@ -510,8 +446,8 @@ class TokenUsageReport
 
         $demoUserIds = array_keys(array_filter($identities, fn (array $identity): bool => $identity['is_demo']));
         $served = $this->servedByCounts($from, $to, $demoUserIds);
-        $flags = $this->flagCounts($from, $to);
-        $deadLettered = $this->deadLetterCounts();
+        $flags = $this->query->flagCounts($from, $to);
+        $deadLettered = $this->query->deadLetterCounts();
         $configCeiling = config('azure_openai.daily_cost_ceiling_per_user');
         assert($configCeiling === null || is_numeric($configCeiling));
 
@@ -589,16 +525,7 @@ class TokenUsageReport
      */
     private function athleteSpend(Carbon $windowStart): array
     {
-        $rows = TokenUsage::query()->toBase()
-            ->where('created_at', '>=', $windowStart)
-            ->whereNotNull('user_id')
-            ->selectRaw(
-                'user_id, DATE(created_at) as day, model, MAX(user_name) as snapshot_name, '.
-                'SUM(prompt_tokens) as prompt, SUM(completion_tokens) as completion, '.
-                'SUM(cached_tokens) as cached, COUNT(*) as calls'
-            )
-            ->groupByRaw('user_id, DATE(created_at), model')
-            ->get();
+        $rows = $this->query->athleteSpendRows($windowStart);
 
         $today = Carbon::today()->toDateString();
         $sevenDaysAgo = Carbon::today()->subDays(6)->toDateString();
@@ -652,34 +579,23 @@ class TokenUsageReport
      */
     private function servedByCounts(Carbon $from, Carbon $to, array $demoUserIds): array
     {
-        $rows = Analysis::query()
-            ->where('status', AnalysisStatus::Done)
-            ->whereBetween('generated_at', [$from, $to])
-            ->get(['id', 'subject_type', 'subject_id', 'served_by', 'rule_based_reason']);
-
-        $owners = AnalysisSubjectMap::ownerIdsForRows($rows);
-
         /** @var array<int, array{llm:int, rule_based:int, unknown:int, reasons: array{demo:int, capped:int, return:int, content_filter:int, rejected_output:int, unattributed:int}}> $counts */
         $counts = [];
-        foreach ($rows as $row) {
-            $userId = $owners[$row->id] ?? null;
-            if ($userId === null) {
-                continue;
-            }
-
+        foreach ($this->query->doneNarrations($from, $to) as $row) {
+            $userId = $row['user_id'];
             $counts[$userId] ??= self::emptyServedSplit();
-            $bucket = match ($row->served_by) {
+            $bucket = match ($row['served_by']) {
                 ServedBy::Llm => 'llm',
                 ServedBy::RuleBased => 'rule_based',
                 null => 'unknown',
             };
             $counts[$userId][$bucket]++;
 
-            if ($row->served_by !== ServedBy::RuleBased) {
+            if ($row['served_by'] !== ServedBy::RuleBased) {
                 continue;
             }
 
-            $reasonValue = $row->rule_based_reason?->value;
+            $reasonValue = $row['rule_based_reason']?->value;
             $reason = in_array($userId, $demoUserIds, true)
                 ? 'demo'
                 : (in_array($reasonValue, self::RULE_BASED_REASONS, true) ? $reasonValue : 'unattributed');
@@ -700,48 +616,5 @@ class TokenUsageReport
             'unknown' => 0,
             'reasons' => array_fill_keys(self::RULE_BASED_REASONS, 0),
         ];
-    }
-
-    /**
-     * Narration flags an athlete filed in range. `feedback` rows carry no
-     * resolved state, so every flag in the window counts.
-     *
-     * @return array<int, int>
-     */
-    private function flagCounts(Carbon $from, Carbon $to): array
-    {
-        /** @var Collection<int, int|string> $flags */
-        $flags = Feedback::query()
-            ->whereBetween('created_at', [$from, $to])
-            ->selectRaw('user_id, COUNT(*) as flags')
-            ->groupBy('user_id')
-            ->pluck('flags', 'user_id');
-
-        return $flags->map(fn (int|string $count): int => (int) $count)->all();
-    }
-
-    /**
-     * Blocks self-heal has given up on, per athlete. Not range-scoped: a
-     * dead-lettered block stays dead-lettered until someone re-arms it, so
-     * hiding one because it failed before the selected window would hide the
-     * only thing on the row that needs an action.
-     *
-     * @return array<int, int>
-     */
-    private function deadLetterCounts(): array
-    {
-        $rows = Analysis::query()->deadLettered()->get(['id', 'subject_type', 'subject_id']);
-        $owners = AnalysisSubjectMap::ownerIdsForRows($rows);
-
-        /** @var array<int, int> $counts */
-        $counts = [];
-        foreach ($rows as $row) {
-            $userId = $owners[$row->id] ?? null;
-            if ($userId !== null) {
-                $counts[$userId] = ($counts[$userId] ?? 0) + 1;
-            }
-        }
-
-        return $counts;
     }
 }

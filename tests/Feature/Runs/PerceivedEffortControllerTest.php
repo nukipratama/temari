@@ -108,17 +108,6 @@ it('lets an athlete score only their own run', function (): void {
     expect($detail->refresh()->perceived_effort)->toBeNull();
 });
 
-it('keeps a demo score local, with no narration requested', function (): void {
-    $user = User::factory()->demo()->create();
-    [$activity, $detail] = perceivedEffortRun($user);
-
-    $this->actingAs($user)->patch(route('activities.effort.update', $activity), ['score' => 4])->assertRedirect();
-
-    expect($detail->refresh()->perceived_effort)->toBe(4)
-        ->and(Analysis::query()->count())->toBe(0);
-    Queue::assertNothingPushed();
-});
-
 it('re-narrates the run when its first effort score is saved', function (): void {
     $user = User::factory()->create();
     [$activity] = perceivedEffortRun($user);

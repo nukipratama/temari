@@ -12,6 +12,8 @@ use App\Services\Strava\StravaClient;
 use App\Support\Config\AppConfig;
 use App\Support\Config\AppConfigKey;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Tries;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 /**
@@ -19,6 +21,8 @@ use Illuminate\Foundation\Queue\Queueable;
  * lands, recent-first (`$recentFirst`) unlike the plain oldest-first cron
  * tick — see docs/decisions/history-narrates-on-demand.md.
  */
+#[Timeout(60)]
+#[Tries(3)]
 class HydrateBacklogForUserJob implements ShouldQueue
 {
     use Queueable;

@@ -11,11 +11,13 @@ use App\Models\User;
 use App\Services\Run\Metrics\WeeklyAggregator;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Foundation\Queue\Queueable;
 
 #[Backoff([30, 120])]
 #[Tries(3)]
 #[UniqueFor(900)]
+#[Timeout(60)]
 final class RollWeeklySnapshotsForwardJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\AI\Analysis;
 use App\Models\AI\ContentFilterEvent;
-use App\Models\Feedback;
 use App\Models\AI\TokenUsage;
 use App\Models\StravaConnection;
 use App\Models\User;
@@ -15,6 +14,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\CeilingOverride;
 use App\Services\AI\CostCeilingLedger;
 use App\Services\AI\ServedBy;
+use App\Services\AI\TokenUsageQuery;
 use App\Services\AI\TokenUsageReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
@@ -555,34 +555,6 @@ it('counts every one of a demo athlete\'s rule-based fills as demo, whatever rea
     ]);
 });
 
-it('counts the flags an athlete filed in range', function () use ($range): void {
-    $alice = User::factory()->create();
-    Feedback::factory()->for($alice)->create(['subject_id' => 1, 'created_at' => Carbon::parse('2026-05-11')]);
-    Feedback::factory()->for($alice)->create(['subject_id' => 2, 'created_at' => Carbon::parse('2026-05-12')]);
-    Feedback::factory()->for($alice)->create(['subject_id' => 3, 'created_at' => Carbon::parse('2026-04-01')]);
-
-    [$from, $to] = $range();
-    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
-
-    expect($row['flags'])->toBe(2);
-});
-
-it('counts dead-lettered blocks regardless of the range, since they still need an action', function () use ($range): void {
-    $alice = User::factory()->create();
-    Analysis::factory()->create([
-        'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
-        'subject_id' => $alice->id,
-        'status' => AnalysisStatus::Failed,
-        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
-        'updated_at' => Carbon::parse('2026-01-01'),
-    ]);
-
-    [$from, $to] = $range();
-    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
-
-    expect($row['dead_lettered'])->toBe(1);
-});
-
 it('lists a silent athlete rather than hiding them behind zero spend', function () use ($range): void {
     $alice = User::factory()->create();
 
@@ -623,4 +595,21 @@ it('keeps a deleted account listed under the snapshot the eraser left behind', f
 
     expect($row['user_name'])->toBe('Alice')
         ->and($row['deleted'])->toBeTrue();
+});
+
+it('carries the per-athlete flag and dead-letter counts onto the athlete row', function () use ($range): void {
+    $alice = User::factory()->create();
+    $query = Mockery::mock(TokenUsageQuery::class);
+    $query->shouldReceive('athleteSpendRows')->andReturn(collect());
+    $query->shouldReceive('users')->andReturn(collect([$alice]));
+    $query->shouldReceive('doneNarrations')->andReturn([]);
+    $query->shouldReceive('flagCounts')->andReturn([$alice->id => 2]);
+    $query->shouldReceive('deadLetterCounts')->andReturn([$alice->id => 1]);
+    app()->instance(TokenUsageQuery::class, $query);
+
+    [$from, $to] = $range();
+    $row = nonNull(collect(tokenUsageReport()->athletes($from, $to))->firstWhere('user_id', $alice->id));
+
+    expect($row['flags'])->toBe(2)
+        ->and($row['dead_lettered'])->toBe(1);
 });

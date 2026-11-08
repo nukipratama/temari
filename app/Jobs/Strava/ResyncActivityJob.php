@@ -15,6 +15,7 @@ use App\Services\Strava\Exceptions\StravaRateLimitedException;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Http\Client\ConnectionException;
@@ -31,6 +32,7 @@ use App\Services\AI\NarrationOrigin;
  * uniqueness handling so a resync is as resilient as the automatic ingest.
  */
 #[MaxExceptions(3)]
+#[Timeout(60)]
 class ResyncActivityJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

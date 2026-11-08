@@ -497,7 +497,10 @@ function propContractPage(TestCase $test, ?User $user, string $url): array
         $test->actingAs($user);
     }
 
-    $html = (string) $test->get($url)->assertSuccessful()->getContent();
+    config(['devtools.password' => 'secret']);
+    $credentials = ['Authorization' => 'Basic '.base64_encode('owner:secret')];
+
+    $html = (string) $test->get($url, $credentials)->assertSuccessful()->getContent();
     preg_match('/type="application\/json">(.*?)<\/script>/s', $html, $matches);
     $page = arrayOf(json_decode(html_entity_decode($matches[1] ?? ''), true));
 
@@ -510,6 +513,7 @@ function propContractPage(TestCase $test, ?User $user, string $url): array
         ->all();
     if ($deferred !== []) {
         $partial = $test->get($url, [
+            ...$credentials,
             'X-Inertia' => 'true',
             'X-Inertia-Version' => is_scalar($version) ? (string) $version : '',
             'X-Inertia-Partial-Component' => $component,

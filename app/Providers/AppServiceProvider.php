@@ -10,6 +10,8 @@ use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Http\Middleware\EnsureDevtoolsAccess;
 use App\Listeners\RecordScheduledTaskRun;
 use App\Models\User;
+use App\Services\AI\AnalysisDispatcher;
+use App\Services\AI\AnalysisRowState;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\NarratedAnalysis;
 use App\Services\AI\NarrationGate;
@@ -64,6 +66,8 @@ class AppServiceProvider extends ServiceProvider
         // Scoped: one shared instance per request/command (so `withoutDispatching()`
         // reaches collaborators), flushed by Octane between requests.
         $this->app->scoped(AnalysisService::class);
+        $this->app->scoped(AnalysisDispatcher::class);
+        $this->app->scoped(AnalysisRowState::class);
         $this->app->scoped(NarrationGate::class);
         $this->app->scoped(NarrationOrigin::class);
         $this->app->scoped(NarratedAnalysis::class);

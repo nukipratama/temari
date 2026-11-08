@@ -10,7 +10,7 @@ namespace App\Services\AI;
  *
  * Origin is a property of the dispatcher, not of the narrator: the same `RunInsightNarrator`
  * answers an ingest cascade, a "Reread" and a self-heal. Each entry point declares itself with
- * {@see self::set()}, {@see AnalysisService} stamps the value onto the job it dispatches, and the
+ * {@see self::set()}, {@see AnalysisDispatcher} stamps the value onto the job it dispatches, and the
  * job restores it before generating.
  *
  * {@see \App\Http\Middleware\SetDefaultNarrationOrigin} sets {@see AnalysisOrigin::User} once for

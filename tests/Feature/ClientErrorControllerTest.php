@@ -51,6 +51,33 @@ it('writes only the leading frames of an oversized trace', function (): void {
     );
 });
 
+it('strips control characters and newlines from every reported field before logging', function (): void {
+    $log = spyOnClientErrorLog();
+
+    $this->withHeaders(['Referer' => "https://temari.test/a\r\nforged"])->postJson('/client-errors', [
+        'message' => "Boom\n2026-01-01 forged.ERROR: injected\x00\x1b[31m",
+        'stack' => "at foo (app.tsx:1)\nat bar (app.tsx:2)\r\t",
+        'componentStack' => "in RunPage\nin App",
+    ])->assertNoContent();
+
+    $log->shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $context['message'] === 'Boom2026-01-01 forged.ERROR: injected[31m'
+            && $context['stack'] === 'at foo (app.tsx:1)at bar (app.tsx:2)'
+            && $context['component_stack'] === 'in RunPagein App'
+            && $context['url'] === 'https://temari.test/aforged',
+    );
+});
+
+it('strips control characters from the message before ledgering', function (): void {
+    spyOnClientErrorLog();
+    $stack = 'at https://temari.test/build/assets/app-abc.js:1:1';
+
+    $this->postJson('/client-errors', ['message' => "Boom\nforged", 'stack' => $stack])->assertNoContent();
+    $this->postJson('/client-errors', ['message' => 'Boomforged', 'stack' => $stack])->assertNoContent();
+
+    expect(NewExceptionLedger::pull())->toHaveCount(1);
+});
+
 it('throttles a browser stuck in an error loop', function (): void {
     spyOnClientErrorLog();
 

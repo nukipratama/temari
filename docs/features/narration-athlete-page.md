@@ -109,12 +109,12 @@ A flagged narration row carries a **replay** button: re-narrate that exact block
 [`AnalysisOrigin::Replay`](app/Services/AI/AnalysisOrigin.php), queued through the
 ordinary job path, so the row reads Queued until the new answer lands and then shows the
 diff against what it replaced (the snapshot is automatic in
-[`markDone()`](app/Services/AI/AnalysisService.php)).
+[`markDone()`](app/Services/AI/AnalysisRowState.php)).
 
 A replay is the operator's spend, not the athlete's, so it is measured against its own
 app-wide `azure_openai.replay_daily_cap` and never against the athlete's slice —
 [`ReplayNarrationAction`](app/Services/Devtools/ReplayNarrationAction.php) reads the same
-numbers [AnalysisService](app/Services/AI/AnalysisService.php) enforces at dispatch,
+numbers [AnalysisDispatcher](app/Services/AI/AnalysisDispatcher.php) enforces at dispatch,
 so the confirm step can quote the block's last cost and today's replay total, and the
 button refuses in place rather than asking for a confirmation it would not honour. The
 demo athlete's replay resolves through the rule-based filler like every other demo

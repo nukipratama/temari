@@ -27,14 +27,14 @@ afterEach(fn () => Carbon::setTestNow());
 // The /devtools/narration dashboard is gated by HTTP Basic Auth against a
 // shared devtools password. Every case below sends the correct credential;
 // the authorization cases override it and call armDevtoolsGate() first,
-// because the gate only challenges in production.
+// so CSRF applies as it does in production.
 beforeEach(function (): void {
     config(['devtools.password' => 'secret']);
     $this->withHeaders(['Authorization' => 'Basic '.base64_encode('devtools:secret')]);
 });
 
 /**
- * The devtools gate only challenges in production; arm it, CSRF and all.
+ * Switch to production so CSRF applies alongside the devtools gate.
  *
  * @return array<string, string>
  */

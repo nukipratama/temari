@@ -77,7 +77,7 @@ class DispatchPostRunAnalysis implements ShouldQueue
         };
         $athleteAway = $verdict === NarrationVerdict::Inactive;
         // AwaitingBacklog no longer stages: a fresh connect's recent run
-        // narrates right away, and AnalysisService::markDone() flags the row
+        // narrates right away, and AnalysisRowState::markDone() flags the row
         // for SettleEarlyNarrationAction's replay if it's still early.
         $stageOnly = $athleteAway;
 

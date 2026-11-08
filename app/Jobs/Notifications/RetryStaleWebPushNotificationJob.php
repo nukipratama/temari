@@ -20,10 +20,12 @@ use App\Services\Notifications\NotificationDeliveryClaim;
 use App\Services\Notifications\QuietHours;
 use App\Services\Telegram\NotificationEligibility;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Support\Facades\Notification;
 
 #[Backoff([30, 120])]
 #[Tries(3)]
+#[Timeout(60)]
 class RetryStaleWebPushNotificationJob implements ShouldQueue
 {
     use Queueable;
