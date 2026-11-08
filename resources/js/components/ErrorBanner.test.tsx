@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { makeUser, setMockPage } from '@/test/setup';
 
-import ErrorBanner from './ErrorBanner';
+import ErrorBanner, { DEMO_READ_ONLY_BLOCKED } from './ErrorBanner';
 
 const base = {
     auth: { user: null },
@@ -94,7 +94,9 @@ describe('ErrorBanner demo read-only block', () => {
         render(<ErrorBanner />);
 
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('the demo is read-only')).toBeInTheDocument();
+        expect(
+            screen.getByText(DEMO_READ_ONLY_BLOCKED.title),
+        ).toBeInTheDocument();
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 

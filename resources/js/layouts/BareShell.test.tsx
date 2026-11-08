@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { DEMO_READ_ONLY_BLOCKED } from '@/components/ErrorBanner';
 import { makeUser, setMockPage } from '@/test/setup';
 
 import { appLayout } from './appLayout';
@@ -72,7 +73,9 @@ describe('BareShell', () => {
         render(<BareShell>content</BareShell>);
 
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('the demo is read-only')).toBeInTheDocument();
+        expect(
+            screen.getByText(DEMO_READ_ONLY_BLOCKED.title),
+        ).toBeInTheDocument();
     });
 
     it('leaves the AI and Strava pipeline banners to AppShell', () => {
