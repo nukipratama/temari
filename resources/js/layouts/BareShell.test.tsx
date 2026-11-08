@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { setMockPage } from '@/test/setup';
+import { makeUser, setMockPage } from '@/test/setup';
 
 import { appLayout } from './appLayout';
 import BareShell, { bareLayout } from './BareShell';
@@ -58,6 +58,21 @@ describe('BareShell', () => {
         expect(
             screen.getByText('Strava connect was denied.'),
         ).toBeInTheDocument();
+    });
+
+    it("opens the demo read-only modal when a demo user's onboarding submit is refused", async () => {
+        setMockPage({
+            auth: { user: makeUser({ is_demo: true }) },
+            flash: {},
+            demoLoginEnabled: false,
+            errors: {
+                demo: 'The demo account is read-only. Nothing here can be changed.',
+            },
+        });
+        render(<BareShell>content</BareShell>);
+
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('the demo is read-only')).toBeInTheDocument();
     });
 
     it('leaves the AI and Strava pipeline banners to AppShell', () => {
