@@ -493,6 +493,10 @@ class PostRunSpeechNarrator
                 continue;
             }
 
+            if (in_array($anchor, array_column($resolved, 'anchor'), true)) {
+                continue;
+            }
+
             if ($easyDayHit && preg_match('/^zone:z[3-5]$/', $anchor) === 1) {
                 continue;
             }

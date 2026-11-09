@@ -385,6 +385,23 @@ it('PostRunSpeechNarrator caps claims at 3 even when the model returns more vali
     expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toHaveCount(3);
 });
 
+it('PostRunSpeechNarrator keeps only the first claim on each anchor', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => [
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 6.0,
+        'pace_variability_sec' => 20.0,
+    ]]);
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => 'metric:decoupling', 'text' => 'a', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:decoupling', 'text' => 'b', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:pace_variability', 'text' => 'c', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:decoupling', 'text' => 'd', 'value' => null, 'delta' => null],
+    ]));
+
+    expect(array_column(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')), 'text'))->toBe(['a', 'c']);
+});
+
 it('PostRunSpeechNarrator prompt carries the readings it took over from the run insight', function (string $first, string $second): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
 
