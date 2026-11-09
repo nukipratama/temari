@@ -43,6 +43,7 @@ it('persona prompt wording: who Temari is and how it addresses the user', functi
     }
 })->with([
     'introduces Temari in first person as the partner who keeps score' => ["I'm temari", 'I keep score'],
+    'an output without a headline opens its first sentence from the data' => ['or the first sentence when the output has no headline'],
     'pins the only opponent to the user themselves, never another runner' => ['# Keeping score', 'The only opponent is a past version of the user', 'no percentiles, no cross-user anything'],
     // The register shift is only safe if the hard exclusion list travels with
     // it: calling a fatigued or overreaching runner lazy is the failure mode
@@ -128,7 +129,7 @@ it('persona prompt examples follow the casing rule', function (): void {
 
 it('opens the headline from the data and invites weather only when a tool returned it', function (): void {
     expect(temariPrompt())
-        ->toContain('Open the headline from whatever is most notable in the data you fetched')
+        ->toContain('Open the headline, or the first sentence when the output has no headline, from whatever is most notable in the data you fetched')
         ->toContain('the weather only when a tool gave it')
         ->and(temariPrompt())->not->toContain("this run's data")
         ->and(temariPrompt())->not->toContain('one atmospheric detail');
