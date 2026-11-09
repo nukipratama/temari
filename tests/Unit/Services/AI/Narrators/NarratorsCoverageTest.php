@@ -19,6 +19,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\TemariPersona;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\MonthRunsTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
@@ -97,7 +98,7 @@ function weeklyRecapNarrator(StructuredChatCaller $caller): WeeklyRecapNarrator
 
 function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrator
 {
-    return new MonthlyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    return new MonthlyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(TrainingLoad::class), app(VerdictNarrator::class));
 }
 
 function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
@@ -1110,8 +1111,104 @@ it('MonthTotalsTool reads month totals and the mood mix', function (): void {
     expect($context['pr_count'])->toBe(0);
     expect($context['weekly_distance_km'])->toBeArray();
 
-    expect(monthlyRecapNarrator(fakeCaller('{"narrative":"This month, mostly blazing."}'))->generate($user, $month))
-        ->toBe('This month, mostly blazing.');
+});
+
+it('MonthlyRecapNarrator stores its headline and story as JSON content, not the reading', function (): void {
+    $user = User::factory()->create();
+    $caller = fakeCaller(json_encode(['reading' => 'consistency', 'title' => 'four weeks, each longer.', 'body' => 'A steady month.'], JSON_THROW_ON_ERROR));
+
+    $stored = monthlyRecapNarrator($caller)->generate($user, '2026-05');
+
+    expect($stored)->toBe(json_encode(['title' => 'four weeks, each longer.', 'body' => 'A steady month.'], JSON_THROW_ON_ERROR))
+        ->and(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('four weeks, each longer.', 'A steady month.'));
+});
+
+it('MonthlyRecapNarrator asks for reading, title and body, the reading picked from its seven angles, with no step override', function (): void {
+    $user = User::factory()->create();
+    [$caller, $client] = capturingCaller(json_encode(['reading' => 'plan', 'title' => 't', 'body' => 'b'], JSON_THROW_ON_ERROR));
+
+    monthlyRecapNarrator($caller)->generate($user, '2026-05');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = data_get($params, 'text.format.schema');
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body']
+            && data_get($schema, 'properties.reading.enum') === ['vs_last_month', 'plan', 'standout_run', 'records', 'long_arc', 'load', 'consistency']
+            && data_get($params, 'max_output_tokens') === 2500;
+    });
+});
+
+it('MonthlyRecapNarrator throws on a missing body key', function (): void {
+    monthlyRecapNarrator(fakeCaller(json_encode(['reading' => 'load', 'title' => 'x'], JSON_THROW_ON_ERROR)))->generate(User::factory()->create(), '2026-05');
+})->throws(UnavailableException::class);
+
+it('MonthlyRecapNarrator hands the model the month, its runs, its plan, its records and the six-week arc', function (): void {
+    expect(array_column(monthlyRecapNarrator(fakeCaller('{}'))->toolbox(User::factory()->create(), '2026-05')->definitions(), 'name'))
+        ->toBe(['get_month_totals', 'get_month_runs', 'get_planned_sessions', 'get_month_records', 'get_trend_range_totals']);
+});
+
+it('MonthlyRecapNarrator reads the six-week arc as it stood on the month last day, not today', function (): void {
+    Carbon::setTestNow('2026-07-20 12:00:00');
+    $user = User::factory()->create();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => '2026-05-31 07:00:00', 'distance' => 5000.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->create())->create(['start_date_local' => '2026-06-01 07:00:00', 'distance' => 9000.0]);
+
+    $arc = json_decode(monthlyRecapNarrator(fakeCaller('{}'))->toolbox($user, '2026-05')->invoke('get_trend_range_totals', '{}'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(data_get($arc, 'range'))->toBe('6w')
+        ->and(data_get($arc, 'current.runs'))->toBe(1)
+        ->and(data_get($arc, 'current.distance_km'))->toEqual(5.0);
+    Carbon::setTestNow();
+});
+
+it('MonthTotalsTool counts the same analysed runs get_month_runs lists, never a stub or another athlete', function (): void {
+    $user = User::factory()->create();
+    foreach (['2026-05-02T07:00', '2026-05-31T23:59'] as $startedAt) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => Carbon::parse($startedAt), 'distance' => 5000.0]);
+    }
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->stub()->create())->create(['start_date_local' => Carbon::parse('2026-05-10T07:00'), 'distance' => 9000.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for(User::factory()->create())->analyzed()->create())->create(['start_date_local' => Carbon::parse('2026-05-11T07:00'), 'distance' => 9000.0]);
+
+    $totals = new MonthTotalsTool($user, '2026-05')->handle([]);
+    $runs = new MonthRunsTool($user, '2026-05', app(VerdictNarrator::class))->handle([])['runs'];
+
+    expect($totals['total_runs'])->toBe(count(arrayOf($runs)))->toBe(2)
+        ->and($totals['total_distance_km'])->toBe(10.0)
+        ->and($totals['longest_run_km'])->toBe(5.0);
+});
+
+it('MonthTotalsTool reads the previous calendar month and its pace to compare against', function (): void {
+    $user = User::factory()->create();
+    foreach ([['2026-05-05T07:00', 10000.0, 3000], ['2026-05-20T07:00', 5000.0, 1500], ['2026-04-30T23:59', 20000.0, 7200], ['2026-04-01T00:00', 10000.0, 3600], ['2026-03-31T23:59', 50000.0, 9000]] as [$startedAt, $meters, $seconds]) {
+        ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create([
+            'start_date_local' => Carbon::parse($startedAt), 'distance' => $meters, 'elapsed_time' => $seconds, 'moving_time' => $seconds,
+        ]);
+    }
+
+    $totals = new MonthTotalsTool($user, '2026-05')->handle([]);
+
+    expect($totals)->toMatchArray([
+        'total_runs' => 2,
+        'total_distance_km' => 15.0,
+        'pace_sec_per_km' => 300.0,
+        'pace_formatted' => '5:00',
+        'prev_runs' => 2,
+        'prev_distance_km' => 30.0,
+        'prev_pace_sec_per_km' => 360.0,
+        'prev_pace_formatted' => '6:00',
+    ]);
+});
+
+it('MonthTotalsTool leaves prev_* null when the previous month has no runs, and steps back across January', function (): void {
+    $user = User::factory()->create();
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => Carbon::parse('2026-05-05T07:00'), 'distance' => 5000.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => Carbon::parse('2025-12-31T23:59'), 'distance' => 8000.0]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user)->analyzed()->create())->create(['start_date_local' => Carbon::parse('2026-01-05T07:00'), 'distance' => 5000.0]);
+
+    expect(new MonthTotalsTool($user, '2026-05')->handle([]))->toMatchArray([
+        'prev_runs' => null, 'prev_distance_km' => null, 'prev_pace_sec_per_km' => null, 'prev_pace_formatted' => null,
+    ])
+        ->and(new MonthTotalsTool($user, '2026-01')->handle([]))->toMatchArray(['prev_runs' => 1, 'prev_distance_km' => 8.0]);
 });
 
 it('MonthTotalsTool counts PRs and buckets distance by week within the month', function (): void {
@@ -1252,7 +1349,7 @@ it('MonthlyRecapNarrator reads the plan window for a shorter month when the cloc
 
     $client = new ClientFake([
         fakeAzureToolCallResponse([['name' => 'get_planned_sessions']]),
-        fakeAzureResponse('{"narrative":"x"}'),
+        fakeAzureResponse('{"reading":"plan","title":"t","body":"b"}'),
     ]);
 
     monthlyRecapNarrator(fakeStructuredCaller($client))->generate($user, '2026-09');
@@ -1870,7 +1967,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     ksort($declared);
 
     expect($declared)->toBe([
-        'MonthlyRecapNarrator' => 6,
         'TrendReadNarrator' => 6,
     ]);
 });
@@ -1888,22 +1984,78 @@ it('the deployment map and the narrator kinds are the same set', function (): vo
         ->and(array_keys((array) config('azure_openai.narrators')))->toEqualCanonicalizing($kinds);
 });
 
-it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', function (): void {
-    $prompt = narratorPrompt(MonthlyRecapNarrator::class);
+it('MonthlyRecapNarrator prompt skips the mood posture silently when mood_mix is empty', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
 
     expect($prompt)
-        ->toContain('ONLY if mood_mix is populated')
-        ->toContain('SKIP this step silently')
+        ->toContain('If mood_mix is empty, skip the posture and never mention that mood data is missing')
         ->and($prompt)->not->toContain('—');
 });
 
-it('monthly recap prompt gives storytelling room (3-4 sentences, no rigid word cap)', function (): void {
-    $prompt = narratorPrompt(MonthlyRecapNarrator::class);
+it('MonthlyRecapNarrator prompt asks for a headline and a 200-280 word story in 2-3 connected paragraphs, with no sentence count', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
 
-    expect($prompt)->toContain('3-4 sentences')
-        ->and($prompt)->toContain("don't ramble")
+    expect($prompt)
+        ->toContain('body (2-3 paragraphs, 200-280 words in total')
+        ->toContain('2-3 paragraphs separated by one blank line')
+        ->toContain('at least 3 connected sentences')
+        ->toContain('one beat of the same reading')
+        ->toContain('Never one sentence per paragraph')
+        ->toContain('never one topic per paragraph like a checklist')
+        ->and($prompt)->not->toContain('3-4 sentences')
+        ->and($prompt)->not->toContain("don't ramble")
         ->and($prompt)->not->toContain('maksimal 90 kata')
         ->and($prompt)->not->toContain('maksimal 100 kata');
+});
+
+it('MonthlyRecapNarrator prompt takes its length from the month, never from padding', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('WHERE THE LENGTH COMES FROM')
+        ->toContain('NO PADDING')
+        ->toContain('never to filler');
+});
+
+it('MonthlyRecapNarrator prompt names all five tools, caps numbers at seven and compares honestly', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('get_month_totals')
+        ->toContain('get_month_runs')
+        ->toContain('get_planned_sessions')
+        ->toContain('get_month_records')
+        ->toContain('get_trend_range_totals')
+        ->toContain('max 7 numbers across title + body combined')
+        ->toContain('for YOU TO READ')
+        ->toContain('If prev_* is null')
+        ->toContain("don't make up a number")
+        ->and($prompt)->not->toContain('NEVER compare against a previous month')
+        ->and($prompt)->not->toContain('max 3 numbers');
+});
+
+it('MonthlyRecapNarrator prompt treats a short final weekly bucket as a partial week', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('a final bucket of only two or three days is a partial week')
+        ->toContain('never read it as a drop');
+});
+
+it('MonthlyRecapNarrator offers exactly the readings its prompt describes and commits to one first', function (): void {
+    $schema = new ReflectionClass(MonthlyRecapNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
+    $prompt = narratorPrompt(MonthlyRecapNarrator::class);
+
+    expect(data_get($schema, 'reading.enum'))->toBe(['vs_last_month', 'plan', 'standout_run', 'records', 'long_arc', 'load', 'consistency']);
+
+    foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
+        expect($reading)->toBeString();
+        assert(is_string($reading));
+        expect($prompt)->toContain("`{$reading}`:");
+    }
+
+    expect($prompt)->toContain('COMMIT FIRST')
+        ->and(preg_replace('/\s+/', ' ', $prompt))->toContain('still says in words which way the month moved');
 });
 
 it('WeeklyRecapNarrator prompt asks for a headline and a 200-280 word story in 2-3 connected paragraphs, with no sentence count', function (): void {

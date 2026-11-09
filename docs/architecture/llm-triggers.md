@@ -374,7 +374,7 @@ whole prefix. That single fact drives everything below.
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
 | `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
 | `WeeklyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `weekly_recap` |
-| `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
+| `MonthlyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `monthly_recap` |
 | `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
 | `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
 
@@ -437,7 +437,7 @@ inline in its `toolbox()` method.
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
 | `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `load_balance` (fresh, steady or heavy; no bare sign), `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
-| `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
+| `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `pace_sec_per_km`, `pace_formatted`, `weekly_distance_km`, `mood_mix`, `long_term_load` (`ctl_start`, `ctl_end`, `load_balance_end`), plus the previous calendar month's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km`, `prev_pace_formatted` (null when that month has no runs) | the analysed runs `PeriodRunsTool::detailsBetween()` counts, so it agrees with `get_month_runs`; `DistanceFormatter`, `PaceCalculator`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain`, read as of an optional date (today by default; the weekly recap passes its `week_ending`) | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `WeekRunsTool` · `get_week_runs` | `week_start`, `week_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the snapshot's Monday to Sunday | `ActivityDetail` rows the snapshot counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
 | `MonthRunsTool` · `get_month_runs` | `month_start`, `month_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the first to last day of the calendar month | `ActivityDetail` rows a recap counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
@@ -459,7 +459,7 @@ inline in its `toolbox()` method.
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `WeekRunsTool`, `PlanContextTool`, `WeekRecordsTool`, `TrendRangeTool` (`6w`) |
-| `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
+| `MonthlyRecapNarrator` | `MonthTotalsTool`, `MonthRunsTool`, `PlanContextTool`, `MonthRecordsTool`, `TrendRangeTool` (`6w`) |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
 
 Every one of the 28 tools is used by at least one narrator; none is orphaned. One of them,
@@ -495,7 +495,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `run_insight` | earns it | The most expensive call in the app — 10 tools, 3000 output tokens — and the most substantive block it produces. Finding the non-obvious thing in a run is exactly what the toolbox is for. Ruled 2026-09-04: narrowing it would flatten the output for a saving nobody has measured. |
 | `card_flavor` | earns it | One line capped at 400 output tokens from up to 6 tools, and it cannot tighten its budget while it carries them (`2 * (6 + 1)` already exceeds the default). Ruled 2026-09-04: the extra tools are conditional on the run having detail, so the 6-tool case is rarer than the table implies, and trimming them makes the flavour line generic. |
 | `weekly_recap` | earns it | Chained, reads a real snapshot. Five tools since the headline + story redesign, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
-| `monthly_recap` | earns it | Same shape, same 6-step budget. |
+| `monthly_recap` | earns it | Same shape as the weekly: five tools, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
 | `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |

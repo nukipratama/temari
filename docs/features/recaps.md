@@ -10,6 +10,7 @@ code_refs:
   - resources/js/components/history/WeekSection.tsx
   - resources/js/components/history/WeeklyStatLine.tsx
   - app/Services/AI/Narrators/WeeklyRecapNarrator.php
+  - app/Services/AI/Narrators/MonthlyRecapNarrator.php
   - resources/js/pages/Activities/Calendar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - app/Http/Controllers/HistoryController.php
@@ -46,6 +47,10 @@ The chips are the [WeeklyStatLine](resources/js/components/history/WeeklyStatLin
 ## Monthly recap — on the calendar (`/history?view=calendar`)
 
 Rendered by the same shared [RecapCard](resources/js/components/history/RecapCard.tsx) in [Calendar](resources/js/pages/Activities/Calendar.tsx), above the calendar grid. Temari wears the month's dominant run mood (`dominantMoodOf` → `MOOD_TO_POSE`). It uses `AnalysisStatus` `chained` with `isChainHead={recap.is_chain_head}` and, for the current month, `awaitingSchedule` with the label "This month's recap isn't ready yet." There is **no rule-based fallback** for monthly (`RecapCard`'s `fallback` prop is omitted here) — an unfilled past month shows nothing until it fails, at which point "Try again" resumes the chain. Unlike the weekly card, the monthly `RecapCard` carries no `chips` — the month header above the calendar grid already prints the runs / distance / TRIMP numbers ([Calendar.tsx](resources/js/pages/Activities/Calendar.tsx)).
+
+**Shape.** [MonthlyRecapNarrator](app/Services/AI/Narrators/MonthlyRecapNarrator.php) writes the same **headline** and 200-280 word, 2-3 paragraph story as the weekly (stored as `{title, body}` content, rendered by `AnalysisStatus` and capped at `max-w-prose` by `RecapCard`), after committing to one `reading`: `vs_last_month`, `plan`, `standout_run`, `records`, `long_arc`, `load` or `consistency` (how the weeks inside the month compared). The reading is required but never stored; every number belongs to it, at most 7 across headline and body. `weekly_distance_km` is in seven-day buckets from the 1st, so a final bucket of two or three days is a partial week the prompt never reads as a drop. Rows written before the redesign are plain text and render as body only.
+
+**Tools.** The narrator fetches the month itself: `get_month_totals` ([MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php), totals, pace, km per week, mood mix, long-term load and the previous calendar month's `prev_*`, null when that month has no runs), `get_month_runs` ([MonthRunsTool](app/Services/AI/Agent/Tools/MonthRunsTool.php), every run of the month with its plan match, grade and one-line verdict), `get_planned_sessions` ([PlanContextTool](app/Services/AI/Agent/Tools/PlanContextTool.php)), `get_month_records` ([MonthRecordsTool](app/Services/AI/Agent/Tools/MonthRecordsTool.php), standing PRs a run that month set) and `get_trend_range_totals` ([TrendRangeTool](app/Services/AI/Agent/Tools/TrendRangeTool.php) over `6w`, read as of the month's last day). The runs and records tools share their logic with the weekly pair through `PeriodRunsTool` and `PeriodRecordsTool`, and the month totals count the same analysed runs as the runs tool.
 
 `HistoryController`'s calendar branch keys the recap by `Y-m` discriminator (`AnalysisType::MonthlyRecap`) and computes `is_chain_head` via `latestNarratedMonthFor` (the latest closed month with a run). The page type aliases this as `MonthlyRecap = AnalysisPayload & { is_chain_head: boolean }`.
 
