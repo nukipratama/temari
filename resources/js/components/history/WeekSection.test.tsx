@@ -215,7 +215,32 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/you ran 4x this week for 35.5 km/),
+                screen.getByText(
+                    /^You ran 4x this week for 35.5 km\. Load balance -2\.5, /,
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('writes a one-sentence fallback in lowercase', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({
+                        form: null,
+                        form_status: null,
+                        is_current_week: true,
+                        recap_analysis: recapAnalysis({
+                            status: 'pending',
+                            content: null,
+                        }),
+                    })}
+                    notes={{}}
+                    moods={{}}
+                />,
+            );
+
+            expect(
+                screen.getByText('you ran 4x this week for 35.5 km.'),
             ).toBeInTheDocument();
         });
 

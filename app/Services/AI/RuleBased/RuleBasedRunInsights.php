@@ -61,8 +61,8 @@ final class RuleBasedRunInsights
         $value = '+'.DecimalFormatter::decimal($decoupling).'%';
         $text = match (true) {
             $decoupling > DecouplingBands::HIGH => self::decouplingHighText($detail),
-            $decoupling > DecouplingBands::TIGHT => 'Decoupling stayed within a normal range, HR tracked pace pretty well.',
-            default => 'Decoupling stayed tight, your heart rate held steady against pace across the run.',
+            $decoupling > DecouplingBands::TIGHT => 'decoupling stayed within a normal range, HR tracked pace pretty well.',
+            default => 'decoupling stayed tight, your heart rate held steady against pace across the run.',
         };
 
         $claims[] = ['anchor' => 'metric:decoupling', 'text' => $text, 'value' => $value, 'delta' => null];
@@ -73,7 +73,7 @@ final class RuleBasedRunInsights
         $temp = $detail->weather_temp_c;
 
         return $detail->ranHot()
-            ? "Decoupling climbed, but that's the ~{$temp} degree heat talking, not your aerobic base slipping."
+            ? "decoupling climbed, but that's the ~{$temp} degree heat talking, not your aerobic base slipping."
             : 'Decoupling drifted up. A long run, warmth and not drinking enough all raise it, so read it next to how the run went.';
     }
 
@@ -85,7 +85,7 @@ final class RuleBasedRunInsights
         if ($summary->negativeSplit() === true) {
             $claims[] = [
                 'anchor' => 'metric:negative_split',
-                'text' => 'Second half came in faster than the first, a clean negative split.',
+                'text' => 'second half came in faster than the first, a clean negative split.',
                 'value' => null,
                 'delta' => null,
             ];
@@ -97,7 +97,7 @@ final class RuleBasedRunInsights
         if ($fastest !== null) {
             $claims[] = [
                 'anchor' => "split:{$fastest['km']}",
-                'text' => "Km {$fastest['km']} was the fastest of the run.",
+                'text' => "km {$fastest['km']} was the fastest of the run.",
                 'value' => $fastest['pace'],
                 'delta' => null,
             ];
@@ -150,7 +150,7 @@ final class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:grade',
-            'text' => 'The steepest stretch of this run was a genuine climb, not a bump.',
+            'text' => 'the steepest stretch of this run was a genuine climb, not a bump.',
             'value' => DecimalFormatter::trimmed($grade).'%',
             'delta' => null,
         ];
@@ -178,7 +178,7 @@ final class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'zone:'.strtolower($dominantZone),
-            'text' => "Most of this run sat in {$dominantZone}.",
+            'text' => "most of this run sat in {$dominantZone}.",
             'value' => DecimalFormatter::trimmed($dominantPct).'%',
             'delta' => null,
         ];
@@ -196,7 +196,7 @@ final class RuleBasedRunInsights
 
         $claims[] = [
             'anchor' => 'metric:pace_variability',
-            'text' => 'Your pace swung around a fair bit through this run, the splits never settled.',
+            'text' => 'your pace swung around a fair bit through this run, the splits never settled.',
             'value' => null,
             'delta' => null,
         ];

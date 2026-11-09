@@ -107,8 +107,8 @@ class BriefingMascotVoiceNarrator
         REQUIRED STRUCTURE (3 parts separated by `\n\n`):
         LINE 1, TITLE: session format + rough duration/distance, one short
           sentence ending in a period. This is the only part allowed to read
-          dry. Example: "Easy tempo, 35-45 minutes." / "Easy run, 30 minutes."
-          / "Rest today." / "Long run, 10-12 km easy."
+          dry. Example: "easy tempo, 35-45 minutes." / "easy run, 30 minutes."
+          / "rest today." / "long run, 10-12 km easy."
           NEVER SKIP THIS LINE, and never let it be a sentence that carries on
           into the reading. The UI renders it in its own style and the rest
           below it, so a block that opens on the week's numbers instead comes
@@ -116,7 +116,7 @@ class BriefingMascotVoiceNarrator
           or a pace before it names the session, it is wrong: put the session
           first, on its own line, then start the reading underneath.
           Wrong: "25.3 km this week, 235.3 last week, so I'm keeping this easy."
-          Right: "Easy run, 7 km."
+          Right: "easy run, 7 km."
         PARAGRAPH 2, YOUR VOICE: 2-3 sentences. OPEN from the single most
           notable observation in the data (not a template greeting), then
           connect straight into why the session in the title fits, complete
@@ -132,7 +132,7 @@ class BriefingMascotVoiceNarrator
         the UI can render the title in a different style from the body.
 
         Good example:
-        "Easy run, 30-40 minutes.\n\nBoth of your last two sessions came in
+        "easy run, 30-40 minutes.\n\nBoth of your last two sessions came in
         hard and you're only 20 hours off the second one, so easy is what
         today gets. Hold around your normal pace, breathing easy enough to
         talk, cadence at 170+ so your steps stay light.\n\nWhat to watch: if
@@ -151,8 +151,8 @@ class BriefingMascotVoiceNarrator
         - hibernating: the gap is a fact, not a verdict. Name it once, make coming back cheap.
 
         POSTURE from `load_balance` (running load only, never a read on their body):
-        - fresh: recent running is lighter than their longer-term load. "a light
-          few days behind you. there's room if the plan says so."
+        - fresh: recent running is lighter than their longer-term load. "A light
+          few days behind you. There's room if the plan says so."
         - steady: flat and matter of fact, nothing to sell.
         - heavy: recent running is above their longer-term load, which is normal in
           a build week. Say so once, plainly, not preachy. If they feel run down,
@@ -458,20 +458,20 @@ class BriefingMascotVoiceNarrator
     private static function clampedVoice(ReadinessCeiling $ceiling): string
     {
         return match ($ceiling) {
-            ReadinessCeiling::Rest => "Rest today.\n\n"
-                ."your load and your recovery both say no, so there's no run going on the "
-                ."board. light mobility if you want to move at all. we pick the scoreboard "
+            ReadinessCeiling::Rest => "rest today.\n\n"
+                ."Your load and your recovery both say no, so there's no run going on the "
+                ."board. Light mobility if you want to move at all. We pick the scoreboard "
                 ."back up tomorrow.",
             ReadinessCeiling::EasyOnly => "easy run, whatever feels comfortable.\n\n"
-                ."today's ceiling is easy and I'm not going to argue with it. if you get a "
-                ."slot, keep the pace relaxed and your breathing easy enough to talk. that's "
+                ."Today's ceiling is easy and I'm not going to argue with it. If you get a "
+                ."slot, keep the pace relaxed and your breathing easy enough to talk. That's "
                 ."the whole session, and finishing it counts.",
             ReadinessCeiling::ModerateOk => "easy to moderate base run.\n\n"
-                ."you're good for a base or moderate effort. not tempo, not intervals, not "
-                ."today. if you get a slot, hold that effort and leave it there.",
+                ."You're good for a base or moderate effort. Not tempo, not intervals, not "
+                ."today. If you get a slot, hold that effort and leave it there.",
             ReadinessCeiling::QualityOk => "today's session, your call.\n\n"
-                ."you're in good shape and everything from easy through quality is on the "
-                ."table. pick the one that actually moves your week, not the one that's "
+                ."You're in good shape and everything from easy through quality is on the "
+                ."table. Pick the one that actually moves your week, not the one that's "
                 ."most comfortable.",
         };
     }

@@ -138,8 +138,8 @@ class RunInsightNarrator
         and name what raises drift: a long duration, warmth, and not drinking enough.
         Never call it a weak aerobic base. decoupling.relation "down" is a good
         reading, never framed as a problem regardless of pct.
-        * Good: value "+14%", text "decoupling climbed, meaning your heart rate
-          drifted up while pace held. that's the 32-degree heat, not your base
+        * Good: value "+14%", text "Decoupling climbed, meaning your heart rate
+          drifted up while pace held. That's the 32-degree heat, not your base
           slipping."
 
         WIND: weather_wind_speed_kmh (speed, km/h) only earns a claim when it
@@ -209,12 +209,12 @@ class RunInsightNarrator
         as-is: easy, tempo, pace, cadence, base, negative split, long run.
 
         Good examples of the shape a claim's text should take:
-        - "km 5 came in at 5:18, your quickest of the run and 14 seconds under
-          the four before it. you had something left."
-        - "Cadence held at 176 the whole way. nothing dramatic, just a rhythm
+        - "Km 5 came in at 5:18, your quickest of the run and 14 seconds under
+          the four before it. You had something left."
+        - "Cadence held at 176 the whole way. Nothing dramatic, just a rhythm
           that never argued with you."
-        - "average HR sat 6 bpm above your 28-day normal at the same pace.
-          today cost more than it usually does."
+        - "Average HR sat 6 bpm above your 28-day normal at the same pace.
+          Today cost more than it usually does."
 
         ANTI-PATTERN:
         - A data dump with no interpretation ("cadence 172, HR 148") -- always

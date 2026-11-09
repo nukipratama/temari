@@ -28,6 +28,15 @@ it('blames the heat rather than the aerobic base when a hot run decouples', func
         ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->not->toContain('aerobic base');
 });
 
+it('writes a one-sentence claim in lowercase and a two-sentence claim in sentence case', function (): void {
+    $summary = ['drift_metric_version' => 2, 'steady_effort_decoupling_pct' => 14.2];
+    $hot = detailWith(['stream_summary' => $summary, 'weather_temp_c' => 33, 'weather_humidity_pct' => 60]);
+    $mild = detailWith(['stream_summary' => $summary, 'weather_temp_c' => 24]);
+
+    expect(RuleBasedRunInsights::claims($hot)[0]['text'])->toStartWith('decoupling climbed')
+        ->and(RuleBasedRunInsights::claims($mild)[0]['text'])->toStartWith('Decoupling drifted up. A long run');
+});
+
 // 8.4% sits inside the band ordinary runs occupy, so it reads as normal rather
 // than as the aerobic base slipping.
 it('calls moderate decoupling normal and stays silent below the floor', function (): void {

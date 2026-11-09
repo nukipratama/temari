@@ -636,6 +636,19 @@ it('WeeklyRecapNarrator stores its headline and story as JSON content, not the r
         ->and(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('the long run carried it.', 'Solid week.'));
 });
 
+it('WeeklyRecapNarrator stores a capitalised headline in lowercase and leaves the body alone', function (): void {
+    $snap = WeeklySnapshot::factory()->for(User::factory()->create())->create([
+        'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
+        'distance_km' => 30.0,
+        'runs' => 4,
+    ]);
+    $caller = fakeCaller(json_encode(['reading' => 'standout_run', 'title' => 'The long run carried it.', 'body' => 'Solid week.'], JSON_THROW_ON_ERROR));
+
+    $stored = weeklyRecapNarrator($caller)->generate($snap);
+
+    expect(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('the long run carried it.', 'Solid week.'));
+});
+
 it('WeeklyRecapNarrator asks for reading, title and body, the reading picked from its six angles', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
@@ -841,6 +854,23 @@ it('PlanClampVoiceNarrator hands the eased session and its reasons in the user m
     ]);
 });
 
+it('PlanClampVoiceNarrator lowercases an ordinary first word and keeps an acronym', function (string $voice, string $expected): void {
+    $caller = fakeCaller(json_encode(['voice' => $voice], JSON_THROW_ON_ERROR));
+    $context = [
+        'ceiling' => ReadinessCeiling::ModerateOk,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Easy,
+        'has_run_today' => false,
+        'readiness_reasons' => ['demanding_session_within_24h'],
+        'readiness_inputs' => [],
+    ];
+
+    expect(new PlanClampVoiceNarrator($caller)->generate($context, 7, Carbon::parse('2026-11-09')))->toBe($expected);
+})->with([
+    'an ordinary word' => ['You ran long yesterday, so today is an easy day.', 'you ran long yesterday, so today is an easy day.'],
+    'an acronym' => ['HR was high yesterday, so today is an easy day.', 'HR was high yesterday, so today is an easy day.'],
+]);
+
 it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
     $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
 
@@ -1034,7 +1064,25 @@ it('CardFlavorNarrator returns flavor on valid JSON', function (): void {
     $card = cardFixture();
     $caller = fakeCaller(json_encode(['flavor' => 'Card epic!'], JSON_THROW_ON_ERROR));
     $narrator = cardFlavorNarrator($caller);
-    expect($narrator->generate($card))->toBe('Card epic!');
+    expect($narrator->generate($card))->toBe('card epic!');
+});
+
+it('CardFlavorNarrator lowercases an ordinary first word and keeps an acronym', function (string $flavor, string $expected): void {
+    $narrator = cardFlavorNarrator(fakeCaller(json_encode(['flavor' => $flavor], JSON_THROW_ON_ERROR)));
+
+    expect($narrator->generate(cardFixture()))->toBe($expected);
+})->with([
+    'an ordinary word' => ['Your fastest 5k landed inside this one.', 'your fastest 5k landed inside this one.'],
+    'an acronym' => ['HR stayed low the whole way.', 'HR stayed low the whole way.'],
+]);
+
+it('CardFlavorNarrator prompt writes its examples by sentence count', function (): void {
+    $prompt = narratorPrompt(CardFlavorNarrator::class);
+
+    expect($prompt)
+        ->toContain('"Your fastest 5k landed inside this one. The Legendary label is just the')
+        ->and($prompt)->not->toContain('"your fastest 5k landed inside this one. the Legendary')
+        ->and($prompt)->toContain('Right: "you held Z2 for 90%');
 });
 
 it('CardFlavorNarrator hands the card identity in the user message', function (): void {
@@ -1121,6 +1169,14 @@ it('MonthlyRecapNarrator stores its headline and story as JSON content, not the 
 
     expect($stored)->toBe(json_encode(['title' => 'four weeks, each longer.', 'body' => 'A steady month.'], JSON_THROW_ON_ERROR))
         ->and(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('four weeks, each longer.', 'A steady month.'));
+});
+
+it('MonthlyRecapNarrator stores a capitalised headline in lowercase and leaves the body alone', function (): void {
+    $caller = fakeCaller(json_encode(['reading' => 'consistency', 'title' => 'Four weeks, each longer.', 'body' => 'A steady month.'], JSON_THROW_ON_ERROR));
+
+    $stored = monthlyRecapNarrator($caller)->generate(User::factory()->create(), '2026-05');
+
+    expect(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('four weeks, each longer.', 'A steady month.'));
 });
 
 it('MonthlyRecapNarrator asks for reading, title and body, the reading picked from its seven angles, with no step override', function (): void {
@@ -1695,7 +1751,7 @@ it('BriefingMascotVoiceNarrator uses rule-based recovery if the model recommends
 
     expect($copy)
         ->toContain('10.0 km logged, 5.0 km credited against 8.0 km planned')
-        ->toContain('recovery')
+        ->toMatch('/recovery/i')
         ->and($copy)->not->toContain('go run again');
 });
 
@@ -1736,6 +1792,16 @@ it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_t
     expect($voice)->toContain('easy to moderate base run')
         ->and($voice)->not->toContain('Long run');
 });
+
+it('BriefingMascotVoiceNarrator clamped voices keep a lowercase headline over a body in sentence case', function (ReadinessCeiling $ceiling): void {
+    $voice = new ReflectionMethod(BriefingMascotVoiceNarrator::class, 'clampedVoice')->invoke(null, $ceiling);
+    assert(is_string($voice));
+    [$headline, $body] = explode("\n\n", $voice);
+
+    expect($headline)->toMatch('/^\p{Ll}/u')
+        ->and($body)->toMatch('/^\p{Lu}/u')
+        ->and(preg_match_all('/(?<=[.!?]) \p{Ll}/u', $body))->toBe(0);
+})->with(ReadinessCeiling::cases());
 
 it('BriefingMascotVoiceNarrator clamps when session_type is unparseable', function (): void {
     $user = User::factory()->create();
@@ -2137,6 +2203,25 @@ it('CardFlavorNarrator prompt refuses badge and move names stitched together', f
         ->toContain('carried by the Calm & Steady special move')
         ->toContain('glued together');
 });
+
+it('narrator prompt examples follow the casing rule: sentence case from two sentences, lowercase for a headline or one line', function (string $class, array $present, array $absent): void {
+    $prompt = narratorPrompt($class);
+
+    foreach ($present as $needle) {
+        expect($prompt)->toContain($needle);
+    }
+    foreach ($absent as $needle) {
+        expect($prompt)->not->toContain($needle);
+    }
+})->with([
+    'post-run speech' => [PostRunSpeechNarrator::class, ['"First run in eleven days. The week barely existed', '"Wet, dark, and you went anyway. That\'s the whole story'], ['"first run in eleven days.', 'wet, dark, and you went anyway. that\'s']],
+    'profile voice' => [ProfileVoiceNarrator::class, ['"Six of your last ten sessions', 'Those two facts are the', '"Eleven weeks in a row with a run in them. That\'s not motivation'], ['"six of your last ten', 'those two facts', 'that\'s not motivation any more']],
+    'run insight' => [RunInsightNarrator::class, ['"Km 5 came in at 5:18', 'You had something left.', 'text "Decoupling climbed', '"km 4 was your slowest."'], ['"km 5 came in', 'you had something left', 'text "decoupling climbed']],
+    'briefing' => [BriefingMascotVoiceNarrator::class, ['"easy tempo, 35-45 minutes." / "easy run, 30 minutes."', 'Right: "easy run, 7 km."', '"easy run, 30-40 minutes.', '"A light'], ['"Easy tempo, 35-45 minutes."', 'Right: "Easy run, 7 km."', '"Easy run, 30-40 minutes.', '"a light']],
+    'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, four the week before. the scoreboard noticed."'], []],
+    'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
+    'trend read title stays lowercase' => [TrendReadNarrator::class, ['"training load eased back'], []],
+]);
 
 it('RunInsightNarrator prompt steers toward plain, natural phrasing while keeping run terms English', function (): void {
     $prompt = narratorPrompt(RunInsightNarrator::class);

@@ -52,9 +52,9 @@ final readonly class RuleBasedNarrationFiller
 
     /** @var non-empty-list<string> */
     private const array POST_RUN_BRIEFINGS = [
-        "{distance_line}{verdict_line}.\n\nthat's the session accounted for, so the rest of today is recovery. drink, eat something decent, and keep the legs out of another session.\n\nif they still feel loaded, make mobility gentle and call it there.",
-        "{distance_line}{verdict_line}.\n\nno second effort today. recovery is the move; let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nheavy legs or an odd HR response later means the quiet option wins.",
-        "{distance_line}{verdict_line}.\n\ntoday's work is done. recovery is the useful move now: fluids, food, and nothing heroic added to the log.\n\nif the body stays louder than the numbers suggest, keep the rest of the day easy.",
+        "{distance_line}{verdict_line}.\n\nThat's the session accounted for, so the rest of today is recovery. Drink, eat something decent, and keep the legs out of another session.\n\nIf they still feel loaded, make mobility gentle and call it there.",
+        "{distance_line}{verdict_line}.\n\nNo second effort today. Recovery is the move; let the work settle, get some food and water in, and leave the scoreboard alone for a bit.\n\nHeavy legs or an odd HR response later means the quiet option wins.",
+        "{distance_line}{verdict_line}.\n\nToday's work is done. Recovery is the useful move now: fluids, food, and nothing heroic added to the log.\n\nIf the body stays louder than the numbers suggest, keep the rest of the day easy.",
     ];
 
     public function __construct(
@@ -112,22 +112,22 @@ final readonly class RuleBasedNarrationFiller
     private function planClampVoice(int $seed): string
     {
         return $this->select([
-            'load has been stacking up. today gives it somewhere to go.',
+            'Load has been stacking up. Today gives it somewhere to go.',
             "you've been carrying a lot this week, so today steps back a little.",
             'a heavier stretch than usual, so this one comes down a notch.',
-            'nothing wrong here, just a heavy week. easy keeps it intact.',
+            'Nothing wrong here, just a heavy week. Easy keeps it intact.',
         ], $seed);
     }
 
     private function briefingMascotVoice(Analysis $row, int $seed): string
     {
         return $this->postRunBriefingFor($row->subject_id, $row->discriminator, $seed) ?? $this->select([
-            "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead.",
-            "Easy run, 30-40 minutes.\n\nyour last two sessions both read heavy and the gap since then is short, so today is easy, and I mean actually easy. hold your normal pace, breathing loose enough to talk, cadence 170+ so the steps stay light.\n\nWhat to watch: legs still heavy or HR up early means the recovery isn't finished. A brisk 20-minute walk covers the day.",
-            "Long run, 8-12 km easy.\n\nyour weekly distance has crept up every week this month, and this is the session that closes it out. conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. short and clean beats long and ugly.",
-            "Rest today.\n\nyou've run every day of this stretch and the load is stacked higher than anything you've been carrying. no run from me today. light mobility, or a 20-minute walk if you want the legs moving.\n\nWhat to watch: still heavy tomorrow, take another one. A zero today is what keeps the rest of the week.",
-            "Easy run, 25-30 minutes.\n\nfirst one back after a few days off, so this one is short on purpose. slow, effort by feel, don't look at the pace at all.\n\nWhat to watch: the classic move after time off is picking up exactly where you left off. If the breathing gets heavy before minute 15, ease off or walk a bit.",
-            "Base run, 5-7 km.\n\nyou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
+            "easy tempo, 35-45 minutes.\n\nNothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. Cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead.",
+            "easy run, 30-40 minutes.\n\nYour last two sessions both read heavy and the gap since then is short, so today is easy, and I mean actually easy. Hold your normal pace, breathing loose enough to talk, cadence 170+ so the steps stay light.\n\nWhat to watch: legs still heavy or HR up early means the recovery isn't finished. A brisk 20-minute walk covers the day.",
+            "long run, 8-12 km easy.\n\nYour weekly distance has crept up every week this month, and this is the session that closes it out. Conversational pace the whole way, don't go chasing a time, take water if it's hot.\n\nWhat to watch: if km 5 already feels like work, cut it at 6-8. Short and clean beats long and ugly.",
+            "rest today.\n\nYou've run every day of this stretch and the load is stacked higher than anything you've been carrying. No run from me today. Light mobility, or a 20-minute walk if you want the legs moving.\n\nWhat to watch: still heavy tomorrow, take another one. A zero today is what keeps the rest of the week.",
+            "easy run, 25-30 minutes.\n\nFirst one back after a few days off, so this one is short on purpose. Slow, effort by feel, don't look at the pace at all.\n\nWhat to watch: the classic move after time off is picking up exactly where you left off. If the breathing gets heavy before minute 15, ease off or walk a bit.",
+            "base run, 5-7 km.\n\nYou've hit every session you meant to this week and nothing in the numbers says back off, so today just holds the rhythm that's already working. Your average pace, one steady block, no gear changes.\n\nWhat to watch: a run like this turns into a tempo halfway through if you let it. Save the push for a day it's actually on the plan.",
         ], $seed);
     }
 
@@ -242,18 +242,18 @@ final readonly class RuleBasedNarrationFiller
     private const array POST_RUN_OPENERS = [
         '{km} km, logged.',
         '{km} km on the board.',
-        'another {km} km on the pile.',
+        'Another {km} km on the pile.',
         '{km} km today.',
-        "today's line in the log: {km} km.",
+        "Today's line in the log: {km} km.",
         '{km} km down.',
         '{km} km, done and filed.',
-        "that's {km} km in the book.",
+        "That's {km} km in the book.",
         '{km} km, start to finish.',
         '{km} km, out the door and back.',
         "{km} km, and the week's total just moved.",
-        'you put {km} km away.',
+        'You put {km} km away.',
         '{km} km, no more and no less.',
-        'the log reads {km} km.',
+        'The log reads {km} km.',
         '{km} km on the watch.',
     ];
 
@@ -264,22 +264,22 @@ final readonly class RuleBasedNarrationFiller
      * @var non-empty-list<string>
      */
     private const array POST_RUN_CLOSERS = [
-        'how did the legs feel by the end of that one?',
-        "the week's shape gets built out of these.",
-        'not every run needs a story attached.',
-        'consistency is mostly this, repeated.',
-        "whatever it felt like, it's counted now.",
-        "the ones you don't remember still add up.",
-        'nothing to fix here, so nothing from me.',
-        'no notes.',
-        "that's the kind that stacks quietly.",
-        "the log doesn't care how it felt, but I do a bit.",
-        'a run like this is the base, not the highlight.',
-        'nothing here needs untangling.',
-        'on to the next one.',
-        'ordinary is doing most of the work here.',
-        'file it and move on.',
-        'you know how that one went better than I do.',
+        'How did the legs feel by the end of that one?',
+        "The week's shape gets built out of these.",
+        'Not every run needs a story attached.',
+        'Consistency is mostly this, repeated.',
+        "Whatever it felt like, it's counted now.",
+        "The ones you don't remember still add up.",
+        'Nothing to fix here, so nothing from me.',
+        'No notes.',
+        "That's the kind that stacks quietly.",
+        "The log doesn't care how it felt, but I do a bit.",
+        'A run like this is the base, not the highlight.',
+        'Nothing here needs untangling.',
+        'On to the next one.',
+        'Ordinary is doing most of the work here.',
+        'File it and move on.',
+        'You know how that one went better than I do.',
     ];
 
     /**
@@ -323,13 +323,13 @@ final readonly class RuleBasedNarrationFiller
         $snapshot = WeeklySnapshot::query()->find($snapshotId);
         if ($snapshot === null || $snapshot->runs === null || $snapshot->runs < 1) {
             return $this->select([
-                "nothing in the log this week. a gap is a gap, I'm not going to call it anything else.",
-                'a blank week. the counter sits at zero and next week starts from there.',
-                'quiet week. the log stayed exactly where you left it.',
-                "no runs this week. I'm not dressing that up.",
-                'empty week. easing back in gets you further than trying to win it all back in one session.',
-                "this week didn't get a run in it. the next one is still open.",
-                'no entries this week. starting small again gets you back quicker than starting big.',
+                "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else.",
+                'A blank week. The counter sits at zero and next week starts from there.',
+                'Quiet week. The log stayed exactly where you left it.',
+                "No runs this week. I'm not dressing that up.",
+                'Empty week. Easing back in gets you further than trying to win it all back in one session.',
+                "This week didn't get a run in it. The next one is still open.",
+                'No entries this week. Starting small again gets you back quicker than starting big.',
             ], $snapshotId);
         }
 
@@ -347,14 +347,14 @@ final readonly class RuleBasedNarrationFiller
         }
 
         $closer = match ($snapshot->form_status) {
-            TrainingFormStatus::Fresh => "your recent running is lighter than your longer-term load, so there's room to add a little.",
+            TrainingFormStatus::Fresh => "Your recent running is lighter than your longer-term load, so there's room to add a little.",
             TrainingFormStatus::Optimal => match ($this->volumeBand((float) $snapshot->distance_km, $this->usualWeeklyKm($snapshot))) {
-                'light' => "well below your usual week. that's the number, not a verdict on it.",
-                'big' => "well above your usual week, and your load balance is still steady.",
-                default => "right around your usual week.",
+                'light' => "Well below your usual week. That's the number, not a verdict on it.",
+                'big' => "Well above your usual week, and your load balance is still steady.",
+                default => "Right around your usual week.",
             },
-            TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching => "your recent running is above your longer-term load, which is normal in a build week. if you feel run down, illness, poor sleep or under-fuelling can be behind it too.",
-            default => "steady. that's the read.",
+            TrainingFormStatus::Fatigued, TrainingFormStatus::Overreaching => "Your recent running is above your longer-term load, which is normal in a build week. If you feel run down, illness, poor sleep or under-fuelling can be behind it too.",
+            default => "Steady. That's the read.",
         };
 
         return $this->select([
@@ -428,7 +428,7 @@ final readonly class RuleBasedNarrationFiller
     {
         $card = RunCard::query()->with('activity.detail')->find($cardId);
 
-        return $card === null ? 'A quiet session, filed anyway.' : $this->cardFlavorFor($card);
+        return $card === null ? 'a quiet session, filed anyway.' : $this->cardFlavorFor($card);
     }
 
     /**
@@ -459,7 +459,7 @@ final readonly class RuleBasedNarrationFiller
         $base = strtr($this->select($templates, $flavorSeed), ['{move}' => $move, '{km}' => (string) $km]);
         $badgeClause = $this->badgeClause($card->badges, $cardId);
 
-        return $badgeClause === null ? $base : $base . ' ' . $badgeClause;
+        return $badgeClause === null ? $base : ucfirst($base).' '.$badgeClause;
     }
 
     /**
@@ -476,7 +476,7 @@ final readonly class RuleBasedNarrationFiller
             '"{move}", filed. Ordinary weeks are built out of runs like this.',
             '{km} km, clean and unremarkable. Both of those are true.',
             '"{move}" did exactly what it said it would.',
-            'A {km} km run with nothing in it that needs explaining.',
+            'a {km} km run with nothing in it that needs explaining.',
             '"{move}" is the shape most of your weeks are made of.',
             "{km} km that will blend into the rest of the month. That's fine.",
             '"{move}" came and went without much to say about it.',
@@ -488,28 +488,28 @@ final readonly class RuleBasedNarrationFiller
         ],
         'uncommon' => [
             '"{move}" had something in it the routine ones don\'t.',
-            'A {km} km run that reads a notch above your usual.',
-            'One stretch of "{move}" is the whole reason this card exists.',
+            'a {km} km run that reads a notch above your usual.',
+            'one stretch of "{move}" is the whole reason this card exists.',
             '"{move}" didn\'t go the way your usual sessions go.',
             "{km} km, and not the forgettable kind.",
         ],
         'rare' => [
             '"{move}" doesn\'t turn up often. Worth knowing that.',
-            "A {km} km run you don't put together most weeks.",
-            'Something in "{move}" separates it from the rest of the month.',
+            "a {km} km run you don't put together most weeks.",
+            'something in "{move}" separates it from the rest of the month.',
             '"{move}" is the rare one, and the log agrees.',
             '{km} km at a level you reach maybe once in a stretch.',
         ],
         'epic' => [
             '"{move}" sat well above your usual gear.',
-            'A {km} km run that took real work, and it shows.',
+            'a {km} km run that took real work, and it shows.',
             '"{move}" is the kind of session that shifts what normal means for you.',
             '"{move}" was you at the top of your current range.',
             "{km} km that cost you something. That's why the card looks like this.",
         ],
         'legendary' => [
             '"{move}" is one you\'ll still be referencing months from now.',
-            'A {km} km run that goes straight into your own history.',
+            'a {km} km run that goes straight into your own history.',
             '"{move}" is the outlier. Every other card sits under it.',
             '"{move}" reset the ceiling.',
             "{km} km. There's no ordinary version of this one.",
@@ -571,7 +571,7 @@ final readonly class RuleBasedNarrationFiller
             "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it.",
             "Your mood spread sits on **easy** and stays there. You keep coming back week after week, which is the part that's hard to fake. The faster end of your range has been quiet for a while though.",
             "You pick routine over flash, and your weekly streak is the proof. Base first, speed later. The foundation for a harder session is already sitting there, unused.",
-            "**blazing** turns up more often now than it did in the quieter months, and your records moved the same direction. You're in a bold phase. Keep one easy run in the mix so the phase lasts.",
+            "**Blazing** turns up more often now than it did in the quieter months, and your records moved the same direction. You're in a bold phase. Keep one easy run in the mix so the phase lasts.",
             "Your runs split between **blazing** days and wobbly ones, and your longest distance came out of the bold end. You like to push. The easy days are what make the hard ones repeatable.",
             "The pattern reads disciplined: mostly **chill**, pushed on occasion, and your total built out of steady volume rather than one heroic run. Nothing in here is accidental.",
             "You're early and the mix is still thin, but you've come back more than once already. That's a start with a number attached. The reading gets sharper the more you feed it.",
@@ -581,22 +581,22 @@ final readonly class RuleBasedNarrationFiller
     private function trendRead(int $seed): string
     {
         return $this->select([
-            "steady is the read.\n\nnothing in this window moved sharply enough to call out on its own. the rhythm held, which is its own kind of answer.",
-            "the numbers are still catching up.\n\nthere isn't quite enough history in this window yet for a sharper read. keep logging and the picture fills in.",
-            "a quiet stretch.\n\nno big swings in either direction this window. sometimes the story is that there isn't one.",
-            "the trend line sat flat.\n\nneither a climb nor a drop stands out here. worth checking back once a few more weeks are in.",
+            "steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer.",
+            "the numbers are still catching up.\n\nThere isn't quite enough history in this window yet for a sharper read. Keep logging and the picture fills in.",
+            "a quiet stretch.\n\nNo big swings in either direction this window. Sometimes the story is that there isn't one.",
+            "the trend line sat flat.\n\nNeither a climb nor a drop stands out here. Worth checking back once a few more weeks are in.",
         ], $seed);
     }
 
     private function monthlyRecap(int $userId, ?string $month, int $seed): string
     {
         if ($month === null) {
-            return "no dated runs found for this month. there's nothing honest to recap yet.";
+            return "No dated runs found for this month. There's nothing honest to recap yet.";
         }
 
         $start = Carbon::createFromFormat('!Y-m', $month)?->startOfMonth();
         if ($start === null) {
-            return "no dated runs found for this month. there's nothing honest to recap yet.";
+            return "No dated runs found for this month. There's nothing honest to recap yet.";
         }
 
         $details = ActivityDetail::query()
@@ -605,7 +605,7 @@ final readonly class RuleBasedNarrationFiller
             ->get(['distance']);
 
         if ($details->isEmpty()) {
-            return "no dated runs found for this month. there's nothing honest to recap yet.";
+            return "No dated runs found for this month. There's nothing honest to recap yet.";
         }
 
         $runs = $details->count();
@@ -620,18 +620,18 @@ final readonly class RuleBasedNarrationFiller
         $longestKm = DistanceFormatter::kmString((float) $longestDistance);
         $usualKm = $this->usualMonthlyKm($userId, $start);
         $closer = $usualKm === null
-            ? 'no usual month yet to compare it with. this one sets the line.'
+            ? 'No usual month yet to compare it with. This one sets the line.'
             : match ($this->volumeBand($totalKm, $usualKm)) {
-                'light' => "well below your usual month. that's the number, not a verdict on it.",
-                'big' => 'well above your usual month. the volume is the headline.',
-                default => "right around your usual month. that's the range where the work actually banks.",
+                'light' => "Well below your usual month. That's the number, not a verdict on it.",
+                'big' => 'Well above your usual month. The volume is the headline.',
+                default => "Right around your usual month. That's the range where the work actually banks.",
             };
 
         return $this->select([
-            "{$km} km across {$runs} {$runWord} this month. the longest run was {$longestKm} km. {$closer}",
-            "the month came to {$km} km from {$runs} {$sessionWord}. longest run: {$longestKm} km. {$closer}",
+            "{$km} km across {$runs} {$runWord} this month. The longest run was {$longestKm} km. {$closer}",
+            "The month came to {$km} km from {$runs} {$sessionWord}. Longest run: {$longestKm} km. {$closer}",
             "{$runs} {$runWord}, {$km} km in total, and {$longestKm} km was the longest. {$closer}",
-            "{$km} km over {$runs} {$sessionWord} this month. the longest was {$longestKm} km. {$closer}",
+            "{$km} km over {$runs} {$sessionWord} this month. The longest was {$longestKm} km. {$closer}",
         ], $seed);
     }
 

@@ -13,6 +13,8 @@ code_refs:
 
 # Temari becomes a training partner who keeps score
 
+> **Casing superseded (noted 2026-11-09) by decision 12 of #2428:** narrated casing is a fixed rule now (headlines and one-sentence lines lowercase, two or more sentences in sentence case), not a soft tendency. The rest of this decision stands.
+
 **Status:** Accepted (documented 2026-08-13). Supersedes the friend-persona voice stance, which lived in [[voice-and-tone]] and in the persona prompt rather than in any ADR of its own, and the persona half of [[thread-ball-character-rebrand]].
 
 ## Context

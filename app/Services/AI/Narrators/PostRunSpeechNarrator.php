@@ -131,12 +131,12 @@ class PostRunSpeechNarrator
         terms.
 
         Good examples of the range this block should cover:
-        - "first run in eleven days. the week barely existed until this one, and now
+        - "First run in eleven days. The week barely existed until this one, and now
           it does."
-        - "cut short at 20 minutes, sore knee. finishing wasn't the assignment
+        - "Cut short at 20 minutes, sore knee. Finishing wasn't the assignment
           today, listening was."
-        - "wet, dark, and you went anyway. that's the whole story of this one."
-        - "quiet Tuesday morning, nobody else on the trail. the kind of run that
+        - "Wet, dark, and you went anyway. That's the whole story of this one."
+        - "Quiet Tuesday morning, nobody else on the trail. The kind of run that
           doesn't need to prove anything."
 
         ANTI-PATTERN:

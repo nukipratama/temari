@@ -110,5 +110,14 @@ function ruleBasedFallback(snap: WeeklySnapshotWithRecap): string {
             `load balance ${snap.form >= 0 ? '+' : ''}${snap.form.toFixed(1)}, ${formLabel.toLowerCase()}.`,
         );
     }
-    return parts.join(' ') || 'no data for this week yet, hang tight.';
+    if (parts.length === 0) {
+        return 'no data for this week yet, hang tight.';
+    }
+    return parts
+        .map((part) =>
+            parts.length > 1
+                ? part.charAt(0).toUpperCase() + part.slice(1)
+                : part,
+        )
+        .join(' ');
 }

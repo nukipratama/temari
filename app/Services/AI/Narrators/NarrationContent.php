@@ -38,7 +38,9 @@ final readonly class NarrationContent
 
     public function toStored(): string
     {
-        return json_encode(['title' => $this->title, 'body' => $this->body], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $title = $this->title === null ? null : HeadlineCase::lower($this->title);
+
+        return json_encode(['title' => $title, 'body' => $this->body], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     }
 
     public function plainText(): string

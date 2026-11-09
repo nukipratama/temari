@@ -44,6 +44,35 @@ function seededCard(Rarity $rarity, string $move, array $badges = [], float $dis
         ->setRelation('activity', $activity);
 }
 
+function expectCasedByLength(string $text): void
+{
+    $sentences = preg_split('/(?<=[.!?])\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
+    assert(is_array($sentences));
+    expect($sentences)->not->toBeEmpty();
+
+    foreach ($sentences as $sentence) {
+        $first = mb_substr(ltrim($sentence, '*'), 0, 1);
+        if (in_array($first, ['"', '\''], true)) {
+            continue;
+        }
+
+        if (count($sentences) === 1) {
+            expect($first)->not->toMatch('/\p{Lu}/u');
+        } else {
+            expect($first)->not->toMatch('/\p{Ll}/u');
+        }
+    }
+}
+
+function expectHeadlineThenBody(string $text): void
+{
+    $paragraphs = explode("\n\n", $text);
+    $headline = array_shift($paragraphs);
+
+    expectCasedByLength($headline);
+    expectCasedByLength(implode(' ', $paragraphs));
+}
+
 function monthlyRunForFiller(User $user, string $date, float $distance): void
 {
     $activity = Activity::factory()->for($user)->create();
@@ -101,10 +130,59 @@ it('appends the headwind badge coda', function (): void {
     expect($flavor)->toContain('Headwind the whole way.');
 });
 
+it('writes every one-sentence fallback in lowercase and every longer one in sentence case', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    for ($id = 0; $id < 8; $id++) {
+        expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::PlanClampVoice, $id)));
+        expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::ProfileVoice, $id)));
+        expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::WeeklyRecap, 999_000 + $id)));
+        expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, $id)));
+        expectHeadlineThenBody($filler->fillFor(fillerRow(AnalysisType::TrendRead, $id)));
+        expectHeadlineThenBody($filler->fillFor(fillerRow(AnalysisType::BriefingMascotVoice, $id)));
+    }
+
+    expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::CardFlavor, 999_999)));
+    expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::PostRunSpeech, 999_999)));
+});
+
+it('cases a ran week by its sentence count across every template and closer', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    foreach (['fresh', 'optimal', 'fatigued', 'overreaching', null] as $status) {
+        for ($i = 0; $i < 6; $i++) {
+            $snapshot = WeeklySnapshot::factory()->create(['distance_km' => 20.0 + $i, 'runs' => 1 + $i, 'form_status' => $status]);
+
+            expectCasedByLength($filler->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id)));
+        }
+    }
+});
+
+it('cases the post-run speech by its sentence count across a long feed', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    for ($i = 1; $i <= 60; $i++) {
+        $detail = new ActivityDetail()->forceFill(['distance' => 3000.0 + ($i * 137.0), 'stream_summary' => [], 'weather_temp_c' => 24, 'weather_rain_detected' => $i % 3 === 0]);
+
+        expectCasedByLength($filler->postRunSpeechFor($detail, $i));
+    }
+});
+
+it('cases a card flavor by its sentence count, with and without a badge coda', function (): void {
+    $filler = app(RuleBasedNarrationFiller::class);
+
+    foreach (Rarity::cases() as $rarity) {
+        for ($id = 1; $id <= 20; $id++) {
+            expectCasedByLength($filler->cardFlavorFor(seededCard($rarity, "Move {$id}", [], 4000.0 + ($id * 211.0), $id)));
+            expectCasedByLength($filler->cardFlavorFor(seededCard($rarity, "Move {$id}", [Badge::NegativeSplit->value], 4000.0 + ($id * 211.0), $id)));
+        }
+    }
+});
+
 it('falls back to a flat line when the card is missing', function (): void {
     $flavor = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::CardFlavor, 999_999));
 
-    expect($flavor)->toBe('A quiet session, filed anyway.');
+    expect($flavor)->toBe('a quiet session, filed anyway.');
 });
 
 it('varies the ecosystem briefing voices by seed deterministically', function (): void {
@@ -146,8 +224,8 @@ it('uses a post-run briefing when a detailed run lands against a credited plan r
         ->toContain('distance partial')
         ->toContain('the session did the job it was written for')
         ->and($copy)->not->toContain('intent hit')
-        ->toContain('recovery')
-        ->and($copy)->not->toContain('Easy tempo');
+        ->toMatch('/recovery/i')
+        ->and($copy)->not->toMatch('/easy tempo/i');
 });
 
 it("states each month's distance, run count, longest run, and volume band", function (): void {
@@ -165,13 +243,13 @@ it("states each month's distance, run count, longest run, and volume band", func
     expect($april)->toContain('5.0 km')
         ->and($april)->toMatch('/\b1 (run|session)\b/')
         ->and($april)->not->toMatch('/\b1 (runs|sessions)\b/')
-        ->and($april)->toContain('longest')
+        ->and($april)->toMatch('/longest/i')
         ->and($may)->toContain('19.5 km')
         ->and($may)->toMatch('/\b2 (runs|sessions)\b/')
         ->and($may)->toContain('12.5 km')
         ->and($may)->toContain('above your usual month')
         ->and($may)->not->toBe($april)
-        ->and($june)->toContain('right around your usual month');
+        ->and($june)->toContain('Right around your usual month');
 });
 
 it('is deterministic for the same subject and discriminator', function (): void {
@@ -236,7 +314,7 @@ it('keeps the subject-only seed when the discriminator is null', function (): vo
     // non-discriminated determinism (and the first-variant default) is preserved.
     $copy = $filler->fillFor(fillerRow(AnalysisType::MonthlyRecap, 0));
 
-    expect($copy)->toBe("no dated runs found for this month. there's nothing honest to recap yet.");
+    expect($copy)->toBe("No dated runs found for this month. There's nothing honest to recap yet.");
 });
 
 it('returns deterministic copy for every subject-free analysis arm', function (AnalysisType $type, string $expected): void {
@@ -244,12 +322,12 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
 
     expect($copy)->toBe($expected);
 })->with([
-    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "Easy tempo, 35-45 minutes.\n\nnothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead."],
+    'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "easy tempo, 35-45 minutes.\n\nNothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. Cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead."],
     'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
-    'weekly recap' => [AnalysisType::WeeklyRecap, "nothing in the log this week. a gap is a gap, I'm not going to call it anything else."],
+    'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
     'profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
-    'monthly recap' => [AnalysisType::MonthlyRecap, "no dated runs found for this month. there's nothing honest to recap yet."],
-    'trend read' => [AnalysisType::TrendRead, "steady is the read.\n\nnothing in this window moved sharply enough to call out on its own. the rhythm held, which is its own kind of answer."],
+    'monthly recap' => [AnalysisType::MonthlyRecap, "No dated runs found for this month. There's nothing honest to recap yet."],
+    'trend read' => [AnalysisType::TrendRead, "steady is the read.\n\nNothing in this window moved sharply enough to call out on its own. The rhythm held, which is its own kind of answer."],
 ]);
 
 it('weaves the run distance into the post-run speech', function (): void {
@@ -406,7 +484,7 @@ it('surfaces a scored week past the form-known date that is missing its form_sta
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain("steady. that's the read.");
+    expect($recap)->toContain("Steady. That's the read.");
     $log->shouldHaveReceived('warning')
         ->with('narrator.recap.form_status_missing', Mockery::on(
             fn (array $context): bool => $context['snapshot_id'] === $snapshot->id && $context['runs'] === 5,
@@ -426,7 +504,7 @@ it('does not log for a ran week with no scored run', function (): void {
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain("steady. that's the read.");
+    expect($recap)->toContain("Steady. That's the read.");
     $log->shouldNotHaveReceived('warning');
 });
 
@@ -477,7 +555,7 @@ it('does not praise a week that is well below the athlete\'s usual', function ()
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->not->toContain('right around your usual week.')
+    expect($recap)->not->toContain('Right around your usual week.')
         ->and($recap)->not->toContain('above your usual week')
         ->and($recap)->toContain('not a verdict on it');
 });
@@ -497,7 +575,7 @@ it('keeps the usual-week line for a week in the athlete\'s usual range', functio
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->toContain('right around your usual week.');
+    expect($recap)->toContain('Right around your usual week.');
 });
 
 it('reads a week well above the athlete\'s usual as a big week', function (): void {
@@ -515,7 +593,7 @@ it('reads a week well above the athlete\'s usual as a big week', function (): vo
 
     $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-    expect($recap)->not->toContain('right around your usual week.')
+    expect($recap)->not->toContain('Right around your usual week.')
         ->and($recap)->toContain('above your usual week');
 });
 
@@ -636,7 +714,7 @@ it('gives overreaching and fatigued weeks the same heavy closer', function (): v
         $snapshot = WeeklySnapshot::factory()->create(['distance_km' => 24.6, 'runs' => 4, 'form_status' => $status]);
         $recap = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::WeeklyRecap, $snapshot->id));
 
-        return substr($recap, (int) strpos($recap, 'your recent running is above'));
+        return substr($recap, (int) strpos($recap, 'Your recent running is above'));
     };
 
     expect($closer('overreaching'))->toBe($closer('fatigued'))

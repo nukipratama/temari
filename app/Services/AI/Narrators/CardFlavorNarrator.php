@@ -97,7 +97,7 @@ class CardFlavorNarrator
           first, in rain, which is not the usual order of events."
         - "Common card, but 'New Morning' at 8 degrees is the kind of session nobody
           talks you into."
-        - "your fastest 5k landed inside this one. the Legendary label is just the
+        - "Your fastest 5k landed inside this one. The Legendary label is just the
           receipt."
         PROMPT;
 
@@ -133,7 +133,7 @@ class CardFlavorNarrator
 
         assert(is_string($decoded['flavor']));
 
-        return $decoded['flavor'];
+        return HeadlineCase::lower($decoded['flavor']);
     }
 
     /**

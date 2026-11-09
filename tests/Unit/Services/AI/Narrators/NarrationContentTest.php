@@ -61,6 +61,24 @@ it('stores the title and body as JSON with unicode left readable', function (): 
         ->and(NarrationContent::fromStored($stored)?->title)->toBe('minggu yang tenang');
 });
 
+it('lowercases an ordinary-word title on write and leaves the body and other titles alone', function (string $title, string $expected): void {
+    $stored = new NarrationContent($title, 'Four easy runs.')->toStored();
+
+    expect(NarrationContent::fromStored($stored))->toEqual(new NarrationContent($expected, 'Four easy runs.'));
+})->with([
+    'an ordinary word' => ['A steady week', 'a steady week'],
+    'an acronym' => ['HR held all week', 'HR held all week'],
+    'a digit' => ['28.4 km, up from 19', '28.4 km, up from 19'],
+    'the pronoun I' => ['I called it early', 'i called it early'],
+]);
+
+it('keeps the casing of a title already read from storage', function (): void {
+    $content = nonNull(NarrationContent::fromStored('{"title":"A Steady Week","body":"Four easy runs."}'));
+
+    expect($content->title)->toBe('A Steady Week')
+        ->and($content->plainText())->toBe("A Steady Week\n\nFour easy runs.");
+});
+
 it('stores a missing title as null', function (): void {
     expect(new NarrationContent(null, 'Body only.')->toStored())->toBe('{"title":null,"body":"Body only."}');
 });
