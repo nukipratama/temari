@@ -85,7 +85,7 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]]) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
-| daily 06:00 | [`ai:trend-read arc`](../../routes/console.php) | `TrendRead`, discriminator `arc` — the only read left; re-bills only once a week closes or the race changed |
+| daily 06:00 | [`ai:trend-read arc`](../../routes/console.php) | `TrendRead`, discriminator `arc` — the only read left; re-bills only when a week closes, late data lands in a closed week, or the race changed |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
 | race set, revised, moved, retired or deleted | [`RefreshTrendReadOnRaceGoalChanged`](../../app/Listeners/RefreshTrendReadOnRaceGoalChanged.php) | the `trend_read` row, only when its fingerprint moved (see below) |
 | hourly | [`ai:self-heal`](../../routes/console.php) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
@@ -154,7 +154,7 @@ moments ago, never that the range's numbers have since moved, so a fingerprint c
 lookup for no behaviour change. Used to kick all four `trend_read` ranges at once; `30d`/`90d`/`12mo`
 retired, then `7d` gave way to `arc` on 2026-11-09.
 
-**A trend read re-bills at most once per closed week, plus on a race change.**
+**A trend read re-bills only when a week closes, when late data lands inside a closed week, or on a race change.**
 [`TrendReadFingerprint::forUser()`](../../app/Services/AI/TrendReadFingerprint.php) fingerprints
 [`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s `6w` output as of the last
 closed Sunday and plan adherence over those six weeks, via

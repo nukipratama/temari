@@ -53,7 +53,7 @@ closed weeks against the six before, with adherence over them. Either way the mo
 `reading`, a lowercase title and a 200-250 word story in 2-3 paragraphs, stored as
 `NarrationContent` JSON. It reads closed weeks only, so it never repeats "vs last week" below it.
 
-It re-narrates at most once per closed week, plus on a race change:
+It re-narrates when a week closes, when late data lands inside a closed week, and on a race change:
 [TrendReadFingerprint::forUser()](app/Services/AI/TrendReadFingerprint.php) covers the six weeks
 ending last Sunday and adherence over them, plus the active race's id, distance, goal time and
 date. A settled post-ingest snapshot repair, [`ai:trend-read arc`](routes/console.php) at 06:00 and
