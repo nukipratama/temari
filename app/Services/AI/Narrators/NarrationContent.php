@@ -30,7 +30,7 @@ final readonly class NarrationContent
         if (is_array($decoded) && is_string($decoded['body'] ?? null)) {
             $title = $decoded['title'] ?? null;
 
-            return new self(is_string($title) ? $title : null, $decoded['body']);
+            return new self(is_string($title) && trim($title) !== '' ? $title : null, $decoded['body']);
         }
 
         return new self(null, $content);

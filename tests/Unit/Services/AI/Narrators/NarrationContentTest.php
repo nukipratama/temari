@@ -31,6 +31,8 @@ it('reads a JSON object with a body and no title or a non-string title', functio
     'no title' => ['{"body":"Four easy runs."}'],
     'null title' => ['{"title":null,"body":"Four easy runs."}'],
     'numeric title' => ['{"title":3,"body":"Four easy runs."}'],
+    'empty title' => ['{"title":"","body":"Four easy runs."}'],
+    'blank title' => ['{"title":"  ","body":"Four easy runs."}'],
 ]);
 
 it('treats malformed JSON as a raw body', function (): void {

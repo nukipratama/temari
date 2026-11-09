@@ -23,6 +23,7 @@ use Illuminate\Support\Carbon;
 class PlanClampVoiceNarrator
 {
     use ReadsPreviousDailyNarrative;
+
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: one short line, max 25 words: today's session, and why it is the eased one.
 
