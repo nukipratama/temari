@@ -30,7 +30,7 @@ Three tiers, not one:
 - Real names and terms keep their capitals everywhere (`HR`, `PR`, `Z2`, `TRIMP`, `Strava`, a badge or card name, a place). The character name `temari` stays lowercase even at the start of a sentence. The pronoun is `I` in sentence-case prose and `i` in a lowercase headline or one-liner.
 - Never capitalize a whole word for emphasis, and never write ALL CAPS.
 
-Code enforces only the headline half: [HeadlineCase](../app/Services/AI/Narrators/HeadlineCase.php) lowercases the first letter of a stored title and of a one-sentence card flavor or plan-clamp line, and leaves acronyms, digit-led words, words with an internal capital, `Strava`, weekday and month names, rarity labels and the card's own move and badge names alone. Body casing is prompt-only, and stored rows keep the casing they were written with. UI chrome is lowercase too, per P37 above.
+Code enforces only the headline half: [HeadlineCase](../app/Services/AI/Narrators/HeadlineCase.php) lowercases the first letter of every sentence of a stored title and of a one-sentence card flavor or plan-clamp line, and leaves acronyms, digit-led words, words with an internal capital, `Strava`, weekday and month names, rarity labels and the card's own move and badge names alone. Body casing is prompt-only, and stored rows keep the casing they were written with. UI chrome is lowercase too, per P37 above.
 
 **Slang contractions** (`gonna`, `kinda`, `gotta`) are allowed at most once per output and never in a headline. Ordinary contractions stay free.
 
