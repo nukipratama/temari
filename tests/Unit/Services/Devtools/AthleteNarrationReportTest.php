@@ -15,6 +15,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\CeilingOverride;
+use App\Services\AI\Narrators\NarrationContent;
 use App\Services\AI\ServedBy;
 use App\Services\Devtools\AthleteNarrationReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,10 +189,10 @@ describe('narrations', function (): void {
         $user = User::factory()->create();
         $block = athleteBlock($user, AnalysisType::TrendRead, [
             'status' => AnalysisStatus::Done,
-            'content' => 'the second take',
+            'content' => new NarrationContent('second headline', 'the second take')->toStored(),
         ]);
         AnalysisVersion::query()->create(['analysis_id' => $block->id, 'content' => 'the first take']);
-        AnalysisVersion::query()->create(['analysis_id' => $block->id, 'content' => 'the middle take']);
+        AnalysisVersion::query()->create(['analysis_id' => $block->id, 'content' => new NarrationContent('middle headline', 'the middle take')->toStored()]);
         Feedback::factory()->create([
             'user_id' => $user->id,
             'subject_type' => FeedbackSubject::Narration,
@@ -204,10 +205,22 @@ describe('narrations', function (): void {
         $row = athleteReport()->narrations($user->id, null, null, null)['rows'][0];
 
         expect($row['version_count'])->toBe(2)
-            ->and($row['previous_content'])->toBe('the middle take')
+            ->and($row['content'])->toBe("second headline\n\nthe second take")
+            ->and($row['previous_content'])->toBe("middle headline\n\nthe middle take")
             ->and(data_get($row, 'flag.reason'))->toBe(FeedbackReason::FactsWrong->value)
             ->and(data_get($row, 'flag.note'))->toBe('that never happened')
             ->and(data_get($row, 'flag.superseded'))->toBeTrue();
+    });
+    it('reads a pre-redesign row as its own text and a row with no content as null', function (): void {
+        $user = User::factory()->create();
+        $legacy = athleteBlock($user, AnalysisType::TrendRead, ['status' => AnalysisStatus::Done, 'content' => 'a plain take']);
+        AnalysisVersion::query()->create(['analysis_id' => $legacy->id, 'content' => 'an older plain take']);
+        athleteBlock($user, AnalysisType::BriefingMascotVoice, ['status' => AnalysisStatus::Pending, 'content' => null]);
+
+        $rows = athleteReport()->narrations($user->id, null, null, null)['rows'];
+
+        expect(array_map(fn (array $row): array => [$row['content'], $row['previous_content']], $rows))
+            ->toBe([[null, null], ['a plain take', 'an older plain take']]);
     });
 });
 
