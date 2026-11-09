@@ -10,6 +10,8 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\Tools\MonthRecordsTool;
+use App\Services\AI\Agent\Tools\MonthRunsTool;
 use App\Services\AI\Agent\Tools\WeekRecordsTool;
 use App\Services\AI\Agent\Tools\WeekRunsTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
@@ -101,6 +103,8 @@ function agentToolFor(string $class): AgentTool
         WeekTotalsTool::class => new WeekTotalsTool(WeeklySnapshot::factory()->for($user)->create()),
         WeekRunsTool::class => new WeekRunsTool(WeeklySnapshot::factory()->for($user)->create(), app(VerdictNarrator::class)),
         WeekRecordsTool::class => new WeekRecordsTool(WeeklySnapshot::factory()->for($user)->create()),
+        MonthRunsTool::class => new MonthRunsTool($user, $today->format('Y-m'), app(VerdictNarrator::class)),
+        MonthRecordsTool::class => new MonthRecordsTool($user, $today->format('Y-m')),
         MonthTotalsTool::class => new MonthTotalsTool($user, $today->format('Y-m')),
         TrendRangeTool::class => new TrendRangeTool($user, '7d', new TrainingLoad()),
         LifetimeStatsTool::class => new LifetimeStatsTool($user, $today, app(LifetimeStats::class)),
@@ -134,6 +138,8 @@ it('gives every tool an argument-free schema, so none can be pointed at another 
     KmSplitsTool::class => [KmSplitsTool::class],
     LapsTool::class => [LapsTool::class],
     LifetimeStatsTool::class => [LifetimeStatsTool::class],
+    MonthRecordsTool::class => [MonthRecordsTool::class],
+    MonthRunsTool::class => [MonthRunsTool::class],
     MonthTotalsTool::class => [MonthTotalsTool::class],
     PerceivedEffortTool::class => [PerceivedEffortTool::class],
     PersonaMixTool::class => [PersonaMixTool::class],

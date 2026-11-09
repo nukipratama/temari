@@ -440,7 +440,9 @@ inline in its `toolbox()` method.
 | `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
 | `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain`, read as of an optional date (today by default; the weekly recap passes its `week_ending`) | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
 | `WeekRunsTool` · `get_week_runs` | `week_start`, `week_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the snapshot's Monday to Sunday | `ActivityDetail` rows the snapshot counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
+| `MonthRunsTool` · `get_month_runs` | `month_start`, `month_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the first to last day of the calendar month | `ActivityDetail` rows a recap counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
 | `WeekRecordsTool` · `get_week_records` | `personal_records[]` of `category`, `value_sec`, `value_formatted`, `day`, `date`: the standing records a run that week set | `PersonalRecord` rows whose run falls in the week, formatted by `PersonalRecordsTool::entry()` |
+| `MonthRecordsTool` · `get_month_records` | `personal_records[]` of `category`, `value_sec`, `value_formatted`, `day`, `date`: the standing records a run that month set | `PersonalRecord` rows whose run falls in the month, formatted by `PersonalRecordsTool::entry()` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway`, `overridden`, `intent` and `intent_detail` (the stored verdict worded by `IntentOutcome::outcome()` and `::detail()`) | `PlannedSession` rows over the bound span; `PlanAdaptation::$override_date` for `overridden`; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 | `GetThreadTool` · `get_thread` | `thread`: up to 6 × `{question, answer}`, this run's earlier settled exchanges, oldest first, without the question being answered | stored `RunQuestion` rows for the bound activity and its owner |
@@ -460,7 +462,7 @@ inline in its `toolbox()` method.
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
 
-Every one of the 26 tools is used by at least one narrator; none is orphaned. One of them,
+Every one of the 28 tools is used by at least one narrator; none is orphaned. One of them,
 `CardIdentityTool`, is read into the context rather than offered as a tool, since the model had no
 choice to make about calling it.
 
