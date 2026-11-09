@@ -153,7 +153,10 @@ class RunController extends Controller
             // runs are resume-only, so re-narrating mid-history can't desync the
             // later runs that quoted their old narrative.
             'isChainHead' => fn (): bool => Activity::latestIdForUser($user->id) === $activity->id,
-            'speechAnalysis' => fn (): array => $payloadFor(AnalysisType::PostRunSpeech),
+            'speechAnalysis' => fn (): array => [
+                ...$payloadFor(AnalysisType::PostRunSpeech),
+                'claims' => $loadAnalyses()->get(AnalysisType::PostRunSpeech->value)?->narration()?->claims,
+            ],
             'runInsight' => fn (): array => $payloadFor(AnalysisType::RunInsight),
             'pastYou' => function () use ($matcher, $hydrator, $activity, $detail, $effortFor, $duelBuilder): ?array {
                 $match = $matcher->findMatchContext($activity, $detail);

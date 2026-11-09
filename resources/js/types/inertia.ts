@@ -247,6 +247,23 @@ export interface AnalysisPayload {
     unread_while_away?: boolean;
 }
 
+/**
+ * One anchored, falsifiable observation about a run. `anchor` names the exact
+ * split/zone/metric it describes, checked server-side against the run's own
+ * data before it reaches the client.
+ */
+export interface RunClaim {
+    anchor: string;
+    text: string;
+    value?: string | null;
+    delta?: string | null;
+}
+
+/** The post-run speech, with the claims a merged speech carries beside its headline and body. */
+export type SpeechAnalysisPayload = AnalysisPayload & {
+    claims?: RunClaim[] | null;
+};
+
 /** Home's rest-day fact — see `App\Services\Run\Metrics\RestDayEasePace`. */
 export interface RestDayEasePace {
     deltaSecPerKm: number;

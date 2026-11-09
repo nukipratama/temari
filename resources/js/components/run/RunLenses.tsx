@@ -6,9 +6,14 @@ import {
     MessageCircle,
     RefreshCw,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import type { AnalysisPayload, Mood } from '@/types/inertia';
+import type {
+    AnalysisPayload,
+    Mood,
+    RunClaim,
+    SpeechAnalysisPayload,
+} from '@/types/inertia';
 
 import AnalysisStatus, {
     rendersNothing,
@@ -30,26 +35,11 @@ import { formatDurationHMS } from '@/lib/pace';
 import { renderBold } from '@/lib/richText';
 import { chipVariants } from '@/lib/variants';
 
-/**
- * One anchored, falsifiable observation about this run. `anchor` names the
- * exact split/zone/metric it describes (validated server-side against the
- * run's own data before this ever reaches the client — see
- * RunInsightNarrator), and the claim carries a control that scrolls to
- * whichever component draws it. `value`/`delta` are optional headline figures
- * shown next to the text.
- */
-interface RunInsightClaim {
-    anchor: string;
-    text: string;
-    value?: string | null;
-    delta?: string | null;
-}
-
 interface RunLensesProps {
     mood: Mood;
-    /** The post-run story (PostRunSpeech). */
-    story: AnalysisPayload;
-    /** The adaptive claims block (RunInsight) — a variable-length list of anchored observations. */
+    /** The post-run story (PostRunSpeech): a headline, a body and its claims once merged, plain text on an old run. */
+    story: SpeechAnalysisPayload;
+    /** An old run's separate claims block (RunInsight), hidden once the story is merged. */
     insight: AnalysisPayload;
     /**
      * The anchors this page actually draws, from {@link drawnRunAnchors}. A
@@ -80,7 +70,7 @@ function rereadLabel(pending: boolean, cooldownRemaining: number): string {
     return 'reread';
 }
 
-function isRunInsightClaim(value: unknown): value is RunInsightClaim {
+function isRunClaim(value: unknown): value is RunClaim {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
@@ -94,10 +84,10 @@ function isRunInsightClaim(value: unknown): value is RunInsightClaim {
  * (should never happen — the server only ever writes its own JSON) renders
  * as no claims rather than throwing.
  */
-function parseClaims(content: string): RunInsightClaim[] {
+function parseClaims(content: string): RunClaim[] {
     try {
         const parsed: unknown = JSON.parse(content);
-        return Array.isArray(parsed) ? parsed.filter(isRunInsightClaim) : [];
+        return Array.isArray(parsed) ? parsed.filter(isRunClaim) : [];
     } catch {
         return [];
     }
@@ -105,6 +95,10 @@ function parseClaims(content: string): RunInsightClaim[] {
 
 function storyHasContent(story: AnalysisPayload): boolean {
     return !rendersNothing(story.status, story.content);
+}
+
+function isMergedStory(story: SpeechAnalysisPayload): boolean {
+    return (story.title ?? '') !== '' || (story.claims?.length ?? 0) > 0;
 }
 
 /**
@@ -124,7 +118,7 @@ function insightHasContent(insight: AnalysisPayload): boolean {
 function ClaimLine({
     claim,
     drawn,
-}: Readonly<{ claim: RunInsightClaim; drawn: boolean }>) {
+}: Readonly<{ claim: RunClaim; drawn: boolean }>) {
     const label = anchorLabel(claim.anchor);
 
     return (
@@ -160,13 +154,16 @@ function ClaimLine({
 }
 
 function ClaimList({
-    text,
+    claims,
     drawn,
-}: Readonly<{ text: string; drawn: ReadonlySet<string> }>) {
-    const claims = useMemo(() => parseClaims(text), [text]);
-
+    className,
+}: Readonly<{
+    claims: RunClaim[];
+    drawn: ReadonlySet<string>;
+    className?: string;
+}>) {
     return (
-        <div className="flex flex-col gap-2.5">
+        <div className={cn('flex flex-col gap-2.5', className)}>
             {claims.map((claim) => (
                 <ClaimLine
                     key={claim.anchor}
@@ -193,9 +190,10 @@ function LensLabel({
 }
 
 /**
- * "What Temari says" — the run's story and what stood out, in one voice card,
- * as the prototype's `RunLenses` draws them. Two `Analysis` rows behind one
- * surface, separated by a hairline rather than split into two cards.
+ * "What Temari says" — the run's story and what stood out, in one voice card.
+ * A merged story is one block: its headline, its body at prose width, then its
+ * claims. An old run keeps its two `Analysis` rows, separated by a hairline
+ * rather than split into two cards.
  */
 export default function RunLenses({
     mood,
@@ -209,25 +207,21 @@ export default function RunLenses({
     const [bulkPending, setBulkPending] = useState(false);
     const paused = useSharedProps().aiPaused ?? false;
 
-    const lenses = useMemo(() => [story, insight], [story, insight]);
-
-    // The reread control respects the same per-row cooldown the server enforces:
-    // it stays disabled until the longest-cooling lens unlocks. Lenses finish
-    // within seconds of each other, so the max is a faithful shared countdown.
     const cooldownRemaining = useCooldownCountdown(
-        Math.max(...lenses.map((a) => a.retry_after_seconds ?? 0)) || null,
+        story.retry_after_seconds ?? null,
     );
     const cooling = cooldownRemaining > 0;
+    const merged = isMergedStory(story);
     const showStory = storyHasContent(story);
-    const showInsight = insightHasContent(insight);
+    const showInsight = !merged && insightHasContent(insight);
 
     const triggerAll = useCallback(async () => {
         if (bulkPending || cooling) return;
         setBulkPending(true);
-        await Promise.allSettled(lenses.map((a) => triggerAnalysis(a)));
+        await triggerAnalysis(story).catch(() => undefined);
         router.reload({ only: inertiaReloadProps });
         setBulkPending(false);
-    }, [bulkPending, cooling, lenses, inertiaReloadProps]);
+    }, [bulkPending, cooling, story, inertiaReloadProps]);
 
     if (!showStory && !showInsight) {
         return null;
@@ -237,7 +231,11 @@ export default function RunLenses({
         <section className={className}>
             <header className="flex items-center gap-3">
                 <TemariMascot
-                    pose={writingPose(mood, story, insight)}
+                    pose={writingPose(
+                        mood,
+                        story,
+                        showInsight ? insight : undefined,
+                    )}
                     size={40}
                 />
                 <div className="min-w-0 flex-1">
@@ -251,7 +249,33 @@ export default function RunLenses({
             </header>
 
             <div className="mt-3">
-                {showStory && (
+                {showStory && merged && (
+                    <div className="[&_p]:max-w-prose">
+                        <AnalysisStatus
+                            analysis={story}
+                            inertiaReloadProps={inertiaReloadProps}
+                            chained
+                            isChainHead={isChainHead}
+                            allowReanalyze={!isChainHead}
+                            renderContent={(text) => (
+                                <>
+                                    <p className="narration">
+                                        {renderBold(text)}
+                                    </p>
+                                    {(story.claims?.length ?? 0) > 0 && (
+                                        <ClaimList
+                                            claims={story.claims ?? []}
+                                            drawn={drawnAnchors}
+                                            className="mt-3.5 border-t border-dashed border-border pt-3.5"
+                                        />
+                                    )}
+                                </>
+                            )}
+                        />
+                    </div>
+                )}
+
+                {showStory && !merged && (
                     <>
                         <LensLabel icon={MessageCircle}>
                             This run&apos;s story
@@ -282,9 +306,12 @@ export default function RunLenses({
                             inertiaReloadProps={inertiaReloadProps}
                             chained
                             isChainHead={isChainHead}
-                            allowReanalyze={!isChainHead}
+                            allowReanalyze={false}
                             renderContent={(text) => (
-                                <ClaimList text={text} drawn={drawnAnchors} />
+                                <ClaimList
+                                    claims={parseClaims(text)}
+                                    drawn={drawnAnchors}
+                                />
                             )}
                         />
                     </div>

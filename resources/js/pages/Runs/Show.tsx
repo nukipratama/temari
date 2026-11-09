@@ -7,6 +7,7 @@ import type {
     AnalysisPayload,
     Mood,
     RunHardMinutes,
+    SpeechAnalysisPayload,
     StoryLine,
 } from '@/types/inertia';
 
@@ -44,7 +45,7 @@ interface ShowProps {
     awaitingDetail?: boolean;
     card: RunCardDetail | null;
     storyLine: StoryLine | null;
-    speechAnalysis: AnalysisPayload;
+    speechAnalysis: SpeechAnalysisPayload;
     runInsight: AnalysisPayload;
     /** Backend-computed mood used only until the post-run StoryLine is persisted. */
     moodFallback: Mood;

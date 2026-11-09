@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\SessionType;
 use App\Jobs\Geo\ResolveActivityLocationJob;
 use App\Models\Activity;
+use App\Models\AI\Analysis;
 use App\Models\ActivityDetail;
 use App\Models\PlannedSession;
 use App\Models\RunCard;
@@ -228,6 +229,34 @@ it('does not run the past-you match or the relative-effort baseline on an insigh
         $response->assertJsonMissingPath("props.{$skipped}");
     }
 });
+
+it('hands the merged speech its claims beside the headline and body, and an old speech none', function (string $content, ?string $title, string $body, ?array $claims): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()]);
+    Analysis::factory()->done($content)->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'discriminator' => null,
+    ]);
+
+    $this->actingAs($user)->get("/activities/{$activity->id}")
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('speechAnalysis.title', $title)
+            ->where('speechAnalysis.content', $body)
+            ->where('speechAnalysis.claims', $claims)
+            ->where('runInsight.status', 'pending'));
+})->with([
+    'a merged speech' => [
+        '{"title":"the hills won","body":"Body.","claims":[{"anchor":"split:2","text":"Km 2 climbed.","value":"6:40/km","delta":null}]}',
+        'the hills won',
+        'Body.',
+        [['anchor' => 'split:2', 'text' => 'Km 2 climbed.', 'value' => '6:40/km', 'delta' => null]],
+    ],
+    'an old plain speech' => ['A quiet morning.', null, 'A quiet morning.', null],
+]);
 
 it('stamps the viewed run\'s own effort onto detail on a full load', function (): void {
     $user = User::factory()->create();
