@@ -164,6 +164,31 @@ describe('AnalysisStatus', () => {
             );
         });
 
+        it('opens a clamped body when focus lands inside it', () => {
+            stubNarrationLayout(200);
+            render(
+                <AnalysisStatus
+                    collapsible
+                    analysis={payload({
+                        status: 'done',
+                        title: 'a quiet week',
+                        content: 'One beat.',
+                    })}
+                    renderContent={(text) => (
+                        <p>
+                            {text} <a href="#session">the session</a>
+                        </p>
+                    )}
+                />,
+            );
+
+            fireEvent.focus(screen.getByRole('link', { name: 'the session' }));
+
+            expect(
+                screen.getByRole('button', { name: 'show less' }),
+            ).toHaveAttribute('aria-expanded', 'true');
+        });
+
         it('clamps an untitled single-paragraph body too', () => {
             stubNarrationLayout(200);
             renderStory('One beat, long enough to run past four lines.', {

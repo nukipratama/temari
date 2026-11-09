@@ -328,6 +328,7 @@ export default function AnalysisStatus({
                     )}
                     <div
                         style={clampStyle(clamp, expanded)}
+                        onFocus={() => clamp !== null && setExpanded(true)}
                         className={cn(
                             clamp !== null &&
                                 'overflow-hidden transition-[max-height] duration-200 ease-out motion-reduce:transition-none',
