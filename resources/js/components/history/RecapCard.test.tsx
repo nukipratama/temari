@@ -39,7 +39,9 @@ describe('RecapCard', () => {
 
         expect(mascot?.getAttribute('data-mascot')).toBe('gassed');
         expect(mascot?.getAttribute('width')).toBe('200');
-        expect(mascot?.getAttribute('class')).toContain('-bottom-15');
+        expect(mascot?.getAttribute('class')).toContain('-bottom-36');
+        expect(mascot?.getAttribute('class')).toContain('-right-29');
+        expect(container.firstElementChild).toHaveClass('pb-10');
     });
 
     it('thinks while its recap is being written', () => {
