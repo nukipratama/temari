@@ -97,6 +97,7 @@ describe('AnalysisStatus', () => {
             name: 'a quiet week',
         });
         expect(heading.textContent).toBe('a quiet week');
+        expect(heading).toHaveClass('max-w-prose');
         expect(screen.getByText('quiet').tagName).toBe('STRONG');
     });
 

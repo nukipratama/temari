@@ -240,7 +240,7 @@ export default function AnalysisStatus({
                     className={`${TEXT_SIZE[size]} whitespace-pre-line text-foreground`}
                 >
                     {title !== null && title !== '' && (
-                        <h3 className="mb-1.5 font-serif text-headline-sm text-foreground italic">
+                        <h3 className="mb-1.5 max-w-prose font-serif text-headline-sm text-foreground italic">
                             {renderBold(title)}
                         </h3>
                     )}
