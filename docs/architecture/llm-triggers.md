@@ -460,7 +460,7 @@ inline in its `toolbox()` method.
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
 | `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
 
-Every one of the 25 tools is used by at least one narrator; none is orphaned. One of them,
+Every one of the 26 tools is used by at least one narrator; none is orphaned. One of them,
 `CardIdentityTool`, is read into the context rather than offered as a tool, since the model had no
 choice to make about calling it.
 

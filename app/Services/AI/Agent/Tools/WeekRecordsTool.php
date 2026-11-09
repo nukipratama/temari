@@ -25,9 +25,10 @@ final class WeekRecordsTool extends NoArgumentTool
     {
         return 'The personal records a run this week set that still stand, each with category (a '
             .'distance such as 5km or a best effort such as best_20min), the day and date of the run '
-            .'that set it, value_formatted (h:mm:ss or mm:ss, the only form to quote) and value_sec '
-            .'(raw seconds, for judging size, never for quoting). An empty list means no run this '
-            .'week set a PR, so never mention one.';
+            .'that set it, value_formatted (h:mm:ss or mm:ss, the only form to quote: the time to '
+            .'cover a distance, but for a best effort the pace held per km, so quote it as /km) and '
+            .'value_sec (raw seconds, for judging size, never for quoting). An empty list means no '
+            .'run this week set a PR, so never mention one.';
     }
 
     /** @return array<string, mixed> */
