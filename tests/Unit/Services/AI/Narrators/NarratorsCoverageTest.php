@@ -92,7 +92,7 @@ function capturingCaller(string $content): array
 
 function weeklyRecapNarrator(StructuredChatCaller $caller): WeeklyRecapNarrator
 {
-    return new WeeklyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    return new WeeklyRecapNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(TrainingLoad::class), app(VerdictNarrator::class));
 }
 
 function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrator
@@ -620,27 +620,70 @@ it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers 
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
 
-it('WeeklyRecapNarrator returns narrative on valid JSON', function (): void {
+it('WeeklyRecapNarrator stores its headline and story as JSON content, not the reading', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
         'distance_km' => 30.0,
         'runs' => 4,
     ]);
-    $caller = fakeCaller(json_encode(['narrative' => 'Solid week'], JSON_THROW_ON_ERROR));
-    $narrator = weeklyRecapNarrator($caller);
-    expect($narrator->generate($snap))->toBe('Solid week');
+    $caller = fakeCaller(json_encode(['reading' => 'standout_run', 'title' => 'the long run carried it.', 'body' => 'Solid week.'], JSON_THROW_ON_ERROR));
+
+    $stored = weeklyRecapNarrator($caller)->generate($snap);
+
+    expect($stored)->toBe(json_encode(['title' => 'the long run carried it.', 'body' => 'Solid week.'], JSON_THROW_ON_ERROR))
+        ->and(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('the long run carried it.', 'Solid week.'));
 });
 
-it('WeeklyRecapNarrator throws on missing narrative key', function (): void {
+it('WeeklyRecapNarrator asks for reading, title and body, the reading picked from its six angles', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+    [$caller, $client] = capturingCaller(json_encode(['reading' => 'plan', 'title' => 't', 'body' => 'b'], JSON_THROW_ON_ERROR));
+
+    weeklyRecapNarrator($caller)->generate($snap);
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = data_get($params, 'text.format.schema');
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body']
+            && data_get($schema, 'properties.reading.enum') === ['vs_last_week', 'plan', 'standout_run', 'records', 'long_arc', 'load']
+            && data_get($params, 'max_output_tokens') === 2500;
+    });
+});
+
+it('WeeklyRecapNarrator throws on a missing body key', function (): void {
     $user = User::factory()->create();
     $snap = WeeklySnapshot::factory()->for($user)->create([
         'week_ending' => Carbon::today()->endOfWeek()->toDateString(),
     ]);
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = weeklyRecapNarrator($caller);
-    $narrator->generate($snap);
+    $caller = fakeCaller(json_encode(['reading' => 'load', 'title' => 'x'], JSON_THROW_ON_ERROR));
+    weeklyRecapNarrator($caller)->generate($snap);
 })->throws(UnavailableException::class);
+
+it('WeeklyRecapNarrator hands the model the week, its runs, its plan, its records and the six-week arc', function (): void {
+    $user = User::factory()->create();
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    expect(array_column(weeklyRecapNarrator(fakeCaller('{}'))->toolbox($snap)->definitions(), 'name'))
+        ->toBe(['get_week_totals', 'get_week_runs', 'get_planned_sessions', 'get_week_records', 'get_trend_range_totals']);
+});
+
+it('WeeklyRecapNarrator reads the six-week arc as it stood on the week Sunday, not today', function (): void {
+    Carbon::setTestNow('2026-06-20 12:00:00');
+    $user = User::factory()->create();
+    $inArc = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($inArc)->create(['start_date_local' => '2026-05-17 07:00:00', 'distance' => 5000.0]);
+    $afterWeek = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($afterWeek)->create(['start_date_local' => '2026-05-18 07:00:00', 'distance' => 9000.0]);
+    $snap = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17']);
+
+    $arc = json_decode(weeklyRecapNarrator(fakeCaller('{}'))->toolbox($snap)->invoke('get_trend_range_totals', '{}'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(data_get($arc, 'range'))->toBe('6w')
+        ->and(data_get($arc, 'current.runs'))->toBe(1)
+        ->and(data_get($arc, 'current.distance_km'))->toEqual(5.0);
+    Carbon::setTestNow();
+});
 
 it('WeekTotalsTool reads the previous week deltas when a prior snapshot exists', function (): void {
     $user = User::factory()->create();
@@ -1829,7 +1872,6 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     expect($declared)->toBe([
         'MonthlyRecapNarrator' => 6,
         'TrendReadNarrator' => 6,
-        'WeeklyRecapNarrator' => 6,
     ]);
 });
 
@@ -1855,17 +1897,53 @@ it('MonthlyRecapNarrator prompt makes the mood step conditional on mood_mix', fu
         ->and($prompt)->not->toContain('—');
 });
 
-it('recap prompts give storytelling room (3-4 sentences, no rigid word cap)', function (string $narrator): void {
-    $prompt = narratorPrompt($narrator);
+it('monthly recap prompt gives storytelling room (3-4 sentences, no rigid word cap)', function (): void {
+    $prompt = narratorPrompt(MonthlyRecapNarrator::class);
 
     expect($prompt)->toContain('3-4 sentences')
         ->and($prompt)->toContain("don't ramble")
         ->and($prompt)->not->toContain('maksimal 90 kata')
         ->and($prompt)->not->toContain('maksimal 100 kata');
-})->with([
-    'weekly' => [WeeklyRecapNarrator::class],
-    'monthly' => [MonthlyRecapNarrator::class],
-]);
+});
+
+it('WeeklyRecapNarrator prompt asks for a headline and one 200-280 word story paragraph, with no sentence count', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(WeeklyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('body (ONE paragraph of 200-280 words')
+        ->toContain('No line breaks, no blank lines')
+        ->toContain('never one sentence per topic')
+        ->and($prompt)->not->toContain('3-4 sentences')
+        ->and($prompt)->not->toContain('maksimal 90 kata')
+        ->and($prompt)->not->toContain('maksimal 100 kata')
+        ->and($prompt)->not->toContain('Close with 1 observation');
+});
+
+it('WeeklyRecapNarrator prompt takes its length from the week, never from padding', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(WeeklyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('WHERE THE LENGTH COMES FROM')
+        ->toContain('by day and by kind')
+        ->toContain('NO PADDING')
+        ->toContain('never to filler');
+});
+
+it('WeeklyRecapNarrator offers exactly the readings its prompt describes and commits to one first', function (): void {
+    $schema = new ReflectionClass(WeeklyRecapNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
+    $prompt = narratorPrompt(WeeklyRecapNarrator::class);
+
+    expect(data_get($schema, 'reading.enum'))->toBe(['vs_last_week', 'plan', 'standout_run', 'records', 'long_arc', 'load']);
+
+    foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
+        expect($reading)->toBeString();
+        assert(is_string($reading));
+        expect($prompt)->toContain("`{$reading}`:");
+    }
+
+    expect($prompt)->toContain('COMMIT FIRST')
+        ->and(preg_replace('/\s+/', ' ', $prompt))->toContain('still says in words which way the week moved');
+});
 
 it('PostRunSpeechNarrator prompt hands the mechanics to the other three lenses', function (): void {
     // The two blocks render side by side, so a speech that re-tells the
@@ -1885,9 +1963,10 @@ it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading 
     $prompt = narratorPrompt(WeeklyRecapNarrator::class);
 
     expect($prompt)
-        ->toContain('max 3 numbers across the ENTIRE output')
+        ->toContain('max 7 numbers across title + body combined')
         ->toContain('for YOU TO READ')
         ->toContain("That's a table, not a story.")
+        ->and($prompt)->not->toContain('max 3 numbers')
         ->and($prompt)->not->toContain('Sebutkan 1-2');
 });
 

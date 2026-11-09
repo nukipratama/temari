@@ -188,14 +188,13 @@ describe('WeekSection', () => {
         render(
             <WeekSection
                 bucket={bucket()}
-                snapshot={snapshot({ monotony: 2.1, avg_decoupling_v2: 9.4 })}
+                snapshot={snapshot({ avg_decoupling_v2: 13.4 })}
                 notes={{}}
                 moods={{}}
             />,
         );
 
-        expect(screen.getByText('2.10')).toBeInTheDocument();
-        expect(screen.getByText('9.4%')).toBeInTheDocument();
+        expect(screen.getByText('13.4%')).toBeInTheDocument();
     });
 
     describe('weekly recap fallback', () => {

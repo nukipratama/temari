@@ -11,8 +11,6 @@ import {
 import { METRIC_GLOSSARY } from '@/lib/metricGlossary';
 import { DECOUPLING_HIGH_PCT } from '@/types/generated';
 
-const MONOTONY_ALERT_AT = 1.5;
-
 interface StatMetric {
     key: string;
     word: string;
@@ -23,30 +21,6 @@ interface StatMetric {
 
 function buildMetrics(snapshot: WeeklySnapshotWithRecap): StatMetric[] {
     const metrics: StatMetric[] = [];
-
-    if (snapshot.atl_7d !== null) {
-        metrics.push({
-            key: 'atl',
-            word: 'short-term load',
-            value: snapshot.atl_7d.toFixed(1),
-            flagged: false,
-            explanation: METRIC_GLOSSARY.atl.body,
-        });
-    }
-
-    if (snapshot.monotony !== null) {
-        const flagged = snapshot.monotony >= MONOTONY_ALERT_AT;
-        const value = snapshot.monotony.toFixed(2);
-        metrics.push({
-            key: 'monotony',
-            word: 'variety',
-            value,
-            flagged,
-            explanation: flagged
-                ? `variety ${value}: every day looked the same this week. an easy or rest day breaks it up.`
-                : METRIC_GLOSSARY.monotony.body,
-        });
-    }
 
     if (snapshot.avg_decoupling_v2 !== null) {
         const flagged = snapshot.avg_decoupling_v2 >= DECOUPLING_HIGH_PCT;

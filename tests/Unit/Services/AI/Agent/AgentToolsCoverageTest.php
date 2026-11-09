@@ -10,6 +10,8 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\Tools\WeekRecordsTool;
+use App\Services\AI\Agent\Tools\WeekRunsTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
@@ -97,6 +99,8 @@ function agentToolFor(string $class): AgentTool
         GetThreadTool::class => new GetThreadTool($a, 1),
         CardIdentityTool::class => new CardIdentityTool(RunCard::factory()->create(['activity_id' => $a->id])),
         WeekTotalsTool::class => new WeekTotalsTool(WeeklySnapshot::factory()->for($user)->create()),
+        WeekRunsTool::class => new WeekRunsTool(WeeklySnapshot::factory()->for($user)->create(), app(VerdictNarrator::class)),
+        WeekRecordsTool::class => new WeekRecordsTool(WeeklySnapshot::factory()->for($user)->create()),
         MonthTotalsTool::class => new MonthTotalsTool($user, $today->format('Y-m')),
         TrendRangeTool::class => new TrendRangeTool($user, '7d', new TrainingLoad()),
         LifetimeStatsTool::class => new LifetimeStatsTool($user, $today, app(LifetimeStats::class)),
@@ -147,6 +151,8 @@ it('gives every tool an argument-free schema, so none can be pointed at another 
     WeatherTool::class => [WeatherTool::class],
     WeekStateTool::class => [WeekStateTool::class],
     WeekTotalsTool::class => [WeekTotalsTool::class],
+    WeekRunsTool::class => [WeekRunsTool::class],
+    WeekRecordsTool::class => [WeekRecordsTool::class],
 ]);
 
 // ── GetThreadTool ─────────────────────────────────────────────────────

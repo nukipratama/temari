@@ -3,11 +3,13 @@ title: Recaps (weekly / monthly / persona)
 description: Temari's narrative recaps surfaced across the app — weekly on the Feed, monthly on the Calendar, persona/profile voice on Profile
 tags: [feature, recaps]
 status: living
-reviewed: 2026-09-06
+reviewed: 2026-11-09
 code_refs:
   - resources/js/components/history/RecapCard.tsx
   - resources/js/pages/Activities/Feed.tsx
   - resources/js/components/history/WeekSection.tsx
+  - resources/js/components/history/WeeklyStatLine.tsx
+  - app/Services/AI/Narrators/WeeklyRecapNarrator.php
   - resources/js/pages/Activities/Calendar.tsx
   - resources/js/components/temari/AnalysisStatus.tsx
   - app/Http/Controllers/HistoryController.php
@@ -32,6 +34,12 @@ Every recap is an `Analysis` row surfaced through the shared [AnalysisStatus](re
 ## Weekly recap — on the run log (`/history`, list view)
 
 Rendered inside each [WeekSection](resources/js/components/history/WeekSection.tsx) via the shared [RecapCard](resources/js/components/history/RecapCard.tsx) (a mood-ringed Temari beside a single column: the metric chips on one wrapping row, then the narration under them). `RecapCard` is `chained`, forwards `isChainHead`, and keeps a rule-based `fallback` (`ruleBasedFallback`, alongside it — "You ran Nx this week for N km.") visible whenever `analysis.status !== 'done'`, so the block never looks empty.
+
+The chips are the [WeeklyStatLine](resources/js/components/history/WeeklyStatLine.tsx): **load balance** and **drift** only, drift showing only when the week has a version 2 decoupling reading. Short-term load and variety (monotony) are not chips: the story carries them when they matter.
+
+**Shape.** [WeeklyRecapNarrator](app/Services/AI/Narrators/WeeklyRecapNarrator.php) writes a **headline** (one short sentence, the takeaway) and **one story paragraph** of 200-280 words, stored as JSON `{title, body}` content and rendered by `AnalysisStatus` as the headline over the body. The model first commits to one `reading` (`vs_last_week`, `plan`, `standout_run`, `records`, `long_arc` or `load`), which is required but never stored; every number belongs to that reading, at most 7 across headline and body. Rows written before the redesign, and the rule-based filler, are plain text and render as body only.
+
+**Tools.** The narrator fetches the week itself: `get_week_totals` ([WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php), totals, load and last week), `get_week_runs` ([WeekRunsTool](app/Services/AI/Agent/Tools/WeekRunsTool.php), every run Monday to Sunday with its plan match, grade and one-line verdict), `get_planned_sessions` ([PlanContextTool](app/Services/AI/Agent/Tools/PlanContextTool.php)), `get_week_records` ([WeekRecordsTool](app/Services/AI/Agent/Tools/WeekRecordsTool.php), standing PRs a run that week set) and `get_trend_range_totals` ([TrendRangeTool](app/Services/AI/Agent/Tools/TrendRangeTool.php) over `6w`, read as of the week's Sunday so a regenerated past week reads the arc as it stood then). Every tool is bound to the snapshot's own week, never to today.
 
 `HistoryController`'s list branch supplies it: each `WeeklySnapshot` is mapped with `recap_analysis` (from `recapAnalysesFor`, type `AnalysisType::WeeklyRecap`), `is_current_week` (the in-progress week → `awaitingSchedule`, trigger suppressed), and `is_chain_head` (`chainHeadId` = latest completed week with runs > 0, the only link that may regenerate).
 

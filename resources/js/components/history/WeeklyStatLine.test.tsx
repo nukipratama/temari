@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { WeeklySnapshotWithRecap } from '@/types/inertia';
 
+import { METRIC_GLOSSARY } from '@/lib/metricGlossary';
+
 import WeeklyStatLine from './WeeklyStatLine';
 
 function snapshot(
@@ -40,25 +42,27 @@ function snapshot(
 }
 
 describe('WeeklyStatLine', () => {
-    it('names every metric the week scored, in one stat line', () => {
+    it('names drift and load balance, in one stat line', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
         expect(
-            screen.getByRole('button', { name: 'short-term load' }),
-        ).toBeInTheDocument();
-        expect(screen.getByText('73.6')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'variety' }),
-        ).toBeInTheDocument();
-        expect(screen.getByText('1.15')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'drift' }),
-        ).toBeInTheDocument();
+            screen.getAllByRole('button').map((button) => button.textContent),
+        ).toEqual(['drift', 'load balance']);
         expect(screen.getByText('3.2%')).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'load balance' }),
-        ).toBeInTheDocument();
         expect(screen.getByText('steady')).toBeInTheDocument();
+    });
+
+    it('never shows short-term load or variety, which the recap story carries instead', () => {
+        render(<WeeklyStatLine snapshot={snapshot()} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'short-term load' }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole('button', { name: 'variety' }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText('73.6')).not.toBeInTheDocument();
+        expect(screen.queryByText('1.15')).not.toBeInTheDocument();
     });
 
     it('never shows load/TRIMP: the week header already carries it', () => {
@@ -73,8 +77,6 @@ describe('WeeklyStatLine', () => {
         const { container } = render(
             <WeeklyStatLine
                 snapshot={snapshot({
-                    atl_7d: null,
-                    monotony: null,
                     avg_decoupling_v2: null,
                     form_status: null,
                 })}
@@ -107,50 +109,41 @@ describe('WeeklyStatLine', () => {
             screen.queryByRole('button', { name: 'load balance' }),
         ).not.toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'short-term load' }),
+            screen.getByRole('button', { name: 'drift' }),
         ).toBeInTheDocument();
     });
 
     it('reveals a plain explanation when a metric word is tapped', () => {
         render(<WeeklyStatLine snapshot={snapshot()} />);
 
-        const shortTerm = screen.getByRole('button', {
-            name: 'short-term load',
-        });
-        expect(shortTerm).toHaveAttribute('aria-expanded', 'false');
+        const drift = screen.getByRole('button', { name: 'drift' });
+        expect(drift).toHaveAttribute('aria-expanded', 'false');
 
-        fireEvent.click(shortTerm);
+        fireEvent.click(drift);
 
-        expect(shortTerm).toHaveAttribute('aria-expanded', 'true');
+        expect(drift).toHaveAttribute('aria-expanded', 'true');
         expect(
-            screen.getByText(/your running load over about the last week/),
+            screen.getByText(METRIC_GLOSSARY.decoupling.body),
         ).toBeInTheDocument();
 
-        fireEvent.click(shortTerm);
+        fireEvent.click(drift);
 
-        expect(shortTerm).toHaveAttribute('aria-expanded', 'false');
+        expect(drift).toHaveAttribute('aria-expanded', 'false');
         expect(
-            screen.queryByText(/your running load over about the last week/),
+            screen.queryByText(METRIC_GLOSSARY.decoupling.body),
         ).not.toBeInTheDocument();
     });
 
-    it('flags a metric past its alarm threshold in ember, open by default with a deterministic read', () => {
+    it('flags drift past its alarm threshold in ember, open by default with a deterministic read', () => {
         render(
-            <WeeklyStatLine
-                snapshot={snapshot({ monotony: 1.8, avg_decoupling_v2: 13.4 })}
-            />,
+            <WeeklyStatLine snapshot={snapshot({ avg_decoupling_v2: 13.4 })} />,
         );
 
-        const variety = screen.getByRole('button', { name: 'variety' });
         const drift = screen.getByRole('button', { name: 'drift' });
-        expect(variety).toHaveClass('text-ember-ink');
         expect(drift).toHaveClass('text-ember-ink');
-        expect(variety).toHaveAttribute('aria-expanded', 'true');
         expect(drift).toHaveAttribute('aria-expanded', 'true');
-
-        expect(screen.getByText(/variety 1.80:/)).toBeInTheDocument();
-        expect(screen.queryByText(/injury/)).not.toBeInTheDocument();
         expect(screen.getByText(/drift 13.4%:/)).toBeInTheDocument();
+        expect(screen.queryByText(/injury/)).not.toBeInTheDocument();
     });
 
     it('lets a flagged metric be dismissed by tapping it', () => {
@@ -165,14 +158,6 @@ describe('WeeklyStatLine', () => {
 
         expect(drift).toHaveAttribute('aria-expanded', 'false');
         expect(screen.queryByText(/drift 13.4%:/)).not.toBeInTheDocument();
-    });
-
-    it('does not flag short-term load, which has no alarm threshold', () => {
-        render(<WeeklyStatLine snapshot={snapshot()} />);
-
-        expect(
-            screen.getByRole('button', { name: 'short-term load' }),
-        ).not.toHaveClass('text-ember-ink');
     });
 
     it.each([

@@ -124,4 +124,35 @@ describe('RecapCard', () => {
 
         expect(screen.queryByTestId('recap-secondary')).not.toBeInTheDocument();
     });
+
+    it('renders a titled story as the headline over one body paragraph', () => {
+        const body = Array.from(
+            { length: 24 },
+            (_, i) => `sentence ${i + 1} of the week carries one more run.`,
+        ).join(' ');
+        render(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({
+                    title: 'the long run held a lighter week together.',
+                    content: body,
+                })}
+                chips={<span>load balance steady</span>}
+            />,
+        );
+
+        const headline = screen.getByText(
+            'the long run held a lighter week together.',
+        );
+        const story = screen.getByText(body);
+        expect(story.tagName).toBe('P');
+        expect(story).toHaveClass('narration-dense');
+        expect(
+            headline.compareDocumentPosition(story) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.getByTestId('recap-secondary')).toHaveTextContent(
+            'load balance steady',
+        );
+    });
 });

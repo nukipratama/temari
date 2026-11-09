@@ -175,3 +175,26 @@ it('declares the 6w window without widening the Trends read ranges', function ()
     expect(TrendRangeTool::RANGE_DAYS)->toBe(['7d' => 7, '6w' => 42])
         ->and(AnalysisType::TREND_READ_RANGES)->toBe(['7d']);
 });
+
+it('reads the range as of a past date instead of today when given one', function (): void {
+    $user = User::factory()->create();
+    for ($i = 0; $i < 84; $i++) {
+        seedTrendRun($user, 119 - $i, 80.0);
+    }
+    seedTrendRun($user, 10, 999.0, 9000.0);
+    TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today()->subDays(77), 'vdot' => 41.0]);
+    TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today()->subDays(36), 'vdot' => 43.0]);
+    TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today(), 'vdot' => 47.0]);
+    $asOf = Carbon::today()->subDays(36);
+
+    $context = new TrendRangeTool($user, '6w', trendRangeTrainingLoad(), $asOf)->handle([]);
+    $ctlSeries = trendRangeTrainingLoad()->ctlTrend($user, 42, $asOf);
+
+    expect($context['current']['runs'])->toBe(42)
+        ->and($context['current']['trimp_total'])->toBe(3360.0)
+        ->and($context['comparison']['runs'])->toBe(42)
+        ->and($context['ctl_start'])->toBe($ctlSeries[0]['ctl'])
+        ->and($context['ctl_end'])->toBe(nonNull(array_last($ctlSeries))['ctl'])
+        ->and($context['vdot_start'])->toBe(41.0)
+        ->and($context['vdot_end'])->toBe(43.0);
+});

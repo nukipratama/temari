@@ -97,8 +97,8 @@ visit carrying `?weeks=` two higher, and the server ships exactly that many week
 sections. Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
 renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
-Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
-variety/monotony, drift/decoupling, form/readiness word), then the runs via
+Temari, narration, a tappable `WeeklyStatLine` — drift/decoupling and the
+load balance word), then the runs via
 [RunListRow](../../resources/js/components/run/RunListRow.tsx) (the title, km and
 card sparkle own the first line; the date and time sit at the right of the
 time/pace/bpm line and drop to their own line on narrow screens). The stat line

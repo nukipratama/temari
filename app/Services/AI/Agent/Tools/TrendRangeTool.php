@@ -12,8 +12,8 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about (`7d` or `6w`), read as of now. The comparison is against the
- * immediately preceding period of the same length.
+ * The range a narration is about (`7d` or `6w`), read as of `$asOf` (today when null). The comparison is
+ * against the immediately preceding period of the same length.
  *
  * @phpstan-type PeriodTotals array{runs: int, distance_km: float, trimp_total: float|null}
  * @phpstan-type RangeTotals array{range: string, current: PeriodTotals, comparison: PeriodTotals, ctl_start: float|null, ctl_end: float|null, vdot_start: float|null, vdot_end: float|null, avg_monotony: float|null, avg_strain: float|null}
@@ -31,6 +31,7 @@ final class TrendRangeTool extends NoArgumentTool
         private readonly User $user,
         private readonly string $range,
         private readonly TrainingLoad $trainingLoad,
+        private readonly ?Carbon $asOf = null,
     ) {
     }
 
@@ -52,14 +53,14 @@ final class TrendRangeTool extends NoArgumentTool
     public function handle(array $arguments): array
     {
         $days = self::RANGE_DAYS[$this->range];
-        $today = Carbon::today();
+        $today = ($this->asOf ?? Carbon::today())->copy()->startOfDay();
 
         $currentStart = $today->copy()->subDays($days - 1);
         $comparisonStart = $currentStart->copy()->subDays($days);
         $comparisonEnd = $currentStart->copy()->subDay();
 
-        $ctlSeries = $this->trainingLoad->ctlTrend($this->user, $days);
-        $strainSeries = $this->trainingLoad->strainMonotonyTrend($this->user, $days);
+        $ctlSeries = $this->trainingLoad->ctlTrend($this->user, $days, $today);
+        $strainSeries = $this->trainingLoad->strainMonotonyTrend($this->user, $days, $today);
 
         return [
             'range' => $this->range,
