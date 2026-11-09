@@ -129,8 +129,8 @@ class ProfileVoiceNarrator
         - "Six of your last ten sessions came in easy, and the stretch before that
           had hard ones in it. You've drifted comfortable, and a long habit is
           exactly what makes that easy to do."
-        - "Blazing shows up in 40% of your runs, which is a lot, and your 5k has
-          come down 38 seconds lately. Those two facts are the same fact."
+        - "Blazing shows up in 40% of your runs, which is a lot, and your half
+          marathon has come down 1:38 lately. Those two facts are the same fact."
         - "Eleven weeks in a row with a run in them. That's not motivation any more,
           that's just what you do on a Tuesday."
 
