@@ -336,4 +336,55 @@ describe('CalendarGrid', () => {
             screen.getByText(/Steady week, one strong effort/),
         ).toBeInTheDocument();
     });
+
+    it('keeps an untitled legacy recap in its decorative quotes at the dense size', () => {
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, snapshot()]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+
+        const story = screen.getByText(/Steady week, one strong effort/);
+        expect(story).toHaveClass('narration-dense');
+        expect(story.textContent).toBe('"Steady week, one strong effort."');
+    });
+
+    it('draws a titled recap as a headline over the story, with no quote marks, paragraphs kept, at prose width', () => {
+        const body = 'The long run held.\n\nThe **tempo** got away.';
+        const titled = snapshot();
+        titled.recap_analysis = {
+            ...titled.recap_analysis,
+            title: 'the long run carried a short week.',
+            content: body,
+        };
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, titled]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+
+        const headline = screen.getByRole('heading', {
+            level: 3,
+            name: 'the long run carried a short week.',
+        });
+        const story = screen.getByText(/The long run held\./);
+        expect(story).toHaveClass('narration');
+        expect(story).not.toHaveClass('narration-dense');
+        expect(story.textContent).toBe(
+            'The long run held.\n\nThe tempo got away.',
+        );
+        expect(story.closest('.whitespace-pre-line')).not.toBeNull();
+        expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
+            headline,
+        );
+        expect(screen.getByText('tempo').tagName).toBe('STRONG');
+    });
 });

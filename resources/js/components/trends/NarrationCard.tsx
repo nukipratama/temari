@@ -71,7 +71,7 @@ export default function NarrationCard({
                     renderContent={(content) => {
                         if (titled) {
                             return (
-                                <p className="narration-dense">
+                                <p className="narration">
                                     {renderBold(content)}
                                 </p>
                             );

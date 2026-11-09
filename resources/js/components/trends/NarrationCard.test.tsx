@@ -62,6 +62,9 @@ describe('NarrationCard', () => {
         );
         const story = screen.getByText(/The supported time came down\./);
         expect(headline).toHaveClass('font-serif');
+        expect(headline.tagName).toBe('H3');
+        expect(story).toHaveClass('narration');
+        expect(story).not.toHaveClass('narration-dense');
         expect(story.textContent).toBe(
             'The supported time came down.\n\nThe long run carried it.',
         );

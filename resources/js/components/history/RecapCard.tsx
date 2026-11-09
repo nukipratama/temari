@@ -79,9 +79,7 @@ export default function RecapCard({
                     isChainHead={isChainHead}
                     size="sm"
                     renderContent={(content) => (
-                        <p className="narration-dense m-0">
-                            {renderBold(content)}
-                        </p>
+                        <p className="narration m-0">{renderBold(content)}</p>
                     )}
                 />
                 {fallback && analysis.status !== 'done' && (

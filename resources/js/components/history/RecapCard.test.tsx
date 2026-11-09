@@ -152,6 +152,7 @@ describe('RecapCard', () => {
         );
         const story = nonNullStory(container);
         expect(story.textContent).toBe(body);
+        expect(story).not.toHaveClass('narration-dense');
         expect(story.closest('.whitespace-pre-line')).not.toBeNull();
         expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
             headline,
@@ -167,7 +168,7 @@ describe('RecapCard', () => {
 });
 
 function nonNullStory(container: HTMLElement): HTMLElement {
-    const story = container.querySelector<HTMLElement>('p.narration-dense');
+    const story = container.querySelector<HTMLElement>('p.narration');
     expect(story).not.toBeNull();
 
     return story as HTMLElement;

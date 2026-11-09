@@ -256,8 +256,16 @@ function WeekRecapPanel({
     week: WeekRow;
     snapshot: WeeklySnapshotWithRecap;
 }>) {
+    const titled = (snapshot.recap_analysis.title ?? '') !== '';
+
     return (
-        <div id={id} className="mt-1.5 mb-1 rounded-sm bg-muted px-3 py-2.5">
+        <div
+            id={id}
+            className={cn(
+                'mt-1.5 mb-1 rounded-sm bg-muted px-3 py-2.5',
+                titled && '[&_p]:max-w-prose',
+            )}
+        >
             <AnalysisStatus
                 analysis={snapshot.recap_analysis}
                 thinkingMark
@@ -266,11 +274,15 @@ function WeekRecapPanel({
                 chained
                 isChainHead={snapshot.is_chain_head}
                 size="sm"
-                renderContent={(content) => (
-                    <p className="narration-dense m-0">
-                        &quot;{renderBold(stripEdgeQuotes(content))}&quot;
-                    </p>
-                )}
+                renderContent={(content) =>
+                    titled ? (
+                        <p className="narration m-0">{renderBold(content)}</p>
+                    ) : (
+                        <p className="narration-dense m-0">
+                            &quot;{renderBold(stripEdgeQuotes(content))}&quot;
+                        </p>
+                    )
+                }
             />
             <div className="mt-1.75 flex flex-wrap items-start gap-1.5">
                 <WeeklyStatLine snapshot={snapshot} />
