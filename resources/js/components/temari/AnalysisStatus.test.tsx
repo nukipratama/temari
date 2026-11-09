@@ -141,17 +141,19 @@ describe('AnalysisStatus', () => {
                 screen.getByText('a quiet week'),
             );
             expect(clampBox().style.maxHeight).toBe(
-                `${NARRATION_LINE_HEIGHT * 4}px`,
+                `${NARRATION_LINE_HEIGHT * 4 + 8}px`,
             );
             expect(clampBox().style.maskImage).toContain('linear-gradient');
             expect(clampBox()).toHaveClass(
+                '-m-1',
+                'p-1',
                 'overflow-hidden',
                 'motion-reduce:transition-none',
             );
 
             fireEvent.click(toggle);
 
-            expect(clampBox().style.maxHeight).toBe('200px');
+            expect(clampBox().style.maxHeight).toBe('208px');
             expect(clampBox().style.maskImage).toBe('');
             expect(
                 screen.getByRole('button', { name: 'show less' }),
@@ -160,7 +162,7 @@ describe('AnalysisStatus', () => {
             fireEvent.click(screen.getByRole('button', { name: 'show less' }));
 
             expect(clampBox().style.maxHeight).toBe(
-                `${NARRATION_LINE_HEIGHT * 4}px`,
+                `${NARRATION_LINE_HEIGHT * 4 + 8}px`,
             );
         });
 

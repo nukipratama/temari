@@ -116,6 +116,9 @@ interface Props {
 
 const CLAMP_LINES = 4;
 
+/** Room inside the clipped box for a citation's 4px `focus-ring`, given back by a matching negative margin. */
+const RING_ROOM = 4;
+
 interface Clamp {
     collapsedHeight: number;
     fullHeight: number;
@@ -172,12 +175,16 @@ function clampStyle(
         return undefined;
     }
     if (expanded) {
-        return { maxHeight: clamp.fullHeight };
+        return { maxHeight: clamp.fullHeight + 2 * RING_ROOM };
     }
-    const opaque = clamp.collapsedHeight * ((CLAMP_LINES - 1.5) / CLAMP_LINES);
+    const opaque =
+        RING_ROOM + clamp.collapsedHeight * ((CLAMP_LINES - 1.5) / CLAMP_LINES);
     const fade = `linear-gradient(to bottom, #000 ${opaque}px, transparent)`;
 
-    return { maxHeight: clamp.collapsedHeight, maskImage: fade };
+    return {
+        maxHeight: clamp.collapsedHeight + 2 * RING_ROOM,
+        maskImage: fade,
+    };
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -331,7 +338,7 @@ export default function AnalysisStatus({
                         onFocus={() => clamp !== null && setExpanded(true)}
                         className={cn(
                             clamp !== null &&
-                                'overflow-hidden transition-[max-height] duration-200 ease-out motion-reduce:transition-none',
+                                '-m-1 overflow-hidden p-1 transition-[max-height] duration-200 ease-out motion-reduce:transition-none',
                         )}
                     >
                         <div ref={bodyRef}>
