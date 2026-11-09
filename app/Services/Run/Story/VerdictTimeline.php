@@ -121,11 +121,13 @@ class VerdictTimeline implements VerdictNarrator
                 continue;
             }
 
+            $speech = $speechByActivity->get($line->activity_id)?->narration();
+
             $items[] = new VerdictTimelineItem(
                 activityId: (int) $line->activity_id,
                 mood: $line->mood,
                 moodFace: $this->moodFace($line->mood),
-                oneline: $speechByActivity->get($line->activity_id)?->narration()->body ?? '',
+                oneline: $speech->title ?? $speech->body ?? '',
                 startedAt: $detail->start_date_local,
                 distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
                 intensity: $this->intensity($detail->trimp_edwards, $detail->elapsed_time),

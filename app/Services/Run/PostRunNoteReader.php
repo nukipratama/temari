@@ -15,7 +15,8 @@ use App\Enums\Mood;
 /**
  * Composite read for a run's post-run note: the mood comes from the
  * post-run {@see StoryLine}, the one-liner from the {@see Analysis} row
- * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done.
+ * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done:
+ * its title, or its body when it has none.
  *
  * Centralised so the page controllers (History / Today) share one produced
  * shape instead of drifting.
@@ -36,14 +37,12 @@ class PostRunNoteReader
             ->value('mood');
         assert($mood === null || $mood instanceof Mood);
 
-        $oneline = Analysis::query()
+        $oneline = self::oneline(Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->where('subject_id', $activityId)
-            ->first(['content'])
-            ?->narration()
-            ?->body;
+            ->first(['content']));
 
         if (!$mood instanceof Mood || $oneline === null || $oneline === '') {
             return null;
@@ -91,7 +90,7 @@ class PostRunNoteReader
 
         $notes = [];
         foreach ($activityIds as $id) {
-            $oneline = $speechByActivity->get($id)?->narration()?->body;
+            $oneline = self::oneline($speechByActivity->get($id));
             $mood = $moodByActivity[$id] ?? null;
             if ($oneline === null || $oneline === '' || $mood === null) {
                 continue;
@@ -100,6 +99,13 @@ class PostRunNoteReader
         }
 
         return ['notes' => $notes, 'moods' => $moodByActivity];
+    }
+
+    private static function oneline(?Analysis $speech): ?string
+    {
+        $narration = $speech?->narration();
+
+        return $narration->title ?? $narration?->body;
     }
 
     /**

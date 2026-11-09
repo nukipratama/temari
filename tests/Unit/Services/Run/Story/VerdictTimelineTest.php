@@ -89,15 +89,19 @@ it('skips a story line whose speech is Done but empty', function (): void {
         ->and(app(VerdictTimeline::class)->recent($user))->toBe([]);
 });
 
-it('reads the body of a JSON speech as the verdict oneline', function (): void {
+it('reads the title of a JSON speech as the verdict oneline, and the body when it has none', function (string $content, string $oneline): void {
     $user = User::factory()->create();
-    seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Mood::Blazing, '{"title":"held it together","body":"A strong morning run.","claims":[]}', 5000.0);
+    seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Mood::Blazing, $content, 5000.0);
 
     $items = app(VerdictTimeline::class)->recent($user);
 
     expect($items)->toHaveCount(1)
-        ->and($items[0]->oneline)->toBe('A strong morning run.');
-});
+        ->and($items[0]->oneline)->toBe($oneline);
+})->with([
+    'a merged speech' => ['{"title":"held it together","body":"A strong morning run.","claims":[]}', 'held it together'],
+    'a rule-based speech with claims but no title' => ['{"title":null,"body":"8 km on the board.","claims":[]}', '8 km on the board.'],
+    'a plain old speech' => ['A strong morning run.', 'A strong morning run.'],
+]);
 
 it('returns exactly the newest $limit activities when more qualify', function (): void {
     $user = User::factory()->create();
