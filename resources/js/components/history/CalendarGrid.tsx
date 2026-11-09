@@ -274,6 +274,7 @@ function WeekRecapPanel({
                 chained
                 isChainHead={snapshot.is_chain_head}
                 size="sm"
+                collapsible
                 renderContent={(content) =>
                     titled ? (
                         <p className="narration m-0">{renderBold(content)}</p>

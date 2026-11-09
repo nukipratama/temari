@@ -220,12 +220,12 @@ it('PostRunSpeechNarrator offers exactly the readings its prompt describes and c
         ->and($prompt)->toContain('The seven, and `reading` takes exactly one of these values');
 });
 
-it('PostRunSpeechNarrator prompt asks for a headline and a 200-300 word story in 2-3 connected paragraphs, at most 7 numbers outside the claims', function (): void {
+it('PostRunSpeechNarrator prompt asks for a headline and a 150-220 word story in 2 connected paragraphs, at most 7 numbers outside the claims', function (): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
 
     expect($prompt)
-        ->toContain('body (2-3 paragraphs, 200-300 words in total')
-        ->toContain('2-3 paragraphs separated by one blank line')
+        ->toContain('body (2 paragraphs, 150-220 words in total')
+        ->toContain('2 paragraphs separated by one blank line')
         ->toContain('at least 3 connected sentences')
         ->toContain('one beat of the same reading')
         ->toContain('never one topic per paragraph like a checklist')
@@ -233,6 +233,8 @@ it('PostRunSpeechNarrator prompt asks for a headline and a 200-300 word story in
         ->toContain("The claims carry their own figures in value and delta, and those don't count against it")
         ->toContain('NO PADDING')
         ->and($prompt)->not->toContain('max 75 words')
+        ->and($prompt)->not->toContain('200-300')
+        ->and($prompt)->not->toContain('2-3 paragraphs')
         ->and($prompt)->not->toContain('2-4 sentences');
 });
 

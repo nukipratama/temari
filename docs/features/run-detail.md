@@ -174,11 +174,11 @@ controller resolves from `RunController::RUN_INSIGHT_TYPES`.
 [PostRunSpeechNarrator](../../app/Services/AI/Narrators/PostRunSpeechNarrator.php)),
 one call that commits to a single reading of the run (`pacing`, `heart_rate`,
 `effort_vs_usual`, `plan`, `record`, `conditions` or `week_arc`) and returns
-`{title, body, claims}`: a lowercase headline, a 200-300 word body in 2-3
+`{title, body, claims}`: a lowercase headline, a 150-220 word body in 2
 connected paragraphs, and 0-3 claims that each back the reading with one
 concrete thing. The card renders it as one block: the headline, the body capped
 at prose width with its paragraph breaks kept, then the claims under a dashed
-hairline. `RunController` sends the claims beside the `title` and `content`
+hairline. The run page is a destination, so the story is always expanded and draws no `read more` toggle. `RunController` sends the claims beside the `title` and `content`
 (body) every narration payload carries. Each claim is `{anchor, text, value?,
 delta?}`, with its value and delta as chips and a control that scrolls to the
 reading it names.

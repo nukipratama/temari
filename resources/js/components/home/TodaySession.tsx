@@ -385,6 +385,7 @@ export default function TodaySession({
                         analysis={voice}
                         inertiaReloadProps={['briefing']}
                         allowReanalyze={false}
+                        collapsible
                         awaitingSchedule={briefing.firstRead}
                         awaitingScheduleLabel="temari is reading your first week…"
                         renderContent={(text) => (

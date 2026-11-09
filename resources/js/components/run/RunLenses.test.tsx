@@ -442,6 +442,7 @@ describe('RunLenses merged story', () => {
         expect(screen.getByText('+4% vs 28d avg')).toBeInTheDocument();
         expect(screen.queryByText("This run's story")).toBeNull();
         expect(screen.queryByText('What stood out')).toBeNull();
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
     });
 
     it('hides an old run insight block once the story is merged', () => {

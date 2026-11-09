@@ -370,6 +370,7 @@ describe('CalendarGrid', () => {
             />,
         );
         fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
 
         const headline = screen.getByRole('heading', {
             level: 3,
@@ -386,5 +387,55 @@ describe('CalendarGrid', () => {
             headline,
         );
         expect(screen.getByText('tempo').tagName).toBe('STRONG');
+    });
+
+    it('collapses a titled multi-paragraph week recap behind a toggle that starts closed on every open', () => {
+        const titled = snapshot();
+        titled.recap_analysis = {
+            ...titled.recap_analysis,
+            title: 'the long run carried a short week.',
+            content: 'The long run held.\n\nThe **tempo** got away.',
+        };
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, titled]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        const weekButton = screen.getByRole('button', { name: /week 1/ });
+        fireEvent.click(weekButton);
+
+        expect(screen.getByText('The long run held.')).toBeInTheDocument();
+        expect(screen.queryByText(/got away/)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
+        expect(screen.getByText('tempo').tagName).toBe('STRONG');
+        expect(
+            screen.getByRole('button', { name: 'show less' }),
+        ).toHaveAttribute('aria-expanded', 'true');
+
+        fireEvent.click(weekButton);
+        fireEvent.click(weekButton);
+
+        expect(screen.queryByText(/got away/)).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'read more' }),
+        ).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('draws no toggle on an untitled legacy recap', () => {
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, snapshot()]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
     });
 });

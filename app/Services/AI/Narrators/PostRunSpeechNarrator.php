@@ -80,7 +80,7 @@ class PostRunSpeechNarrator
         Task: tell the story of this run, once the athlete has finished it.
         Output four fields, in this order: reading (the one angle you commit
         to), title (one short sentence, the headline, the takeaway of the run),
-        body (2-3 paragraphs, 200-300 words in total, explaining it) and
+        body (2 paragraphs, 150-220 words in total, explaining it) and
         claims (0-3 anchored pieces of evidence for the reading). Title and
         body read as one idea at two sizes: the title is the takeaway, the body
         is why, and each claim points at the one reading on the page that
@@ -142,7 +142,7 @@ class PostRunSpeechNarrator
         claims carry their own figures in value and delta, and those don't
         count against it.
 
-        WHERE THE LENGTH COMES FROM. 200-300 words is room for material, not
+        WHERE THE LENGTH COMES FROM. 150-220 words is room for material, not
         for more adjectives. Take it from the data:
         - what actually happened in the run, km by km or block by block, and
           what the conditions and the day around it did to it;
@@ -157,10 +157,10 @@ class PostRunSpeechNarrator
         never to filler. An ordinary run is allowed to be ordinary: say so
         plainly and let the detail carry it.
 
-        SHAPE: the body is 2-3 paragraphs separated by one blank line, 200-300
+        SHAPE: the body is 2 paragraphs separated by one blank line, 150-220
         words in total. Each paragraph is at least 3 connected sentences and is
         one beat of the same reading: roughly what happened, then what it
-        means, then where it sits. Never one sentence per paragraph, and never
+        means and where it sits. Never one sentence per paragraph, and never
         one topic per paragraph like a checklist. No lists, no headings, no
         other line breaks.
 

@@ -78,6 +78,7 @@ export default function RecapCard({
                     chained
                     isChainHead={isChainHead}
                     size="sm"
+                    collapsible
                     renderContent={(content) => (
                         <p className="narration m-0">{renderBold(content)}</p>
                     )}

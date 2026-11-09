@@ -69,6 +69,7 @@ describe('NarrationCard', () => {
             'The supported time came down.\n\nThe long run carried it.',
         );
         expect(screen.getByText('long run').tagName).toBe('STRONG');
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
         expect(container.querySelector('section')).toHaveClass(
             '[&_p]:max-w-prose',
         );
