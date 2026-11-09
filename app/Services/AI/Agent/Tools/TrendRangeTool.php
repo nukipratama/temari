@@ -68,8 +68,8 @@ final class TrendRangeTool extends NoArgumentTool
             'comparison' => $this->periodTotals($comparisonStart, $comparisonEnd),
             'ctl_start' => $ctlSeries === [] ? null : $ctlSeries[0]['ctl'],
             'ctl_end' => $ctlSeries === [] ? null : array_last($ctlSeries)['ctl'],
-            'vdot_start' => $this->vdotNear($currentStart, ascending: true),
-            'vdot_end' => $this->vdotNear($today, ascending: false),
+            'vdot_start' => $this->vdotNear($currentStart, $today, ascending: true),
+            'vdot_end' => $this->vdotNear($today, $today, ascending: false),
             'avg_monotony' => $this->average($strainSeries, 'monotony'),
             'avg_strain' => $this->average($strainSeries, 'strain'),
         ];
@@ -96,10 +96,11 @@ final class TrendRangeTool extends NoArgumentTool
         ];
     }
 
-    private function vdotNear(Carbon $date, bool $ascending): ?float
+    private function vdotNear(Carbon $date, Carbon $through, bool $ascending): ?float
     {
         $query = TrendDailySnapshot::query()
             ->where('user_id', $this->user->id)
+            ->where('snapshot_date', '<=', $through->toDateString())
             ->whereNotNull('vdot');
 
         $value = $ascending

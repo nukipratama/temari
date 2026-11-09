@@ -170,3 +170,13 @@ it('reads the range as of a past date instead of today when given one', function
         ->and($context['vdot_start'])->toBe(41.0)
         ->and($context['vdot_end'])->toBe(43.0);
 });
+
+it('never reads a vdot written after its as-of date as the start of the range', function (): void {
+    $user = User::factory()->create();
+    TrendDailySnapshot::factory()->for($user)->create(['snapshot_date' => Carbon::today(), 'vdot' => 47.0]);
+
+    $context = new TrendRangeTool($user, '6w', trendRangeTrainingLoad(), Carbon::today()->subDays(3))->handle([]);
+
+    expect($context['vdot_start'])->toBeNull()
+        ->and($context['vdot_end'])->toBeNull();
+});
