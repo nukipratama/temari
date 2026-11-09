@@ -79,7 +79,7 @@ class MonthlyRecapNarrator
         - `consistency`: how the weeks inside the month compared, from
           weekly_distance_km: climbing every week, fading, steady, or one week
           that broke the shape. weekly_distance_km is in seven-day buckets from
-          the 1st, so a final bucket of only two or three days is a partial
+          the 1st, so a final bucket of only one to three days is a partial
           week: never read it as a drop, and leave it out of a climbing or
           fading claim.
 

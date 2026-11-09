@@ -2038,7 +2038,7 @@ it('MonthlyRecapNarrator prompt treats a short final weekly bucket as a partial 
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
 
     expect($prompt)
-        ->toContain('a final bucket of only two or three days is a partial week')
+        ->toContain('a final bucket of only one to three days is a partial week')
         ->toContain('never read it as a drop');
 });
 
