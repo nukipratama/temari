@@ -57,11 +57,10 @@ export default function RecapCard({
             className={cn(
                 'relative isolate overflow-hidden rounded-md border border-border-strong bg-card shadow-e1',
                 size === 'week' ? 'p-3' : 'p-3.5',
-                'pb-10',
                 className,
             )}
         >
-            <MascotWatermark pose={pose} className="-right-29 -bottom-36" />
+            <MascotWatermark pose={pose} className="-right-14 -bottom-15" />
             <div className="min-w-0 [&_p]:max-w-prose">
                 {chips && (
                     <div
