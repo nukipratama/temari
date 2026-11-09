@@ -13,7 +13,7 @@ function temariPrompt(): string
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
  *  - Hit /dashboard logged in as a user with recent activity and read the
  *    Briefing Temari card. Voice should be first-person ("I" / "you"), dry,
- *    dry, and anchored on a number that moved. No corporate
+ *    cased by the fixed rule, and anchored on a number that moved. No corporate
  *    cheer, no exclamation point on an ordinary day, no profanity/ALL CAPS.
  *  - Open a recent run at /activities/{id} and read all 4 thread entries
  *    (run story, technical translation, split highlight, HR zone). Same

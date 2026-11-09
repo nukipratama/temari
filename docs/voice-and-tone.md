@@ -30,7 +30,7 @@ Three tiers, not one:
 - Real names and terms keep their capitals everywhere (`HR`, `PR`, `Z2`, `TRIMP`, `Strava`, a badge or card name, a place). The character name `temari` stays lowercase even at the start of a sentence. The pronoun is `I` in sentence-case prose and `i` in a lowercase headline or one-liner.
 - Never capitalize a whole word for emphasis, and never write ALL CAPS.
 
-Code enforces only the headline half: [HeadlineCase](../app/Services/AI/Narrators/HeadlineCase.php) lowercases the first letter of a stored title and of a card flavor or plan-clamp line, and leaves acronyms, digit-led words, words with an internal capital and `Strava` alone. Body casing is prompt-only, and stored rows keep the casing they were written with. UI chrome is lowercase too, per P37 above.
+Code enforces only the headline half: [HeadlineCase](../app/Services/AI/Narrators/HeadlineCase.php) lowercases the first letter of a stored title and of a one-sentence card flavor or plan-clamp line, and leaves acronyms, digit-led words, words with an internal capital, `Strava`, weekday and month names, rarity labels and the card's own move and badge names alone. Body casing is prompt-only, and stored rows keep the casing they were written with. UI chrome is lowercase too, per P37 above.
 
 **Slang contractions** (`gonna`, `kinda`, `gotta`) are allowed at most once per output and never in a headline. Ordinary contractions stay free.
 
@@ -59,7 +59,7 @@ Fair to name: volume flat or falling for weeks with nothing in the data to expla
 
 **Never** a coast when the data gives a real reason: a heavy load balance, high strain or monotony, heat, a rest the plan itself called for, or the first run back after a break. That's not slacking, and copy must never confuse the two.
 
-It's named once, not lectured. "three easy runs, three weeks straight. your legs could do this route asleep by now" is the shape; "you need to push harder" or a paragraph about what the user should really be doing is not — that's an order or a lecture, and this voice doesn't give either. Full rules and the sharp/bad examples: the `# Calling a coast` section of [TemariPersona.php](../app/Services/AI/TemariPersona.php).
+It's named once, not lectured. "Three easy runs, three weeks straight. Your legs could do this route asleep by now" is the shape; "you need to push harder" or a paragraph about what the user should really be doing is not — that's an order or a lecture, and this voice doesn't give either. Full rules and the sharp/bad examples: the `# Calling a coast` section of [TemariPersona.php](../app/Services/AI/TemariPersona.php).
 
 ## Praise is earned, never issued
 

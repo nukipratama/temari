@@ -869,6 +869,7 @@ it('PlanClampVoiceNarrator lowercases an ordinary first word and keeps an acrony
 })->with([
     'an ordinary word' => ['You ran long yesterday, so today is an easy day.', 'you ran long yesterday, so today is an easy day.'],
     'an acronym' => ['HR was high yesterday, so today is an easy day.', 'HR was high yesterday, so today is an easy day.'],
+    'two sentences' => ['Load has been stacking up. Today gives it somewhere to go.', 'Load has been stacking up. Today gives it somewhere to go.'],
 ]);
 
 it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
@@ -1074,6 +1075,18 @@ it('CardFlavorNarrator lowercases an ordinary first word and keeps an acronym', 
 })->with([
     'an ordinary word' => ['Your fastest 5k landed inside this one.', 'your fastest 5k landed inside this one.'],
     'an acronym' => ['HR stayed low the whole way.', 'HR stayed low the whole way.'],
+]);
+
+it('CardFlavorNarrator keeps the card\'s own names and a two-sentence flavor in sentence case', function (string $flavor): void {
+    $card = cardFixture();
+    $card->update(['badges' => ['negative_split']]);
+    $narrator = cardFlavorNarrator(fakeCaller(json_encode(['flavor' => $flavor], JSON_THROW_ON_ERROR)));
+
+    expect($narrator->generate($card))->toBe($flavor);
+})->with([
+    'the special move' => ['Pembara Sabar held the second half quicker than the first.'],
+    'a badge name' => ['Negative Split, and in the rain.'],
+    'two sentences' => ['Your fastest 5k landed inside this one. The Rare label is just the receipt.'],
 ]);
 
 it('CardFlavorNarrator prompt writes its examples by sentence count', function (): void {

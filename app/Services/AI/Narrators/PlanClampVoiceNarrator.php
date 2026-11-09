@@ -85,6 +85,6 @@ class PlanClampVoiceNarrator
 
         assert(is_string($decoded['voice']));
 
-        return HeadlineCase::lower($decoded['voice']);
+        return HeadlineCase::oneLiner($decoded['voice']);
     }
 }

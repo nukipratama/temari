@@ -66,3 +66,26 @@ it('leaves a rarity label alone', function (): void {
         ->and(HeadlineCase::lower('Rare one, this'))->toBe('Rare one, this')
         ->and(HeadlineCase::lower('Rarely this quiet'))->toBe('rarely this quiet');
 });
+
+it('leaves a weekday or month name alone', function (string $text): void {
+    expect(HeadlineCase::lower($text))->toBe($text);
+})->with([
+    'a weekday' => ["Thursday's tempo got away"],
+    'a month' => ['October came in at 112 km'],
+]);
+
+it('leaves a caller-supplied name alone, whole names only', function (): void {
+    expect(HeadlineCase::lower('Steady Tempo held for 40 minutes', ['Steady Tempo']))->toBe('Steady Tempo held for 40 minutes')
+        ->and(HeadlineCase::lower('Metronom, again', ['Metronom']))->toBe('Metronom, again')
+        ->and(HeadlineCase::lower('Steady effort all the way', ['Steady Tempo']))->toBe('steady effort all the way')
+        ->and(HeadlineCase::lower('Metronomic pacing', ['Metronom']))->toBe('metronomic pacing');
+});
+
+it('lowercases a one-liner and leaves a line of two or more sentences in sentence case', function (string $text, string $expected): void {
+    expect(HeadlineCase::oneLiner($text))->toBe($expected);
+})->with([
+    'one sentence' => ['Your fastest 5k landed inside this one.', 'your fastest 5k landed inside this one.'],
+    'a decimal' => ['Ran 28.4 km and it held.', 'ran 28.4 km and it held.'],
+    'two sentences' => ['Your fastest 5k landed inside this one. The Legendary label is just the receipt.', 'Your fastest 5k landed inside this one. The Legendary label is just the receipt.'],
+    'a question then a sentence' => ['Heavy legs? Today is easy.', 'Heavy legs? Today is easy.'],
+]);

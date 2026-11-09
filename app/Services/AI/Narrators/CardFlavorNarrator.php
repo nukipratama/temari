@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Enums\Badge;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\Agent\AgentToolbox;
@@ -133,7 +134,10 @@ class CardFlavorNarrator
 
         assert(is_string($decoded['flavor']));
 
-        return HeadlineCase::lower($decoded['flavor']);
+        return HeadlineCase::oneLiner($decoded['flavor'], [
+            $card->special_move,
+            ...Badge::promptLabelsFor((array) ($card->badges ?? [])),
+        ]);
     }
 
     /**
