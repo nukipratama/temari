@@ -17,6 +17,20 @@ final class HeadlineCase
     /** @param list<string> $names */
     public static function lower(string $text, array $names = []): string
     {
+        $parts = preg_split('/(?<=[.!?])(\s+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) {
+            return self::lowerFirst($text, $names);
+        }
+
+        return implode('', array_map(
+            fn (string $part): string => trim($part) === '' ? $part : self::lowerFirst($part, $names),
+            $parts,
+        ));
+    }
+
+    /** @param list<string> $names */
+    private static function lowerFirst(string $text, array $names): string
+    {
         if (preg_match('/^(\s*)(\S+)(.*)$/su', $text, $match) !== 1) {
             return $text;
         }

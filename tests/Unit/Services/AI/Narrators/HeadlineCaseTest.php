@@ -9,7 +9,9 @@ it('lowercases the first letter of an ordinary first word', function (string $te
 })->with([
     'a plain word' => ['Four easy runs this week', 'four easy runs this week'],
     'an article' => ['A quiet month', 'a quiet month'],
-    'the first sentence of several' => ["The long run carried it. Nothing else did.", "the long run carried it. Nothing else did."],
+    'every sentence of a headline' => ["The long run carried it. Nothing else did.", "the long run carried it. nothing else did."],
+    'a name after a full stop' => ["The tempo slipped. Thursday held.", "the tempo slipped. Thursday held."],
+    'a decimal is not a sentence end' => ["14.2 km. Longest in six weeks.", "14.2 km. longest in six weeks."],
     'a contraction' => ["You're quicker than May", "you're quicker than May"],
     'leading whitespace' => ["  Steady week", "  steady week"],
     'a hyphenated word' => ['Half-marathon fitness', 'half-marathon fitness'],
