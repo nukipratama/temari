@@ -13,6 +13,7 @@ use App\Notifications\Concerns\SetsWebPushExpiry;
 use App\Notifications\Messages\PushBody;
 use App\Notifications\Messages\TelegramMessage;
 use App\Console\Commands\Notifications\MorningBriefingPushCommand;
+use App\Services\AI\Anchor\CitationValidator;
 use App\Services\Notifications\ChannelRouter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -77,7 +78,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
     public function toTelegram(User $notifiable): TelegramMessage
     {
         return new TelegramMessage(
-            text: self::TITLE."\n\n".trim((string) $this->briefing->narration()?->plainText())."\n\nOpen Temari: ".route('dashboard'),
+            text: self::TITLE."\n\n".trim(CitationValidator::unwrapAll((string) $this->briefing->narration()?->plainText()))."\n\nOpen Temari: ".route('dashboard'),
             deliveryKey: $this->deliveryKey(),
         );
     }
@@ -96,7 +97,7 @@ class MorningBriefingNotification extends Notification implements ShouldQueue
                 'topic' => 'briefing',
             ]);
 
-        return PushBody::attach($message, (string) $this->briefing->narration()?->plainText());
+        return PushBody::attach($message, CitationValidator::unwrapAll((string) $this->briefing->narration()?->plainText()));
     }
 
     /** The idempotency key: the briefing row, which is already per athlete per day. */

@@ -52,4 +52,9 @@ final class CitationValidator
             $text,
         );
     }
+
+    public static function unwrapAll(string $text): string
+    {
+        return (string) preg_replace(self::TOKEN, '$1', $text);
+    }
 }

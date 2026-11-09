@@ -41,6 +41,17 @@ it('formats a JSON narration as its headline and body, never the raw JSON', func
         ->and($message)->not->toContain('5:18/km');
 });
 
+it('formats a citation in the narration as its words alone', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => 123,
+        'content' => '{"title":"held it together","body":"The **last** km was [the quickest](split:5)."}',
+    ]);
+
+    expect(new AnalysisMessagePresenter()->format($analysis))
+        ->toStartWith("Your run is in\n\nheld it together\n\nThe **last** km was the quickest.");
+});
+
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([
