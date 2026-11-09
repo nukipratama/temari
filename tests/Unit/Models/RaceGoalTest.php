@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Enums\RaceOutcome;
+use App\Events\RaceGoalChanged;
 use App\Models\RaceGoal;
 use App\Models\User;
 use App\Support\SharedPropCacheKey;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 
 uses(RefreshDatabase::class);
 
@@ -103,3 +105,23 @@ it('casts its outcome, finish time and recorded-at, and reads null for a legacy 
         ->and($recorded->finish_time_sec)->toBeInt()->toBe(2950)
         ->and($recorded->outcome_recorded_at)->toBeInstanceOf(Carbon::class);
 });
+
+it('announces a race set, revised, moved, retired or deleted, and stays quiet on a rename or a reminder stamp', function (Closure $change, int $announced): void {
+    $race = RaceGoal::factory()->create(['name' => 'City half']);
+    $events = Event::fake([RaceGoalChanged::class]);
+
+    $change($race);
+
+    $events->assertDispatchedTimes(RaceGoalChanged::class, $announced);
+    if ($announced > 0) {
+        $events->assertDispatched(RaceGoalChanged::class, fn (RaceGoalChanged $event): bool => $event->userId === $race->user_id);
+    }
+})->with([
+    'set' => [fn (RaceGoal $race) => RaceGoal::factory()->for($race->user)->create(), 1],
+    'goal time' => [fn (RaceGoal $race) => $race->update(['goal_time_sec' => $race->goal_time_sec - 60]), 1],
+    'race date' => [fn (RaceGoal $race) => $race->update(['race_date' => $race->race_date->copy()->addWeek()]), 1],
+    'retired' => [fn (RaceGoal $race) => $race->update(['completed_at' => now()]), 1],
+    'deleted' => [fn (RaceGoal $race) => $race->delete(), 1],
+    'renamed' => [fn (RaceGoal $race) => $race->update(['name' => 'Harbour half']), 0],
+    'reminder stamp' => [fn (RaceGoal $race) => $race->forceFill(['reminded_for_date' => Carbon::today()])->save(), 0],
+]);

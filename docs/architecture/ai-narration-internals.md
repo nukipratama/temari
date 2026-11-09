@@ -3,12 +3,12 @@ title: AI narration internals — context builders & the demo filler
 description: How prompt signals are assembled (context builders) and how copy is produced without the LLM (demo seed + unconfigured env).
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-09
 code_refs:
   - app/Services/AI/Context/ActivityNarrationContext.php
   - app/Services/AI/Agent/AgentToolbox.php
   - app/Services/AI/Agent/Tools/ActivityTool.php
-  - app/Services/AI/Narrators/RunInsightNarrator.php
+  - app/Services/AI/Narrators/PostRunSpeechNarrator.php
   - app/Console/Commands/AI/NarrationEvalCommand.php
   - app/Console/Commands/AI/NarrationEvalChecks.php
   - app/Console/Commands/AI/NarrationEvalFixtures.php
@@ -37,15 +37,15 @@ A narrator's prompt is two halves: a static system prompt plus a per-subject **c
 
 [ActivityNarrationContext](app/Services/AI/Context/ActivityNarrationContext.php) is built once per narration call from an `ActivityDetail` ([`fromDetail`](app/Services/AI/Context/ActivityNarrationContext.php)) and collects the run-level signals more than one narrator needs: distance, decoupling, negative-split flag, time-in-zone percentages, and the weather (temp / rain). It also exposes the km conversion ([`distanceKm`](app/Services/AI/Context/ActivityNarrationContext.php)) so every consumer rounds distance the same way. The exact field list is the constructor — read it there, don't trust this prose.
 
-It is shared by the run-insight, post-run-speech, and card-flavor narrators. Each narrator still adds its *own* keys (mood, PR flags, cadence, rarity, …) on top; the shared object only owns the cross-narrator signals so those stay identical across prompts. See [[vibe-and-mood]] for the per-narrator mood layer and [[cards-collection]] for card flavor.
+It is shared by the post-run-speech and card-flavor narrators. Each narrator still adds its *own* keys (mood, PR flags, cadence, rarity, …) on top; the shared object only owns the cross-narrator signals so those stay identical across prompts. See [[vibe-and-mood]] for the per-narrator mood layer and [[cards-collection]] for card flavor.
 
 ### Agent tools — signals the model fetches instead of receiving
 
-The per-activity narrators no longer take a pre-computed context. Every number reaches the model through a tool it chose to call — see each narrator's `toolbox()` ([RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php), [PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php), [CardFlavorNarrator](app/Services/AI/Narrators/CardFlavorNarrator.php)). The tools are thin readers over the same sources the context object used — several wrap `ActivityNarrationContext` — so the signals are the same ones; what changed is that a run with no heart rate or no elevation no longer pays prompt tokens for the nulls.
+The per-activity narrators no longer take a pre-computed context. Every number reaches the model through a tool it chose to call — see each narrator's `toolbox()` ([PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php), [CardFlavorNarrator](app/Services/AI/Narrators/CardFlavorNarrator.php)). The tools are thin readers over the same sources the context object used — several wrap `ActivityNarrationContext` — so the signals are the same ones; what changed is that a run with no heart rate or no elevation no longer pays prompt tokens for the nulls.
 
 Each tool is bound to its subject at construction and declares an argument-free schema ([ActivityTool](app/Services/AI/Agent/Tools/ActivityTool.php)), which is how cross-user reads are prevented: there is no id to pass. The loop, its ceilings, and why the model gets an error payload rather than a failed block are in [[narration-agents-on-openai-php]].
 
-**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`), plus the continuity line, which stays in the prompt because the content-filter retry has to be able to strip it. A read the model would always call first, with no argument to choose, also travels in the context: the card's identity for the card flavor. The tool class still builds that payload; the narrator calls its `handle()` instead of offering it.
+**What still travels in the context** is whatever no tool could serve: a value the *call itself* carries rather than the database (post-run speech's `mood`, and the day's judged verdict it gates a claim with), plus the continuity line (`NarratorContinuity::fields()`: the previous narration, its opener and the openers of the last five), which stays in the prompt because the content-filter retry has to be able to strip it. The card flavor and plan-clamp lines carry the openers too, read from their own Done rows. The trend read has one row per athlete, so it reads its window from that row: the content it still holds while a regeneration runs, then its `analysis_versions` newest first. A read the model would always call first, with no argument to choose, also travels in the context: the card's identity for the card flavor. The tool class still builds that payload; the narrator calls its `handle()` instead of offering it.
 
 A toolbox is built per call, so it can be shorter when the subject is thinner — a card whose activity has no detail row is offered no tools at all and writes from the identity in its context, rather than from tools that would answer null to everything. The same applies by ingest state: [RunQuestionNarrator](app/Services/AI/Narrators/RunQuestionNarrator.php) drops the splits, laps, zone and terrain reads on a `summary`-state run and keeps the run summary plus the history reads, since the stream pipeline has not run yet. See [[run-qa]].
 
@@ -63,7 +63,7 @@ The daily greeting keeps its `vibe` in the context, because the *caller* decides
 
 Weekly and monthly narration held its arithmetic *in the narrator*: month bounds, per-week distance buckets, the mood mix and the fitness arc. That computation moved wholesale into [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php) and [WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php), which is why these narrators lost more lines than they gained.
 
-The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend caption sends **nothing at all**, since the whole caption is a read.
+The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend read sends `closed_weeks_through`, the Sunday its six closed weeks end on, and the continuity line, since everything else it says is fetched by tools.
 
 ### The profile narrators
 
@@ -90,27 +90,27 @@ Recovery hours is "hours since the most recent activity start", sharper than day
 
 ### Narration eval — what the model writes back
 
-The narrator tests fake the model, so they prove the payload and never the prose. `narration:eval` ([NarrationEvalCommand](app/Console/Commands/AI/NarrationEvalCommand.php)) is the manual check for the three kinds that have shipped inverted or leaked reads: `briefing_mascot_voice` (the post-run block), `run_insight` and `profile_voice`. **Run it before closing a PR that changes a narrator prompt, a validator or one of their tools**, from a checkout that has Azure credentials, and paste the table and spend into the PR. It is not in CI or the scheduler.
+The narrator tests fake the model, so they prove the payload and never the prose. `narration:eval` ([NarrationEvalCommand](app/Console/Commands/AI/NarrationEvalCommand.php)) is the manual check for the three kinds that have shipped inverted or leaked reads: `briefing_mascot_voice` (the post-run block), `post_run_speech` (which carries the run insight's claims since the merge) and `profile_voice`. **Run it before closing a PR that changes a narrator prompt, a validator or one of their tools**, from a checkout that has Azure credentials, and paste the table and spend into the PR. It is not in CI or the scheduler.
 
 ```
-./vendor/bin/sail artisan narration:eval --max-calls=60 [--kind=run_insight ...]
+./vendor/bin/sail artisan narration:eval --max-calls=60 [--kind=post_run_speech ...]
 ```
 
 - **Hard cap.** `--max-calls` is required, has no default and is refused above 60 ([cap()](app/Console/Commands/AI/NarrationEvalCommand.php)). The loop stops before the call that would pass it and lists the unrun fixtures. The cap counts narrator calls; each can make several model requests (tool turns, plus the one validator rewrite), which the spend line reports.
 - **Never in production, never dispatching.** It refuses when `app()->isProduction()` ([handle()](app/Console/Commands/AI/NarrationEvalCommand.php)) and calls the narrators directly, so no job is pushed.
 - **Real payloads, always rolled back.** It needs the seeded demo athlete (`demo:seed`). Each fixture builds its rows (planned day, run, graded intent) in a transaction that is rolled back on every path, including a thrown error ([evaluate()](app/Console/Commands/AI/NarrationEvalCommand.php)). Only the metering rows on the `analytics` connection stay, so the spend is in the ledger like any other call.
-- **Fixtures.** [NarrationEvalFixtures](app/Console/Commands/AI/NarrationEvalFixtures.php) holds the post-run briefing on a `hit` and a `too_hard` day, three run insights (faster and slower than the athlete's own 28-day baseline, picked from the demo history, and a run stripped of heart rate) and the profile voice. A fixture the history cannot support is skipped and costs no call. Every fixture also carries the renamed load numbers: the load direction is read from the `get_training_load` evidence the model saw ([loadDirection()](app/Console/Commands/AI/NarrationEvalFixtures.php)).
+- **Fixtures.** [NarrationEvalFixtures](app/Console/Commands/AI/NarrationEvalFixtures.php) holds the post-run briefing on a `hit` and a `too_hard` day, three post-run stories (faster and slower than the athlete's own 28-day baseline, picked from the demo history, and a run stripped of heart rate; the checks read the title, body and claim texts) and the profile voice. A fixture the history cannot support is skipped and costs no call. Every fixture also carries the renamed load numbers: the load direction is read from the `get_training_load` evidence the model saw ([loadDirection()](app/Console/Commands/AI/NarrationEvalFixtures.php)).
 - **Checks.** [NarrationEvalChecks](app/Console/Commands/AI/NarrationEvalChecks.php) runs on the written text: the narrator's own validators (a call that is rejected twice fails the `validators` column), `OutcomeLabels::complaint`, a raw-enum guard, a markdown guard, a numbers-in-evidence check (every figure must appear in the context or the tool outputs the model could read) and a direction check against the fixture's known answer. The direction check is a regex heuristic, so read a failing row's text before acting on it.
 
 The command prints one row per fixture and a spend line (calls, requests, tokens, cost from the usage metering). Fix the narrator, never loosen a check to pass.
 
 ## The demo filler — copy without the LLM
 
-**Every `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks were the last holdout, filled inline from threshold arithmetic even with Azure configured, and they now go through [RunInsightNarrator](app/Services/AI/Narrators/RunInsightNarrator.php) like the rest. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
+**Every live `AnalysisType` is narrated.** There is no longer a class of types that skips the model: the run-insight blocks were the last holdout, filled inline from threshold arithmetic even with Azure configured, and their claims now come from [PostRunSpeechNarrator](app/Services/AI/Narrators/PostRunSpeechNarrator.php) like the rest. `run_insight` itself is retired: its stored rows stay readable for old runs, and nothing creates, narrates or fills one. A block that cannot be narrated stays honestly `Pending` or `Failed` rather than being quietly templated — see [[ai-pipeline]].
 
 What remains is a **rule-based producer**: the demo's content, and a cheaper stand-in for real athletes wherever the LLM is not worth spending on (see *Beyond the demo*). It is never a fallback for a failure.
 
-[RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) ([`fillFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)) covers every `AnalysisType`, picking deterministically (seeded by subject id + discriminator) from Temari-voiced pools and weaving in the subject's real data where available. The run-insight types come from [RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php), which reads the run's own cadence, splits and zones so a seeded demo shows real numbers.
+[RuleBasedNarrationFiller](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php) ([`fillFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)) covers every live `AnalysisType`, picking deterministically (seeded by subject id + discriminator) from Temari-voiced pools and weaving in the subject's real data where available, and throws for the retired `run_insight`. The post-run speech's claims come from [RuleBasedRunInsights](app/Services/AI/RuleBased/RuleBasedRunInsights.php), which reads the run's own cadence, splits and zones so a seeded demo shows real numbers; the speech is stored as `{title: null, body, claims}` beside them.
 
 **`post_run_speech` is drawn from two slots, not one pool.** It is the only filler type the History feed renders once per run, so a visitor scrolls dozens of them side by side and a single pool of whole sentences repeats verbatim within one screen. The line is instead an opener carrying the distance ([`POST_RUN_OPENERS`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)) plus an independent second beat ([`POST_RUN_CLOSERS`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)), each selected under its own hash salt of the activity id ([`postRunSpeechFor`](app/Services/AI/RuleBased/RuleBasedNarrationFiller.php)), then the data-driven coda. 15 × 16 short lines give 240 pairings rather than 12 sentences, and no closer asserts anything about how the run went, so no pairing can contradict its opener or the coda. Selection stays a pure function of the activity id, so a given run reads the same forever.
 

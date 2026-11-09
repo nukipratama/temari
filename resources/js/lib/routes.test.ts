@@ -62,6 +62,7 @@ describe('analysisTriggerUrl', () => {
             id: 999,
             status: 'done',
             content: null,
+            title: null,
             type: 'briefing_mascot_voice',
             subject_type: 'App\\Models\\Activity',
             subject_id: 12,

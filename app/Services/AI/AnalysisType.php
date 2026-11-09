@@ -20,6 +20,7 @@ use App\Models\WeeklySnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\In;
+use LogicException;
 
 enum AnalysisType: string
 {
@@ -40,13 +41,14 @@ enum AnalysisType: string
     public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
-     * The one window Trends narrates: not chained, not date-keyed, always "as of now", so the
-     * discriminator names the range, not a period. Stored rows under a retired range are hidden by
+     * The one read Trends narrates: not chained, not date-keyed, so the discriminator names the
+     * read, not a period. `arc` reads the closed weeks toward the active race, or the last six
+     * against the six before. Stored rows under a retired value (`7d`) are hidden by
      * {@see \App\Models\Scopes\KnownAnalysisTypeScope}.
      *
      * @var list<string>
      */
-    public const array TREND_READ_RANGES = ['7d'];
+    public const array TREND_READ_RANGES = ['arc'];
 
     /**
      * How far back a period-keyed discriminator may reach. Deliberately wider
@@ -65,8 +67,7 @@ enum AnalysisType: string
     public function groupJobClass(): ?string
     {
         return match ($this) {
-            self::PostRunSpeech,
-            self::RunInsight => AnalyzeActivityJob::class,
+            self::PostRunSpeech => AnalyzeActivityJob::class,
             // The two briefing surfaces are intentionally NOT grouped — each
             // has its own row job so one of them retrying never re-bills the
             // other.
@@ -93,8 +94,8 @@ enum AnalysisType: string
     {
         return match ($this) {
             self::BriefingMascotVoice => AnalyzeBriefingMascotVoiceJob::class,
-            self::PostRunSpeech,
-            self::RunInsight => AnalyzeActivityJob::class,
+            self::PostRunSpeech => AnalyzeActivityJob::class,
+            self::RunInsight => throw new LogicException('RunInsight is retired and is never narrated.'),
             self::WeeklyRecap => AnalyzeWeeklyRecapJob::class,
             self::CardFlavor => AnalyzeCardFlavorJob::class,
             self::ProfileVoice => AnalyzeProfileVoiceJob::class,
@@ -115,8 +116,7 @@ enum AnalysisType: string
         return match ($this) {
             self::WeeklyRecap,
             self::MonthlyRecap,
-            self::PostRunSpeech,
-            self::RunInsight => true,
+            self::PostRunSpeech => true,
             default => false,
         };
     }
@@ -126,12 +126,13 @@ enum AnalysisType: string
      * copies generated beforehand stale (the "calculated with old zones" hint). Zone-agnostic types
      * never carry it.
      *
-     * RunInsight is zone-dependent unconditionally because its row carries no flag saying whether a
-     * `zone:<z>` claim was used.
+     * PostRunSpeech and RunInsight are zone-dependent unconditionally because their rows carry no
+     * flag saying whether a `zone:<z>` claim was used.
      */
     public function isZoneDependent(): bool
     {
         return match ($this) {
+            self::PostRunSpeech,
             self::RunInsight,
             self::WeeklyRecap,
             self::MonthlyRecap,

@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\NarrationOrigin;
 
-#[Signature('ai:trend-read {range : One of AnalysisType::TREND_READ_RANGES (7d)}')]
+#[Signature('ai:trend-read {range : One of AnalysisType::TREND_READ_RANGES (arc)}')]
 #[Description('Dispatch the Trends tab verdict — see routes/console.php')]
 class TrendReadCommand extends Command
 {
@@ -44,7 +44,7 @@ class TrendReadCommand extends Command
                 subjectId: $user->id,
                 type: AnalysisType::TrendRead,
                 discriminator: $range,
-                invalidate: $fingerprint->changed($user, $range),
+                invalidate: $fingerprint->changed($user),
             );
         }
 

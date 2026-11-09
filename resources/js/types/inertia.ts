@@ -229,6 +229,7 @@ export interface AnalysisPayload {
     id: number | null;
     status: AnalysisStatus;
     content: string | null;
+    title: string | null;
     type: AnalysisType;
     is_zone_dependent?: boolean;
     subject_type: string;
@@ -245,6 +246,23 @@ export interface AnalysisPayload {
     /** Filled rule-based because the athlete was away when it would have narrated, not read by Temari yet. */
     unread_while_away?: boolean;
 }
+
+/**
+ * One anchored, falsifiable observation about a run. `anchor` names the exact
+ * split/zone/metric it describes, checked server-side against the run's own
+ * data before it reaches the client.
+ */
+export interface RunClaim {
+    anchor: string;
+    text: string;
+    value?: string | null;
+    delta?: string | null;
+}
+
+/** The post-run speech, with the claims a merged speech carries beside its headline and body. */
+export type SpeechAnalysisPayload = AnalysisPayload & {
+    claims?: RunClaim[] | null;
+};
 
 /** Home's rest-day fact — see `App\Services\Run\Metrics\RestDayEasePace`. */
 export interface RestDayEasePace {

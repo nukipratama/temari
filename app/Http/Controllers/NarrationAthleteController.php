@@ -136,6 +136,7 @@ class NarrationAthleteController extends Controller
 
         $row = AnalysisSubjectMap::whereOwnedBy(Analysis::query()->knownType(), $userId)
             ->where('ai_analyses.id', (int) $validated['analysis_id'])
+            ->where('ai_analyses.analysis_type', '!=', AnalysisType::RunInsight)
             ->firstOrFail();
 
         if ($this->replayAction->capReached()) {

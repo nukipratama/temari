@@ -342,6 +342,7 @@ class DemoRunSeeder
 
         $rows = Analysis::query()
             ->where('status', '!=', AnalysisStatus::Done)
+            ->where('analysis_type', '!=', AnalysisType::RunInsight)
             ->where(function ($q) use ($user, $activityIds, $weeklyIds, $cardIds): void {
                 $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
@@ -918,8 +919,8 @@ class DemoRunSeeder
      * so the sweeps can see them and the demo stays pristine.
      *
      * The states land on the two pages a sweep actually visits: the newest
-     * activity carries a failed block and a pending one, and the user-level
-     * briefing carries a processing one.
+     * activity carries a failed speech and a pending card flavor, and the
+     * user-level briefing carries a processing one.
      */
     public function seedEdgeStates(?Closure $log = null): int
     {
@@ -940,7 +941,10 @@ class DemoRunSeeder
         $wanted = [];
         if ($newest instanceof Activity) {
             $wanted[] = [Activity::class, $newest->id, AnalysisType::PostRunSpeech, AnalysisStatus::Failed];
-            $wanted[] = [Activity::class, $newest->id, AnalysisType::RunInsight, AnalysisStatus::Pending];
+            $cardId = RunCard::query()->where('activity_id', $newest->id)->value('id');
+            if (is_numeric($cardId)) {
+                $wanted[] = [RunCard::class, (int) $cardId, AnalysisType::CardFlavor, AnalysisStatus::Pending];
+            }
         }
         $wanted[] = [AnalysisType::BRIEFING_SUBJECT_TYPE, $user->id, AnalysisType::BriefingMascotVoice, AnalysisStatus::Processing];
 

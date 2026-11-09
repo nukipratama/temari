@@ -97,8 +97,8 @@ visit carrying `?weeks=` two higher, and the server ships exactly that many week
 sections. Each [WeekSection](../../resources/js/components/history/WeekSection.tsx)
 renders a plain mono meta line (runs / km / TRIMP), then the week's
 [RecapCard](../../resources/js/components/history/RecapCard.tsx) (mood-ringed
-Temari, narration, a tappable `WeeklyStatLine` — fatigue/ATL,
-variety/monotony, drift/decoupling, form/readiness word), then the runs via
+Temari, narration, a tappable `WeeklyStatLine` — drift/decoupling and the
+load balance word), then the runs via
 [RunListRow](../../resources/js/components/run/RunListRow.tsx) (the title, km and
 card sparkle own the first line; the date and time sit at the right of the
 time/pace/bpm line and drop to their own line on narrow screens). The stat line
@@ -216,7 +216,7 @@ separate, all-time stat, not the viewed month's). `RecapCard`'s `fallback`
 prop is omitted here: there is no rule-based fallback for monthly recaps.
 
 **Per-week narration inside the grid** is the tap-to-expand week column, and
-pressing it reveals its recap through `AnalysisStatus`, the shared
+pressing it reveals its recap through `AnalysisStatus` (`collapsible`: a titled multi-paragraph story shows its headline and first paragraph behind a `read more` / `show less` toggle that starts closed on every open, see [[recaps]]), the shared
 `WeeklyStatLine`, and — the one Card surface this screen keeps — a badge for the week's **rarest** earned card, tinted by rarity. A week
 with no snapshot leaves the column disabled. The badge lives here and nowhere
 else on the screen; it is not a day-cell affordance.

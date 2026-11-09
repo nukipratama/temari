@@ -274,3 +274,45 @@ it('toPayload reports an unwritten row as unflagged', function (): void {
 
     expect($payload['flagged'])->toBeFalse();
 });
+
+it('toPayload leaves a plain-text row as content with no title', function (): void {
+    $row = Analysis::factory()->done('You were solid last week.')->create([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => WeeklySnapshot::class,
+    ]);
+
+    $payload = Analysis::toPayload($row, $row->analysis_type, $row->subject_type, $row->subject_id);
+
+    expect($payload['content'])->toBe('You were solid last week.')
+        ->and($payload['title'])->toBeNull();
+});
+
+it('toPayload splits a JSON row into body as content and title', function (): void {
+    $row = Analysis::factory()->done('{"title":"a steady week","body":"Four easy runs.","claims":[]}')->create([
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'subject_type' => WeeklySnapshot::class,
+    ]);
+
+    $payload = Analysis::toPayload($row, $row->analysis_type, $row->subject_type, $row->subject_id);
+
+    expect($payload['content'])->toBe('Four easy runs.')
+        ->and($payload['title'])->toBe('a steady week');
+});
+
+it('toPayload carries a null content and title for a missing row', function (): void {
+    $payload = Analysis::toPayload(null, AnalysisType::WeeklyRecap, WeeklySnapshot::class, 1);
+
+    expect($payload['content'])->toBeNull()
+        ->and($payload['title'])->toBeNull();
+});
+
+it('narration reads the stored content through NarrationContent', function (): void {
+    $plain = Analysis::factory()->done('Plain text.')->make();
+    $json = Analysis::factory()->done('{"title":"headline","body":"Body."}')->make();
+    $empty = Analysis::factory()->make(['content' => null]);
+
+    expect($plain->narration()?->body)->toBe('Plain text.')
+        ->and($plain->narration()?->title)->toBeNull()
+        ->and($json->narration()?->plainText())->toBe("headline\n\nBody.")
+        ->and($empty->narration())->toBeNull();
+});

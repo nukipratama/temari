@@ -51,8 +51,8 @@ final readonly class RefreshTrendReadOnSnapshotsSettled implements ShouldQueue
             subjectOrType: AnalysisType::TrendRead->subjectType(),
             subjectId: $user->id,
             type: AnalysisType::TrendRead,
-            discriminator: '7d',
-            invalidate: $this->fingerprint->changed($user, '7d'),
+            discriminator: AnalysisType::TREND_READ_RANGES[0],
+            invalidate: $this->fingerprint->changed($user),
         );
     }
 }

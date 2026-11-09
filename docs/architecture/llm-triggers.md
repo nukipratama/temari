@@ -3,7 +3,7 @@ title: The LLM surface — everything that calls a model, what starts it, and wh
 description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-09
 code_refs:
   - routes/console.php
   - app/Services/AI/StructuredChatCaller.php
@@ -55,7 +55,7 @@ without a row here is a red build.
 
 ## The five origins
 
-Origin is a property of the dispatcher, not the narrator: the same `RunInsightNarrator` answers an
+Origin is a property of the dispatcher, not the narrator: the same `PostRunSpeechNarrator` answers an
 ingest cascade, a "Reread" and a self-heal. An authenticated web request gets its origin for free —
 [SetDefaultNarrationOrigin](../../app/Http/Middleware/SetDefaultNarrationOrigin.php), appended to
 the `web` middleware group, stamps `AnalysisOrigin::User` on every one of them — and a controller
@@ -85,8 +85,9 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]]) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
-| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php) | `TrendRead`, discriminator `7d` — the only range left |
+| daily 06:00 | [`ai:trend-read arc`](../../routes/console.php) | `TrendRead`, discriminator `arc` — the only read left; re-bills only when a week closes, late data lands in a closed week, or the race changed |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
+| race set, revised, moved, retired or deleted | [`RefreshTrendReadOnRaceGoalChanged`](../../app/Listeners/RefreshTrendReadOnRaceGoalChanged.php) | the `trend_read` row, only when its fingerprint moved (see below) |
 | hourly | [`ai:self-heal`](../../routes/console.php) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
 | hourly | [`ai:catch-up`](../../routes/console.php) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
@@ -151,17 +152,28 @@ the cron that comes round later finds it done and bills nothing. The kickoff its
 `invalidate`: a `Done` row it finds here can only mean an earlier first-connect link already created it
 moments ago, never that the range's numbers have since moved, so a fingerprint check would only spend a
 lookup for no behaviour change. Used to kick all four `trend_read` ranges at once; `30d`/`90d`/`12mo`
-retired.
+retired, then `7d` gave way to `arc` on 2026-11-09.
 
-**A scheduled trend read re-bills only where the range's own numbers moved.**
-[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php) fingerprints
-[`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s own output for that range
-via [`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
+**A trend read re-bills only when a week closes, when late data lands inside a closed week, or on a race change.**
+[`TrendReadFingerprint::forUser()`](../../app/Services/AI/TrendReadFingerprint.php) fingerprints
+[`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s `6w` output as of the last
+closed Sunday and plan adherence over those six weeks, via
+[`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
 the granularity the narration actually reads at — km to 1 decimal, run counts and every load/fitness/
-form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invalidates the stored row only
-when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
-last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
-decides whether that tick spends. A row with no stored fingerprint — every row generated before this
+form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — plus the active race's id,
+distance, goal time and date. A run in the week still open never moves it. Three paths check it and
+invalidate the stored row only when that digest has moved since
+[`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php) last stamped it:
+[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php) at 06:00,
+[`RefreshTrendReadOnSnapshotsSettled`](../../app/Listeners/RefreshTrendReadOnSnapshotsSettled.php)
+after an ingest's snapshot repair, and
+[`RefreshTrendReadOnRaceGoalChanged`](../../app/Listeners/RefreshTrendReadOnRaceGoalChanged.php),
+which `RaceGoal`'s model events fire after commit when a race is created, deleted, or its date,
+distance, goal time or `completed_at` changes. The race listener is user-origin, so it skips a row
+inside the Reread cooldown and opens one when it lands, and it touches only a `Done` read for an
+active non-demo athlete with no hydration or snapshot repair pending. `CloseFinishedRacesCommand`
+retires a past race with a mass update that fires no model event; the 06:00 check picks that up.
+The cadence decides *when* the check runs; the fingerprint only decides whether that tick spends. A row with no stored fingerprint — every row generated before this
 landed — counts as **changed**, the opposite of the null-handling `DispatchPostRunAnalysis` uses for
 `PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
 fingerprint gate takes over from there.
@@ -186,7 +198,7 @@ demo-exclusion tripwire.
 
 [`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor` (invalidated only when the run's material fingerprint moved), then the
-grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
+grouped `PostRunSpeech` (one row since the run insight merged into it) — filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
 too old, or pre-connect and older than the last 7 days (see *the history gate* below), and staged
 `Pending` with every LLM request below skipped (briefing, profile
@@ -223,7 +235,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
 - **`PlanController::update`, on a make-up move** — once the lock is released,
   [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
-  day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
+  day and the day it emptied (`post_run_speech`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()` when the make-up
   lands on today or takes today's session away. The demo athlete never reaches this route:
@@ -280,19 +292,20 @@ origin is `return`, and `AnalysisRowState::markDone()` sends no notification for
 ## The ten surfaces
 
 Nine [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
-is not an Analysis row. Every case is dispatched by at least one origin above, and every case is
-rendered somewhere a user can see — both directions matter, and only one of them used to be checked.
+is not an Analysis row. Every case but the retired `run_insight` is dispatched by at least one origin
+above, and every case is rendered somewhere a user can see — both directions matter, and only one of
+them used to be checked.
 
 | type | narrator | subject · discriminator | origin | renders |
 |---|---|---|---|---|
 | `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup + Plan page | `TodaySession` on Home |
-| `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
-| `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
+| `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What Temari says": headline, story and claims |
+| `run_insight` | none, retired 2026-11-09 (see *Retired surfaces*) | `Activity` · none | never dispatched | `RunLenses`, "What stood out" on an old run whose speech is still plain |
 | `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the share sheet's caption in `ShareCardModal`, never printed on the card image |
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
-| `trend_read` | `TrendReadNarrator` | synthetic user+range · `7d` | scheduled | `NarrationCard` on Trends |
+| `trend_read` | `TrendReadNarrator` | synthetic user+read · `arc` | scheduled + ingest + race change | `NarrationCard` on Trends: headline and story |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | 00:01 briefing; hourly catch-up staging | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
 
@@ -367,15 +380,14 @@ whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
-| `RunInsightNarrator` | 12 | default (10) | 3000 | 0.7 | `run_insight` |
 | `RunQuestionNarrator` | up to 12 | default (10) | 1200 | 0.7 | `run_question` |
 | `CardFlavorNarrator` | up to 6 | default (10) | 400 | 0.8 | `card_flavor` |
-| `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
+| `PostRunSpeechNarrator` | 14 | default (10) | 3500 | 0.8 | `post_run_speech` |
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
 | `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
-| `WeeklyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `weekly_recap` |
-| `MonthlyRecapNarrator` | 2 | **6** | 1500 | 0.7 | `monthly_recap` |
-| `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
+| `WeeklyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `weekly_recap` |
+| `MonthlyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `monthly_recap` |
+| `TrendReadNarrator` | 2, or 3 with a race | **8** | 2500 | 0.7 | `trend_read` |
 | `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
@@ -436,29 +448,33 @@ inline in its `toolbox()` method.
 
 | tool · `name()` | what it hands the model | who computed it |
 |---|---|---|
-| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `load_balance` (fresh, steady or heavy; no bare sign), `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
-| `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `weekly_distance_km`, `mood_mix`, `fitness` (`ctl_start`, `ctl_end`, `form_status_end`) | `DistanceFormatter`, `MoodMix`, stored `WeeklySnapshot` rows |
-| `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain` | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
+| `WeekTotalsTool` · `get_week_totals` | `week_ending`, `runs`, `distance_km`, `pace_sec_per_km`, `weekly_trimp`, `ctl_42d`, `atl_7d`, `load_balance` (fresh, steady or heavy; no bare sign), `monotony`, `strain`, `avg_decoupling` from the separate version 2 weekly aggregate (`{pct, relation}`, no bare sign), plus the previous week's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km` (null when that week has no runs) | stored `WeeklySnapshot` rows, written by `WeeklyAggregator`; pace via `PaceCalculator`; relation via `DecouplingBands::relationFor()` |
+| `MonthTotalsTool` · `get_month_totals` | `month`, `total_runs`, `total_distance_km`, `longest_run_km`, `pr_count`, `pace_sec_per_km`, `pace_formatted`, `weekly_distance_km`, `mood_mix`, `long_term_load` (`ctl_start`, `ctl_end`, `load_balance_end`), plus the previous calendar month's `prev_runs`, `prev_distance_km`, `prev_pace_sec_per_km`, `prev_pace_formatted` (null when that month has no runs) | the analysed runs `PeriodRunsTool::detailsBetween()` counts, so it agrees with `get_month_runs`; `DistanceFormatter`, `PaceCalculator`, `MoodMix`, stored `WeeklySnapshot` rows |
+| `TrendRangeTool` · `get_trend_range_totals` | `range`, `current` and `comparison` (`runs`, `distance_km`, `trimp_total`), `ctl_start`, `ctl_end`, `vdot_start`, `vdot_end`, `avg_monotony`, `avg_strain`, read as of an optional date (today by default; the weekly recap passes its `week_ending`) | `TrainingLoad::ctlTrend()` / `::strainMonotonyTrend()`, `TrendDailySnapshot` |
+| `WeekRunsTool` · `get_week_runs` | `week_start`, `week_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the snapshot's Monday to Sunday | `ActivityDetail` rows the snapshot counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
+| `MonthRunsTool` · `get_month_runs` | `month_start`, `month_ending`, `runs[]` of `day`, `date`, `name`, `km`, `moving_time`, `pace_formatted`, `avg_hr`, `mood`, `intensity`, `planned` (`{session_type, grade}` or null) and `verdict`, oldest first, bounded to the first to last day of the calendar month | `ActivityDetail` rows a recap counts; `VerdictNarrator::between()` for mood, intensity and the one-line verdict; `PlannedSession` by date with `EffectiveSession::settledTypeOf()` |
+| `WeekRecordsTool` · `get_week_records` | `personal_records[]` of `category`, `value_sec`, `value_formatted`, `day`, `date`: the standing records a run that week set | `PersonalRecord` rows whose run falls in the week, formatted by `PersonalRecordsTool::entry()` |
+| `MonthRecordsTool` · `get_month_records` | `personal_records[]` of `category`, `value_sec`, `value_formatted`, `day`, `date`: the standing records a run that month set | `PersonalRecord` rows whose run falls in the month, formatted by `PersonalRecordsTool::entry()` |
 | `CardIdentityTool` · `get_card_identity` | `rarity`, `rarity_label`, `special_move`, `badges` | stored `RunCard` attributes; labels from `Badge::promptLabelsFor()` |
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway`, `overridden`, `intent` and `intent_detail` (the stored verdict worded by `IntentOutcome::outcome()` and `::detail()`) | `PlannedSession` rows over the bound span; `PlanAdaptation::$override_date` for `overridden`; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 | `GetThreadTool` · `get_thread` | `thread`: up to 6 × `{question, answer}`, this run's earlier settled exchanges, oldest first, without the question being answered | stored `RunQuestion` rows for the bound activity and its owner |
 | `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
+| `RaceOutlookTool` · `get_race_outlook` | `distance_km`, `race_date`, `days_to_race`, `weeks_to_race`, `target_time`, `supported_time`, `ambition` (on_track, ambitious, unsupported, low_evidence or unknown), `gap` (`{pct, relation}`: target_faster, target_slower or level; no bare sign), `evidence_confidence`, `support_trend` (`{since, from, to, relation}`: faster, slower or flat), `dedicated_preparation` | `RacePresenter::present()` (the ambition `/race` and `/trends` show) and `SupportedTimeHistory::for()` (the points `SupportedOverTime` draws) |
 
 **Which narrator carries which toolbox:**
 
 | narrator | tools |
 |---|---|
-| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool`, `PerceivedEffortTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `GetThreadTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool`, `PerceivedEffortTool` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool`, `PerceivedEffortTool`, `PersonalRecordsTool`, `WeekStateTool` |
 | `CardFlavorNarrator` | `CardIdentityTool`'s payload in the context, always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
-| `WeeklyRecapNarrator` | `WeekTotalsTool`, `PlanContextTool` |
-| `MonthlyRecapNarrator` | `MonthTotalsTool`, `PlanContextTool` |
-| `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
+| `WeeklyRecapNarrator` | `WeekTotalsTool`, `WeekRunsTool`, `PlanContextTool`, `WeekRecordsTool`, `TrendRangeTool` (`6w`) |
+| `MonthlyRecapNarrator` | `MonthTotalsTool`, `MonthRunsTool`, `PlanContextTool`, `MonthRecordsTool`, `TrendRangeTool` (`6w`) |
+| `TrendReadNarrator` | `TrendRangeTool` (`6w`, as of last Sunday), `PlanAdherenceTool` over those six weeks; with an active race, `RaceOutlookTool` too and adherence across the build from its season's start |
 
-Every one of the 23 tools is used by at least one narrator; none is orphaned. One of them,
+Every one of the 29 tools is used by at least one narrator; none is orphaned. One of them,
 `CardIdentityTool`, is read into the context rather than offered as a tool, since the model had no
 choice to make about calling it.
 
@@ -487,13 +503,13 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | surface | verdict | why |
 |---|---|---|
 | `briefing_mascot_voice` | earns it | Synthesises five reads into one plain-language morning line. Nothing deterministic produces that. |
-| `post_run_speech` | earns it | The persona's reaction to a run is the product. |
-| `run_insight` | earns it | The most expensive call in the app — 10 tools, 3000 output tokens — and the most substantive block it produces. Finding the non-obvious thing in a run is exactly what the toolbox is for. Ruled 2026-09-04: narrowing it would flatten the output for a saving nobody has measured. |
+| `post_run_speech` | earns it | The persona's reaction to a run is the product, and since it absorbed the run insight it also finds the non-obvious thing in the run and backs it with anchored claims. The most expensive call in the app — 14 tools, 3500 output tokens — but one call where there were two, and the input dominates its cost. |
+| `run_insight` | retired | Merged into `post_run_speech` on 2026-11-09; see *Retired surfaces*. |
 | `card_flavor` | earns it | One line capped at 400 output tokens from up to 6 tools, and it cannot tighten its budget while it carries them (`2 * (6 + 1)` already exceeds the default). Ruled 2026-09-04: the extra tools are conditional on the run having detail, so the 6-tool case is rarer than the table implies, and trimming them makes the flavour line generic. |
-| `weekly_recap` | earns it | Chained, reads a real snapshot, already tightened to 6 steps. |
-| `monthly_recap` | earns it | Same shape, same 6-step budget. |
+| `weekly_recap` | earns it | Chained, reads a real snapshot. Five tools since the headline + story redesign, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
+| `monthly_recap` | earns it | Same shape as the weekly: five tools, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
-| `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired. |
+| `trend_read` | earns it | 2 tools, or 3 with a race, and an 8-step budget; at most one call per active athlete per closed week plus one per race change, since the fingerprint covers closed weeks only. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
 
@@ -502,7 +518,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 - `CardIdentityTool` returns one bound read with nothing for the model to decide, so
   `CardFlavorNarrator` hands the payload straight to the prompt and skips the tool round trip.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
-  `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
+  `PlannedSession` in hand can still say what was prescribed. The three per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
   their own window.
 - `PlanAdherenceTool` is its aggregate counterpart, and the split is about payload shape rather
@@ -511,16 +527,26 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
   to cover ranges up to 12 months before `30d`/`90d`/`12mo` retired, and would have carried
   ~365 entries at that span. The trend read and the profile voice ask about a shape, so they get
   counts, which are the same size at any span.
-- `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
-  narrowed.
+- `PostRunSpeechNarrator`'s user-level reads (training load, recent baseline, training paces and
+  week state) are the ones to question first if its toolbox is narrowed.
 
 **Cost ranking**, order only, from a structural proxy (tools × step budget × output cap × calls per
 active user per week). It ranks surfaces against each other; it is not a dollar figure:
 
-`run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `card_flavor` ›
+`post_run_speech` › `briefing_mascot_voice` › run Q&A › `card_flavor` ›
 `profile_voice` › `trend_read` › `weekly_recap` › `monthly_recap`
 
 ## Retired surfaces
+
+**`run_insight`** (merged into `post_run_speech` 2026-11-09, #2428). The run page drew two
+narrations blind to each other: a thin story and 1-3 independent claims. `PostRunSpeechNarrator`
+now writes both in one call, a headline, a story and the claims, with the union of the two
+toolboxes. `RunInsightNarrator`, its `AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT` routing key and every
+path that created or narrated a row (ingest, chain resume, self-heal, early-narration settle,
+the pause-lift retry, `ai:recover`, devtools re-arm and replay, the trigger endpoint, the rule-based
+arm, the demo's rule-based backfill and the `narration:eval` fixtures) are gone. Unlike the cuts below, the enum case stays and its rows stay
+readable, since an old run whose speech is still plain renders its "What stood out" block from
+them; no migration touches them.
 
 **`plan_season_voice`** (cut 2026-10-13, [[the-season-has-no-narrated-read]]). The season
 header's "Temari's take" was judged not worth its place under the phase bar or its LLM spend. The
@@ -617,7 +643,7 @@ ORDER BY tokens DESC;
 ```
 
 `kind` names the narrator and `origin` names what started it, so the two together answer questions
-neither can alone: whether `run_insight` spend is ingest or people pressing "Reread", and whether
+neither can alone: whether `post_run_speech` spend is ingest or people pressing "Reread", and whether
 recovery is quietly re-billing. Rows written before the origin column defaulted to `unknown`; so does
 any dispatch site that forgets to declare itself, which is deliberate — unattributed is visible,
 a wrong default is not.

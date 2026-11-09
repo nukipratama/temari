@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 /**
- * The one effort verdict the post-run speech, the run insight and the post-run
- * briefing all repeat, so the blocks a runner reads about one run never
+ * The one effort verdict the post-run speech and the post-run briefing both
+ * repeat, so the blocks a runner reads about one run never
  * disagree on whether it went as asked. See
  * `docs/decisions/run-narrators-share-the-days-verdict.md`.
  */

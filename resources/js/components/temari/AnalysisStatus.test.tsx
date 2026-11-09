@@ -30,6 +30,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
+        title: null,
         type: 'briefing_mascot_voice',
         is_zone_dependent: false,
         subject_type: 'briefing_user_day',
@@ -61,6 +62,148 @@ describe('AnalysisStatus', () => {
         expect(
             screen.getByRole('button', { name: /reread/ }),
         ).toBeInTheDocument();
+    });
+
+    it('renders a headline above the body when the payload has a title', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'Four easy runs held the line.',
+                })}
+            />,
+        );
+        const headline = screen.getByText('a quiet week');
+        expect(headline.tagName).toBe('H3');
+        expect(headline).toHaveClass('font-serif', 'italic');
+        expect(headline.parentElement?.textContent).toBe(
+            'a quiet weekFour easy runs held the line.',
+        );
+    });
+
+    it('renders the headline as a level-3 heading with its bold spans in strong', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    title: 'a **quiet** week',
+                    content: 'Four easy runs held the line.',
+                })}
+            />,
+        );
+        const heading = screen.getByRole('heading', {
+            level: 3,
+            name: 'a quiet week',
+        });
+        expect(heading.textContent).toBe('a quiet week');
+        expect(heading).toHaveClass('max-w-prose');
+        expect(screen.getByText('quiet').tagName).toBe('STRONG');
+    });
+
+    it('collapses a titled multi-paragraph body to its first paragraph when collapsible, and opens it on toggle', () => {
+        render(
+            <AnalysisStatus
+                collapsible
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'One **beat**.\n\nTwo beats.\n\nThree beats.',
+                })}
+            />,
+        );
+
+        expect(screen.getByText('a quiet week')).toBeInTheDocument();
+        expect(screen.getByText('beat').tagName).toBe('STRONG');
+        expect(screen.queryByText(/Two beats/)).not.toBeInTheDocument();
+
+        const toggle = screen.getByRole('button', { name: 'read more' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        const region = document.getElementById(
+            toggle.getAttribute('aria-controls') as string,
+        );
+        expect(region).toContainElement(screen.getByText('a quiet week'));
+
+        fireEvent.click(toggle);
+
+        expect(screen.getByText(/Two beats/)).toBeInTheDocument();
+        expect(screen.getByText(/Three beats/)).toBeInTheDocument();
+        expect(screen.getByText('beat').tagName).toBe('STRONG');
+        expect(
+            screen.getByRole('button', { name: 'show less' }),
+        ).toHaveAttribute('aria-expanded', 'true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'show less' }));
+
+        expect(screen.queryByText(/Two beats/)).not.toBeInTheDocument();
+    });
+
+    it('keeps the reread button apart from the toggle when collapsible', () => {
+        render(
+            <AnalysisStatus
+                collapsible
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'One.\n\nTwo.',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /reread/ }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'read more' }),
+        ).toBeInTheDocument();
+    });
+
+    it('draws no toggle when collapsible but untitled, single-paragraph or not opted in', () => {
+        const { rerender } = render(
+            <AnalysisStatus
+                collapsible
+                analysis={payload({
+                    status: 'done',
+                    content: 'One.\n\nTwo.',
+                })}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+        expect(screen.getByText(/Two\./)).toBeInTheDocument();
+
+        rerender(
+            <AnalysisStatus
+                collapsible
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'Only one paragraph.\n\n',
+                })}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+
+        rerender(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'One.\n\nTwo.',
+                })}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+        expect(screen.getByText(/Two\./)).toBeInTheDocument();
+    });
+
+    it('renders only the body when the payload has no title', () => {
+        const { container } = render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'Halo Temari' })}
+            />,
+        );
+        expect(screen.getByText('Halo Temari')).toBeInTheDocument();
+        expect(container.querySelector('p.font-serif')).toBeNull();
     });
 
     it('hides the reanalyze button when allowReanalyze is false', () => {

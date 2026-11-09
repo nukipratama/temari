@@ -14,7 +14,8 @@ use Illuminate\Validation\Rules\In;
 
 /**
  * Validates the loose inputs on the analysis-trigger endpoint: the `{type}`
- * route segment (must be a known {@see AnalysisType} backing value) and the
+ * route segment (must be a known {@see AnalysisType} backing value that is
+ * still narrated, so never {@see AnalysisType::RunInsight}) and the
  * `discriminator` query string, which is constrained to the closed set the
  * resolved type actually uses ({@see AnalysisType::discriminatorRules()}).
  * `{subjectId}` is already constrained to digits by the route's `whereNumber`,
@@ -51,7 +52,7 @@ class TriggerAnalysisRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type' => ['required', 'string', Rule::enum(AnalysisType::class)],
+            'type' => ['required', 'string', Rule::enum(AnalysisType::class)->except(AnalysisType::RunInsight)],
             'subjectId' => ['required', 'integer', 'min:1'],
             'discriminator' => $this->discriminatorRules(),
         ];

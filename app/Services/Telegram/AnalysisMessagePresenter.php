@@ -8,6 +8,7 @@ use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Anchor\CitationValidator;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\DurationFormatter;
@@ -54,7 +55,7 @@ class AnalysisMessagePresenter
     {
         $message = $this->title($analysis);
 
-        $content = trim((string) $analysis->content);
+        $content = trim(CitationValidator::plainWords((string) $analysis->narration()?->plainText()));
         if ($content !== '') {
             $message .= "\n\n" . $content;
         }

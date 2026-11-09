@@ -33,9 +33,10 @@ final class WeekTotalsTool extends NoArgumentTool
             .'are the only forms to quote -- matches what the app shows; the _sec_per_km twins are '
             .'raw seconds, for judging size, never for quoting. avg_decoupling carries its own '
             .'relation (the version 2 steady-segment average, up/down/flat) -- '
-            .'there is no sign to read, that call is already made. If prev_* is missing, '
-            ."there's no comparison week yet. weekly_trimp, monotony and strain are null when no "
-            .'run that week carried heart rate: the load is unknown, which is not the same as zero.';
+            .'there is no sign to read, that call is already made. If prev_* is null, '
+            ."the previous week has no runs, so there's no comparison. weekly_trimp, monotony "
+            .'and strain are null when no run that week carried heart rate: the load is unknown, '
+            .'which is not the same as zero.';
     }
 
     /** @return array<string, mixed> */
@@ -44,6 +45,7 @@ final class WeekTotalsTool extends NoArgumentTool
         $previous = WeeklySnapshot::query()
             ->where('user_id', $this->snapshot->user_id)
             ->where('week_ending', $this->snapshot->week_ending->copy()->subWeek()->toDateString())
+            ->where('runs', '>', 0)
             ->first();
 
         $pace = self::paceFor($this->snapshot);

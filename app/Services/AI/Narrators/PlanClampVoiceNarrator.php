@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Services\AI\Narrators;
 
 use App\Enums\SessionType;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
+use App\Services\AI\Narrators\Concerns\ReadsPreviousDailyNarrative;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\ReadinessCeiling;
+use Illuminate\Support\Carbon;
 
 /**
  * One line naming today's eased session as the day's session, and why it was eased.
@@ -19,6 +22,8 @@ use App\Services\Run\Metrics\ReadinessCeiling;
  */
 class PlanClampVoiceNarrator
 {
+    use ReadsPreviousDailyNarrative;
+
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: one short line, max 25 words: today's session, and why it is the eased one.
 
@@ -53,15 +58,21 @@ class PlanClampVoiceNarrator
     }
 
     /** @param array{ceiling: ReadinessCeiling, original: SessionType, clamped_to: SessionType, has_run_today: bool, readiness_reasons: list<string>, readiness_inputs: array<string, mixed>} $context */
-    public function generate(array $context, int $userId): string
+    public function generate(array $context, int $userId, Carbon $day): string
     {
         $decoded = $this->caller->call(
             kind: 'plan_clamp_voice',
-            systemPrompt: self::SYSTEM_PROMPT,
+            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
             context: [
                 'planned' => $context['original']->value,
                 'stepped_down_to' => $context['clamped_to']->value,
                 'readiness_reasons' => $context['readiness_reasons'],
+                ...NarratorContinuity::fields($this->previousDailyNarratives(
+                    AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+                    $userId,
+                    AnalysisType::PlanClampVoice,
+                    $day,
+                )),
             ],
             schemaName: 'TemariPlanClampVoice',
             requiredKeys: ['voice'],
@@ -74,6 +85,6 @@ class PlanClampVoiceNarrator
 
         assert(is_string($decoded['voice']));
 
-        return $decoded['voice'];
+        return HeadlineCase::oneLiner($decoded['voice']);
     }
 }

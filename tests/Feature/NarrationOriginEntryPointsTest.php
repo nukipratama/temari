@@ -34,7 +34,7 @@ dataset('console entry points that can reach a narrator', [
     'ai:daily-briefing' => ['ai:daily-briefing', [], AnalysisOrigin::Scheduled],
     'ai:weekly-recap' => ['ai:weekly-recap', [], AnalysisOrigin::Scheduled],
     'ai:weekly-profile' => ['ai:weekly-profile', [], AnalysisOrigin::Scheduled],
-    'ai:trend-read' => ['ai:trend-read', ['range' => '7d'], AnalysisOrigin::Scheduled],
+    'ai:trend-read' => ['ai:trend-read', ['range' => 'arc'], AnalysisOrigin::Scheduled],
     'ai:catch-up' => ['ai:catch-up', [], AnalysisOrigin::Scheduled],
     'ai:self-heal' => ['ai:self-heal', [], AnalysisOrigin::Recovery],
     'ai:recover' => ['ai:recover', [], AnalysisOrigin::Recovery],

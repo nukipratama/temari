@@ -156,9 +156,9 @@ it('starts a new event when the intent is new', function (): void {
 });
 
 it('does not rebuild the plan or add history when the same race is submitted again', function (): void {
-    Bus::fake();
     $user = User::factory()->create();
     $race = RaceGoal::factory()->for($user)->create(['race_date' => now()->addWeeks(12)->toDateString(), 'distance_m' => 10_000, 'goal_time_sec' => 3_000, 'name' => 'Jakarta 10K']);
+    Bus::fake();
 
     $this->actingAs($user)->post('/race', racePayload())->assertRedirect();
 
@@ -202,9 +202,9 @@ it('reshapes the plan the moment a race is set', function (): void {
 });
 
 it('refuses the demo account a race save or clear, billing nothing and writing nothing', function (): void {
-    Bus::fake();
     $demo = User::factory()->create(['is_demo' => true]);
     $race = RaceGoal::factory()->for($demo)->create(['name' => 'Seeded half']);
+    Bus::fake();
 
     $this->actingAs($demo)
         ->post('/race', racePayload(['name' => 'visit evil.example']), ['X-Inertia' => 'true'])

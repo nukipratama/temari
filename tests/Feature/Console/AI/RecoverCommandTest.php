@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Jobs\AI\AnalyzeWeeklyRecapJob;
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
@@ -72,4 +73,26 @@ it('leaves under-budget Failed blocks for self-heal (only dead-letters are re-ar
     // Still attempts=1: the recover re-arm only touches dead-lettered rows; the
     // self-heal sweep resumes it separately without resetting the budget.
     expect($underBudget->refresh()->attempts)->toBe(1);
+});
+
+it('leaves a dead-lettered run insight block as it is, since the type is never narrated again', function (): void {
+    Bus::fake();
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+    $activity = Activity::factory()->for(User::factory()->create())->create();
+    $insight = Analysis::factory()->failed()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+    ]);
+
+    $this->artisan('ai:recover')
+        ->expectsOutputToContain('Re-armed 0 dead-lettered blocks.')
+        ->assertSuccessful();
+
+    $fresh = $insight->refresh();
+    expect($fresh->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
+        ->and($fresh->status)->toBe(AnalysisStatus::Failed);
 });

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Enums\Badge;
+use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
@@ -13,6 +15,8 @@ use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -92,9 +96,9 @@ class CardFlavorNarrator
         Good examples:
         - "'Silent Steps' went Rare because the second half was quicker than the
           first, in rain, which is not the usual order of events."
-        - "Common card, but 'New Morning' at 8 degrees is the kind of session nobody
-          talks you into."
-        - "your fastest 5k landed inside this one. the Legendary label is just the
+        - "Common card, but 'New Morning' on a day you'd already excused yourself from
+          is the kind of session nobody talks you into."
+        - "your fastest 5k landed inside this one, and the Legendary label is just the
           receipt."
         PROMPT;
 
@@ -113,8 +117,11 @@ class CardFlavorNarrator
 
         $decoded = $this->caller->call(
             kind: 'card_flavor',
-            systemPrompt: self::SYSTEM_PROMPT,
-            context: new CardIdentityTool($card)->handle([]),
+            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
+            context: [
+                ...new CardIdentityTool($card)->handle([]),
+                ...NarratorContinuity::fields($this->previousFlavors($card)),
+            ],
             schemaName: 'TemariCardFlavor',
             requiredKeys: ['flavor'],
             options: new ChatCallOptions(
@@ -127,7 +134,32 @@ class CardFlavorNarrator
 
         assert(is_string($decoded['flavor']));
 
-        return $decoded['flavor'];
+        return HeadlineCase::oneLiner($decoded['flavor'], [
+            $card->special_move,
+            ...Badge::promptLabelsFor((array) ($card->badges ?? [])),
+        ]);
+    }
+
+    /**
+     * The athlete's most recently narrated flavor lines on other cards, newest first.
+     *
+     * @return list<string>
+     */
+    private function previousFlavors(RunCard $card): array
+    {
+        $contents = Analysis::query()
+            ->where('subject_type', RunCard::class)
+            ->where('analysis_type', AnalysisType::CardFlavor)
+            ->where('status', AnalysisStatus::Done)
+            ->where('subject_id', '!=', $card->id)
+            ->whereIn('subject_id', RunCard::query()->forUser($card->activity->user_id)->select('id'))
+            ->orderByDesc('generated_at')
+            ->orderByDesc('id')
+            ->limit(NarratorContinuity::WINDOW)
+            ->pluck('content')
+            ->all();
+
+        return array_values(array_filter($contents, is_string(...)));
     }
 
     /**

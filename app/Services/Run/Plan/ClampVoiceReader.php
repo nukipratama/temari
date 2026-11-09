@@ -44,6 +44,6 @@ final readonly class ClampVoiceReader
 
         $expected = ClampNarrationContext::fingerprint($context['ceiling'], $context['clamped_to'], $context['has_run_today'], $context['readiness_reasons']);
 
-        return $analysis->content_fingerprint === $expected ? $analysis->content : null;
+        return $analysis->content_fingerprint === $expected ? $analysis->narration()?->body : null;
     }
 }

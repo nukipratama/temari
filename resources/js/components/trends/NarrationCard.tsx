@@ -13,19 +13,19 @@ import { useAnalysisTrigger } from '@/hooks/useAnalysisTrigger';
 import { useCooldownCountdown } from '@/hooks/useCooldownCountdown';
 import { cn } from '@/lib/cn';
 import { formatDurationHMS } from '@/lib/pace';
+import { renderBold } from '@/lib/richText';
 
 interface NarrationCardProps {
     analysis: AnalysisPayload;
     className?: string;
 }
 
-const EYEBROW_LABEL = "Temari's read · last 7 days";
+const EYEBROW_LABEL = "Temari's read";
 
 /**
- * Splits the narrator's "{title}\n\n{description}" shape (see
- * TrendReadNarrator::generate()) into a bold headline and a supporting
- * paragraph. Falls back to rendering the whole string as the title when a
- * rule-based fallback or an older row doesn't carry the blank-line split.
+ * Splits an untitled read's "{title}\n\n{description}" text (the rule-based
+ * fallback's shape) into a headline and a supporting paragraph. Falls back to
+ * rendering the whole string as the title when it carries no blank-line split.
  */
 function splitContent(content: string): { title: string; description: string } {
     const [title = '', ...rest] = content.split('\n\n');
@@ -52,8 +52,10 @@ export default function NarrationCard({
     const cooling = cooldownRemaining > 0;
 
     if (effectiveStatus === 'done' && analysis.content !== null) {
+        const titled = (analysis.title ?? '') !== '';
+
         return (
-            <section className={className}>
+            <section className={cn(className, titled && '[&_p]:max-w-prose')}>
                 <Eyebrow
                     as="h2"
                     token="micro"
@@ -67,6 +69,14 @@ export default function NarrationCard({
                     inertiaReloadProps={['narration']}
                     awaitingSchedule={false}
                     renderContent={(content) => {
+                        if (titled) {
+                            return (
+                                <p className="narration">
+                                    {renderBold(content)}
+                                </p>
+                            );
+                        }
+
                         const { title, description } = splitContent(content);
                         return (
                             <>

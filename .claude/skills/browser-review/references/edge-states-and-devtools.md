@@ -7,7 +7,7 @@ ever rendered a pending, processing or failed block. A near-white `.skeleton` sh
 ground behind that gap and survived three sweeps, because the state that would have shown it never
 existed in the seed.
 
-`--with-edge-states` opts in: a failed block and a pending one on the newest activity, and a
+`--with-edge-states` opts in: a failed speech and a pending card flavor on the newest activity, and a
 processing one on the dashboard briefing. Idempotent, and off by default so the public demo stays
 pristine. Run it before an audit that cares about loading, empty or failed states.
 

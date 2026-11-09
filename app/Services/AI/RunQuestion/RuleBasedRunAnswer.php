@@ -47,8 +47,8 @@ final class RuleBasedRunAnswer
 
         $drift = self::oneDecimal($value);
 
-        return "your heart rate climbed {$drift} bpm across the two halves of the longest steady stretch. "
-            .'that gap is the cost of the run, and it widens on the days you started tired or ran warm.';
+        return "Your heart rate climbed {$drift} bpm across the two halves of the longest steady stretch. "
+            .'That gap is the cost of the run, and it widens on the days you started tired or ran warm.';
     }
 
     private static function decoupling(StreamSummary $summary, ActivityDetail $detail): string
@@ -60,18 +60,18 @@ final class RuleBasedRunAnswer
 
         $pct = self::oneDecimal($value);
         $heat = $detail->ranHot()
-            ? " it was {$detail->weather_temp_c} degrees out, so a chunk of that is your body shedding heat rather than your base slipping."
-            : ' cool conditions, so that one is about the base rather than the weather.';
+            ? " It was {$detail->weather_temp_c} degrees out, so a chunk of that is your body shedding heat rather than your base slipping."
+            : ' Cool conditions, so that one is about the base rather than the weather.';
 
-        return "decoupling came in at {$pct}% across the longest steady stretch, meaning your heart rate rose relative to grade-adjusted pace.".$heat;
+        return "Decoupling came in at {$pct}% across the longest steady stretch, meaning your heart rate rose relative to grade-adjusted pace.".$heat;
     }
 
     private static function negativeSplit(StreamSummary $summary): string
     {
         $splits = $summary->perKm() ?? [];
 
-        return 'you ran the back half quicker than the front, across '.count($splits).' km. '
-            .'that only happens when the opening pace left something in reserve.';
+        return 'You ran the back half quicker than the front, across '.count($splits).' km. '
+            .'That only happens when the opening pace left something in reserve.';
     }
 
     private static function cadenceDrop(StreamSummary $summary, ActivityDetail $detail): string
@@ -81,8 +81,8 @@ final class RuleBasedRunAnswer
             ? ' off an average of '.(int) round((float) $detail->average_cadence * 2).' steps a minute'
             : '';
 
-        return "your step rate fell {$drop} steps a minute between the first half and the second{$average}. "
-            .'shorter, slower steps late in a run usually mean the legs went before the lungs did.';
+        return "Your step rate fell {$drop} steps a minute between the first half and the second{$average}. "
+            .'Shorter, slower steps late in a run usually mean the legs went before the lungs did.';
     }
 
     private static function slowestSplit(StreamSummary $summary): string
@@ -99,11 +99,11 @@ final class RuleBasedRunAnswer
         }
 
         if ($slowestPace === null) {
-            return 'the splits are all within a breath of each other. nothing on this one stands out as the expensive kilometre.';
+            return 'The splits are all within a breath of each other. Nothing on this one stands out as the expensive kilometre.';
         }
 
-        return "km {$slowestKm} was your slowest at ".PaceFormatter::format($slowestPace).'/km. '
-            .'that is where the run actually cost you something.';
+        return "Km {$slowestKm} was your slowest at ".PaceFormatter::format($slowestPace).'/km. '
+            .'That is where the run actually cost you something.';
     }
 
     private static function hardZones(StreamSummary $summary): string
@@ -111,7 +111,7 @@ final class RuleBasedRunAnswer
         $share = self::oneDecimal($summary->hardZoneShare());
 
         return "{$share}% of this run sat in Z3 or above. "
-            .'that is a real chunk of the session spent above easy, whether or not you meant it that way.';
+            .'That is a real chunk of the session spent above easy, whether or not you meant it that way.';
     }
 
     private static function heat(ActivityDetail $detail): string
@@ -120,24 +120,24 @@ final class RuleBasedRunAnswer
             ? " at {$detail->weather_humidity_pct}% humidity"
             : '';
 
-        return "it was {$detail->weather_temp_c} degrees{$humidity}. "
-            .'heat like that buys you a higher heart rate for the same pace, so read this one as a warm-day effort, not a read on your running.';
+        return "It was {$detail->weather_temp_c} degrees{$humidity}. "
+            .'Heat like that buys you a higher heart rate for the same pace, so read this one as a warm-day effort, not a read on your running.';
     }
 
     private static function climb(StreamSummary $summary): string
     {
         $grade = self::oneDecimal($summary->maxGradePct() ?? 0.0);
         $gap = $summary->gapPace();
-        $adjusted = $gap !== null ? " flat-ground equivalent works out to {$gap}/km." : '';
+        $adjusted = $gap !== null ? " Flat-ground equivalent works out to {$gap}/km." : '';
 
-        return "the steepest stretch hit {$grade}% grade.".$adjusted
-            .' a climb takes its cut out of pace and hands most of it back on the way down.';
+        return "The steepest stretch hit {$grade}% grade.".$adjusted
+            .' A climb takes its cut out of pace and hands most of it back on the way down.';
     }
 
     private static function headline(ActivityDetail $detail): string
     {
         if ($detail->distance === null) {
-            return 'not much on the clock for this one. the numbers it does carry are on the run itself.';
+            return 'Not much on the clock for this one. The numbers it does carry are on the run itself.';
         }
 
         $km = self::oneDecimal(DistanceFormatter::km($detail->distance));
@@ -145,7 +145,7 @@ final class RuleBasedRunAnswer
         $paceLabel = $pace !== null ? ' at '.PaceFormatter::format($pace).'/km' : '';
 
         return "{$km} km{$paceLabel} is what this one was. "
-            .'that is the reading to hold the next one up against.';
+            .'That is the reading to hold the next one up against.';
     }
 
     private static function oneDecimal(float $value): string

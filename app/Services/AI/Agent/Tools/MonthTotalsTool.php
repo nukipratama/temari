@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DistanceFormatter;
+use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Story\MoodMix;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Everything a monthly recap counts, for one calendar month.
+ * Everything a monthly recap counts, for one calendar month, and the calendar month before it to
+ * measure against.
  *
  * The month is a discriminator string (`Y-m`), not a date range the model gets
  * to choose, so a recap can only ever count the month it was asked about.
@@ -36,48 +38,72 @@ final class MonthTotalsTool extends NoArgumentTool
     {
         return "The recap for the month you're telling: total runs and km, longest run, PR count, "
             .'km per week within that month, mood distribution, and the long-term load (ctl_start vs '
-            ."ctl_end plus load_balance_end). An empty mood_mix means there's no mood data yet, so "
-            .'skip the mood section silently. If long_term_load is missing, that month has no snapshot.';
+            .'ctl_end plus load_balance_end), plus the previous month\'s numbers to compare against. '
+            .'pace_formatted and prev_pace_formatted (mm:ss/km) are the only forms to quote; the '
+            .'_sec_per_km twins are raw seconds, for judging size, never for quoting. If prev_* is '
+            ."null, the previous month has no runs, so there's no comparison. An empty mood_mix "
+            .'means there\'s no mood data yet, so skip the mood section silently. If long_term_load '
+            .'is missing, that month has no snapshot.';
     }
 
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        [$start, $end] = self::bounds($this->month);
+        [$start, $end] = MonthRunsTool::bounds($this->month);
 
-        $details = ActivityDetail::query()
-            ->whereHas('activity', fn ($query) => $query->where('user_id', $this->user->id))
-            ->whereBetween('start_date_local', [$start, $end])
-            ->get(['start_date_local', 'distance']);
-        $totalDistance = $details->sum('distance');
-        assert(is_numeric($totalDistance));
+        $details = self::runsIn($this->user, $start, $end);
+        $distance = self::distanceMetersOf($details);
+        $pace = self::paceOf($details);
         $longestDistance = $details->max('distance');
         assert($longestDistance === null || is_numeric($longestDistance));
+
+        $previous = self::runsIn($this->user, ...MonthRunsTool::bounds($start->copy()->subMonthNoOverflow()->format('Y-m')));
+        $prevPace = self::paceOf($previous);
 
         return [
             'month' => $this->month,
             'total_runs' => $details->count(),
-            'total_distance_km' => DistanceFormatter::km((float) $totalDistance),
+            'total_distance_km' => DistanceFormatter::km($distance),
+            'pace_sec_per_km' => $pace,
+            'pace_formatted' => $pace === null ? null : PaceFormatter::format($pace),
             'longest_run_km' => DistanceFormatter::km((float) $longestDistance, DistanceFormatter::EXACT),
-            'pr_count' => PersonalRecord::query()
-                ->where('user_id', $this->user->id)
-                ->whereBetween('set_at', [$start, $end])
-                ->count(),
+            'pr_count' => PeriodRecordsTool::recordsBetween($this->user, $start, $end)->count(),
             'weekly_distance_km' => self::weeklyDistanceKm($details, $start),
             // Half-open, so the exclusive bound is the next month's start rather
             // than this month's inclusive end -- passing $end would drop a run
             // logged in the final second.
             'mood_mix' => MoodMix::between($this->user->id, $start, $start->copy()->addMonth()->startOfMonth()),
             'long_term_load' => $this->longTermLoadArc($start, $end),
+            'prev_runs' => $previous->isEmpty() ? null : $previous->count(),
+            'prev_distance_km' => $previous->isEmpty() ? null : DistanceFormatter::km(self::distanceMetersOf($previous)),
+            'prev_pace_sec_per_km' => $prevPace,
+            'prev_pace_formatted' => $prevPace === null ? null : PaceFormatter::format($prevPace),
         ];
     }
 
-    /** @return array{0: Carbon, 1: Carbon} */
-    private static function bounds(string $month): array
+    /** @return Collection<int, ActivityDetail> */
+    private static function runsIn(User $user, Carbon $start, Carbon $end): Collection
     {
-        $start = Carbon::createFromFormat('!Y-m', $month)?->startOfMonth() ?? Carbon::now()->startOfMonth();
+        return PeriodRunsTool::detailsBetween($user, $start, $end)
+            ->get(['activity_details.start_date_local', 'activity_details.distance', 'activity_details.elapsed_time']);
+    }
 
-        return [$start, $start->copy()->endOfMonth()];
+    /** @param  Collection<int, ActivityDetail>  $details */
+    private static function distanceMetersOf(Collection $details): float
+    {
+        $meters = $details->sum('distance');
+        assert(is_numeric($meters));
+
+        return (float) $meters;
+    }
+
+    /** @param  Collection<int, ActivityDetail>  $details */
+    private static function paceOf(Collection $details): ?float
+    {
+        $seconds = $details->sum('elapsed_time');
+        assert(is_numeric($seconds));
+
+        return PaceCalculator::secPerKm(self::distanceMetersOf($details), (float) $seconds);
     }
 
     /**

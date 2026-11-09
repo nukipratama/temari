@@ -7,8 +7,9 @@ namespace App\Services\AI\Narrators;
 use App\Enums\IntentVerdict;
 
 /**
- * Whether a post-run speech quotes only paces, distances and shares its tools
- * returned, and tells the day's stored verdict the same way round. See
+ * Whether a post-run story's title and body quote only paces, distances and
+ * shares its tools returned, and tell the day's stored verdict the same way
+ * round. See
  * `docs/decisions/the-post-run-speech-is-checked-before-it-is-saved.md`.
  */
 final class SpeechFactCheck
@@ -47,7 +48,7 @@ final class SpeechFactCheck
             return null;
         }
 
-        return 'Rewrite the speech: '.implode('; also ', $reasons).'. Quote only paces, distances and percentages '
+        return 'Rewrite the title and body: '.implode('; also ', $reasons).'. Quote only paces, distances and percentages '
             .'a tool returned, take how the session went from intent and intent_detail, and change nothing else.';
     }
 

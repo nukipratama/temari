@@ -52,4 +52,9 @@ final class CitationValidator
             $text,
         );
     }
+
+    public static function plainWords(string $text): string
+    {
+        return (string) preg_replace([self::TOKEN, '/\*\*(.+?)\*\*/s'], ['$1', '$1'], $text);
+    }
 }

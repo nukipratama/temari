@@ -81,7 +81,7 @@ function analysesForEverySubjectShape(User $user): void
             'analysis_type' => $type,
             'discriminator' => match ($type) {
                 AnalysisType::MonthlyRecap => '2026-05',
-                AnalysisType::TrendRead => '7d',
+                AnalysisType::TrendRead => 'arc',
                 default => null,
             },
         ]);

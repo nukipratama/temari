@@ -1,9 +1,9 @@
 ---
 title: Run detail (single activity)
-description: One run, fully unpacked — a headline hero, a "Past You" match, the story + adaptive claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
+description: One run, fully unpacked — a headline hero, a "Past You" match, the headline + story + anchored claims voice card, the Q&A panel, and the breakdown (vitals, splits, laps)
 tags: [feature, runs]
 status: living
-reviewed: 2026-11-02
+reviewed: 2026-11-09
 code_refs:
   - resources/js/pages/Runs/Show.tsx
   - app/Http/Controllers/RunController.php
@@ -73,7 +73,7 @@ would be a column of empty panels rather than a thin page.
 
 ## System dependencies
 
-- **AI narration** — the story + adaptive-claims halves and the share image's caption are all `Analysis` rows from the [[ai-pipeline]]; the narrators read Past You through a tool, but the match itself is computed, not narrated. See [[past-you-engine]].
+- **AI narration** — the post-run story (headline, body and claims; an old run's separate claims block) and the share image's caption are all `Analysis` rows from the [[ai-pipeline]]; the narrators read Past You through a tool, but the match itself is computed, not narrated. See [[past-you-engine]].
 - **Ingestion** — `detail` / `stream_summary` are populated by the [[run-ingest-pipeline]].
 - **Geo** — location name is resolved by [[geo-reverse-geocoding]].
 - **Weather** — conditions come from [[weather-integration]].
@@ -148,7 +148,7 @@ readings from their blueprint's temperature, humidity, wind and duration
 
 ## Effort score
 
-Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits at the top of the page, above the hero, as a panel on the stat-tile ground in light and the sky panel in dark: a "gut check" eyebrow and the voice line "forget the watch. how'd that one feel?" beside a 44px [TemariMascot](../../resources/js/components/temari/TemariMascot.tsx) whose pose follows the slider ([effortPose](../../resources/js/lib/perceivedEffort.ts)), then the score row with save and the 1–10 slider. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear", which toasts `effort cleared` once the score is gone. The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]]. The run's narration reads it, and the first score saved on a narrated run re-narrates the speech and insight once; see [[a-first-effort-score-re-narrates-the-run]].
+Any run, of any age and with or without heart rate, can take an effort score. Unscored, an [EffortPicker](../../resources/js/components/run/EffortScore.tsx) sits at the top of the page, above the hero, as a panel on the stat-tile ground in light and the sky panel in dark: a "gut check" eyebrow and the voice line "forget the watch. how'd that one feel?" beside a 44px [TemariMascot](../../resources/js/components/temari/TemariMascot.tsx) whose pose follows the slider ([effortPose](../../resources/js/lib/perceivedEffort.ts)), then the score row with save and the 1–10 slider. Saved, it collapses to a chip beside the mood chip in [RunHero](../../resources/js/components/run/RunHero.tsx) ("7/10 · very hard" in the band's ink on its tint) with "change", which reopens the picker, and "clear", which toasts `effort cleared` once the score is gone. The score is read from `detail.perceived_effort` and feeds no load; see [[an-effort-score-is-collected-on-every-run]]. The run's narration reads it, and the first score saved on a narrated run re-narrates the speech once; see [[a-first-effort-score-re-narrates-the-run]].
 
 ## You vs past you
 
@@ -163,56 +163,72 @@ same matcher but picks the most *comparable* run instead. Both selections, and
 the verdict's outcomes, are [[past-you-engine]]. No match means no card at all,
 not an empty state.
 
-## What Temari says — story + adaptive claims
+## What Temari says — headline, story and claims
 
 The heart of the page is [RunLenses](../../resources/js/components/run/RunLenses.tsx):
-a heading tagged with a 40px Temari (posed to the run's mood, thinking while either lens is written) over **one** narration card, whose two halves are separated
-by a hairline rather than split into two panels. It is fed two `Analysis`
-payloads the controller resolves from `RunController::RUN_INSIGHT_TYPES`:
+a heading tagged with a 40px Temari (posed to the run's mood, thinking while the
+story is written) over **one** narration card, fed from the payloads the
+controller resolves from `RunController::RUN_INSIGHT_TYPES`.
 
-- **This run's story** — the post-run speech (`AnalysisType::PostRunSpeech`, [PostRunSpeechNarrator](../../app/Services/AI/Narrators/PostRunSpeechNarrator.php)). Unchanged by this consolidation: deliberately not a summary of the numbers, it carries the run's context and its place in the athlete's history, leaving pacing, cadence and zones to the block beside it.
-- **What stood out** — the adaptive claims block (`AnalysisType::RunInsight`, [RunInsightNarrator](../../app/Services/AI/Narrators/RunInsightNarrator.php)). Replaces the previous fixed three-slot layout (technical translation / best split / HR zones) with a single row whose `content` is a JSON-encoded list of 1-3 claims, shaped by what was actually notable about the run rather than by three always-present sections. Each claim is `{anchor, text, value?, delta?}`.
+**A merged story** is the post-run speech (`AnalysisType::PostRunSpeech`,
+[PostRunSpeechNarrator](../../app/Services/AI/Narrators/PostRunSpeechNarrator.php)),
+one call that commits to a single reading of the run (`pacing`, `heart_rate`,
+`effort_vs_usual`, `plan`, `record`, `conditions` or `week_arc`) and returns
+`{title, body, claims}`: a lowercase headline, a 150-220 word body in 2
+connected paragraphs, and 0-3 claims that each back the reading with one
+concrete thing. The card renders it as one block: the headline, the body capped
+at prose width with its paragraph breaks kept, then the claims under a dashed
+hairline. The run page is a destination, so the story is always expanded and draws no `read more` toggle. `RunController` sends the claims beside the `title` and `content`
+(body) every narration payload carries. Each claim is `{anchor, text, value?,
+delta?}`, with its value and delta as chips and a control that scrolls to the
+reading it names.
+
+**An old run** keeps the two blocks it was narrated with: the plain speech
+("This run's story") and the separate claims row ("What stood out",
+`AnalysisType::RunInsight`, a JSON list in `content`). The run insight is no
+longer narrated for any run, so its block is hidden as soon as the run's
+speech is merged (a headline or claims), and a failed one offers no retry,
+since the trigger endpoint refuses that type.
 
 **Falsifiability, not prompt trust.** Every claim's `anchor` names the exact
 real thing it describes — `split:<n>` (a 1-indexed km from the run's own
 splits), `zone:<z1..z5>` (an HR zone this run actually recorded), or
 `metric:<name>` (one of `decoupling` / `hr_drift` / `cadence_drop` /
 `pace_variability` / `grade` / `negative_split` / `gap_pace`). Before
-persisting, `RunInsightNarrator` checks each claim's anchor against the run's
+persisting, `PostRunSpeechNarrator` checks each claim's anchor against the run's
 own `StreamSummary`/`ActivityDetail` and drops any claim that does not
 resolve — an LLM cannot narrate a split, zone, or metric the run does not
 actually have. A `split:<n>` claim whose `delta` reads `m:ss vs km <k>` is
 also dropped unless that gap matches the two splits to the second
-(`RunInsightNarrator::checkedSplitDelta()`), because the model did that
+(`PostRunSpeechNarrator::checkedSplitDelta()`), because the model did that
 subtraction itself and gave one run's km 6 two different gaps to km 4 on two
 narrations. A matching gap keeps its claim with the sign set from the splits
 (`+` when this km was slower), since the chip shows `delta` verbatim and the
-model wrote one slower km as `-`. The day's judged verdict reaches the insight
+model wrote one slower km as `-`. The day's judged verdict reaches the story
 in its context (`day_verdict`), not only through `get_planned_sessions`, which
 the model skipped on an easy day judged a hit and nudged it back to easy pace
 anyway. Handed that verdict, it nudged again, so on an easy day judged a hit
 (`IntentOutcome::EASY_HIT`) a `zone:z3`-or-heavier claim is dropped in code:
 the verdict already judged that effort, against the heart-rate cap or, when
 the athlete's zones are only estimated, on pace, which leaves a zone share a
-weak read anyway.
-If every claim is dropped (or the model returned none), the
-row's content decodes to `[]` and the frontend renders nothing for this
-block, the same "nothing to render" principle used elsewhere in the pipeline.
-The demo-seed/no-Azure fallback ([RuleBasedRunInsights](../../app/Services/AI/RuleBased/RuleBasedRunInsights.php))
-emits the same claims shape from deterministic thresholds, so it never needs
-the falsifiability check to begin with.
+weak read anyway. The title and body go through the speech's fact check, which
+re-asks once for a pace, distance or share no tool returned; the claims'
+figures are left to the anchor check. The rule-based fallback
+([RuleBasedRunInsights](../../app/Services/AI/RuleBased/RuleBasedRunInsights.php))
+puts the same claims shape, read from deterministic thresholds, beside the
+rule-based speech line, so it never needs the falsifiability check to begin with.
 
-Each half renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
-which owns the pending / processing / failed / done states and the per-block
-"Try again" retry. These are **chained** analyses: only the chain head (the
-user's latest run, `isChainHead` from `Activity::latestIdForUser`) shows the
-single **Reread** control, a pill at the foot of the card that counts down the
-shared cooldown; historical runs are resume-only. A half's label (and the
-hairline above it) is drawn only when its block will render something, decided by
-the same `rendersNothing` predicate `AnalysisStatus` uses: a plain pending block is
-empty, queued, processing and failed blocks keep their label, and when both halves
-are empty the whole section is not drawn. See [[ai-pipeline]] for the
-narrator/job model behind these rows.
+The card renders through [AnalysisStatus](../../resources/js/components/temari/AnalysisStatus.tsx),
+which owns the pending / processing / failed / done states and the "Try again"
+retry. The speech is a **chained** analysis: only the chain head (the user's
+latest run, `isChainHead` from `Activity::latestIdForUser`) shows the single
+**Reread** control, a pill at the foot of the card that regenerates the merged
+speech and counts down its cooldown; historical runs are resume-only. On an old
+run a half's label (and the hairline above it) is drawn only when its block will
+render something, decided by the same `rendersNothing` predicate `AnalysisStatus`
+uses: a plain pending block is empty, queued, processing and failed blocks keep
+their label, and when nothing renders the whole section is not drawn. See
+[[ai-pipeline]] for the narrator/job model behind these rows.
 
 ## Ask about this run
 

@@ -89,6 +89,20 @@ it('skips a story line whose speech is Done but empty', function (): void {
         ->and(app(VerdictTimeline::class)->recent($user))->toBe([]);
 });
 
+it('reads the title of a JSON speech as the verdict oneline, and the body when it has none', function (string $content, string $oneline): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Mood::Blazing, $content, 5000.0);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->oneline)->toBe($oneline);
+})->with([
+    'a merged speech' => ['{"title":"held it together","body":"A strong morning run.","claims":[]}', 'held it together'],
+    'a rule-based speech with claims but no title' => ['{"title":null,"body":"8 km on the board.","claims":[]}', '8 km on the board.'],
+    'a plain old speech' => ['A strong morning run.', 'A strong morning run.'],
+]);
+
 it('returns exactly the newest $limit activities when more qualify', function (): void {
     $user = User::factory()->create();
     $ids = [];
@@ -309,3 +323,30 @@ it('maps each mood to a face emoji via the private helper', function (Mood $mood
     [Mood::Overloaded, '💫'],
     [Mood::Chill, '🌧️'],
 ]);
+
+// ── between(): a bounded span, oldest first ──────────────────────────
+
+it('reads every story-lined run between two days inclusive, oldest first', function (): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::parse('2026-05-03 23:59:00'), Mood::Easy, 'before', 5000.0);
+    $monday = seedVerdict($user, Carbon::parse('2026-05-04 00:00:00'), Mood::Easy, 'monday', 5000.0);
+    $sunday = seedVerdict($user, Carbon::parse('2026-05-10 23:59:00'), Mood::Blazing, 'sunday', 12000.0);
+    seedVerdict($user, Carbon::parse('2026-05-11 00:00:00'), Mood::Easy, 'after', 5000.0);
+
+    $items = app(VerdictTimeline::class)->between($user, Carbon::parse('2026-05-04'), Carbon::parse('2026-05-10'));
+
+    expect(array_map(fn ($item): int => $item->activityId, $items))->toBe([$monday->id, $sunday->id])
+        ->and(array_map(fn ($item): string => $item->oneline, $items))->toBe(['monday', 'sunday']);
+});
+
+it('keeps a run in the span whose post-run speech is not Done yet, with an empty oneline', function (): void {
+    $user = User::factory()->create();
+    $pending = seedVerdict($user, Carbon::parse('2026-05-06 07:00:00'), Mood::Gassed, null, 8000.0);
+
+    $items = app(VerdictTimeline::class)->between($user, Carbon::parse('2026-05-04'), Carbon::parse('2026-05-10'));
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->activityId)->toBe($pending->id)
+        ->and($items[0]->mood)->toBe(Mood::Gassed)
+        ->and($items[0]->oneline)->toBe('');
+});

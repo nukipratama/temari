@@ -145,13 +145,13 @@ it('never surfaces another user\'s training load in the load summary or on the f
         ->assertJsonPath('props.ctlTrend', []);
 });
 
-it('passes the TrendRead 7d analysis as the single narration payload', function (): void {
+it('passes the TrendRead arc analysis as the single narration payload', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done("Holding steady this week.\n\nNo real swing either way.")->create([
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
         'subject_id' => $user->id,
         'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '7d',
+        'discriminator' => 'arc',
     ]);
 
     $this->actingAs($user)
@@ -159,10 +159,10 @@ it('passes the TrendRead 7d analysis as the single narration payload', function 
         ->assertJsonPath('props.narration.status', 'done')
         ->assertJsonPath('props.narration.content', "Holding steady this week.\n\nNo real swing either way.")
         ->assertJsonPath('props.narration.type', AnalysisType::TrendRead->value)
-        ->assertJsonPath('props.narration.discriminator', '7d');
+        ->assertJsonPath('props.narration.discriminator', 'arc');
 });
 
-it('ignores a stored 30d row when reading the verdict, since only 7d is live', function (): void {
+it('ignores a stored 30d row when reading the verdict, since only arc is live', function (): void {
     $user = User::factory()->create();
     Analysis::factory()->done('an old 30d read')->create([
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
@@ -174,7 +174,7 @@ it('ignores a stored 30d row when reading the verdict, since only 7d is live', f
     $this->actingAs($user)
         ->get('/trends', inertiaPartialHeaders($this->actingAs($user), '/trends', 'Trends', 'narration'))
         ->assertJsonPath('props.narration.status', 'pending')
-        ->assertJsonPath('props.narration.discriminator', '7d');
+        ->assertJsonPath('props.narration.discriminator', 'arc');
 });
 
 it('never surfaces another user\'s narration', function (): void {
@@ -184,7 +184,7 @@ it('never surfaces another user\'s narration', function (): void {
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
         'subject_id' => $other->id,
         'analysis_type' => AnalysisType::TrendRead,
-        'discriminator' => '7d',
+        'discriminator' => 'arc',
     ]);
 
     $this->actingAs($user)
@@ -224,7 +224,7 @@ it('never surfaces another user\'s plan annotations', function (): void {
         ->assertJsonPath('props.chartAnnotations.deload', []);
 });
 
-it('serves a fresh user an empty fitness trend, a pending 7d verdict, empty chart annotations and no race outlook, then the active race outlook from the same presenter as /race', function (): void {
+it('serves a fresh user an empty fitness trend, a pending arc verdict, empty chart annotations and no race outlook, then the active race outlook from the same presenter as /race', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -233,7 +233,7 @@ it('serves a fresh user an empty fitness trend, a pending 7d verdict, empty char
         ->assertJsonPath('component', 'Trends')
         ->assertJsonPath('props.ctlTrend', [])
         ->assertJsonPath('props.narration.status', 'pending')
-        ->assertJsonPath('props.narration.discriminator', '7d')
+        ->assertJsonPath('props.narration.discriminator', 'arc')
         ->assertJsonPath('props.chartAnnotations.deload', [])
         ->assertJsonPath('props.chartAnnotations.race', [])
         ->assertJsonPath('props.raceOutlook', null);

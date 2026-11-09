@@ -12,8 +12,8 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about: just `7d`, read as of now. The comparison is against the
- * immediately preceding 7-day period.
+ * The range a narration is about (`6w`), read as of `$asOf` (today when null). The comparison is
+ * against the immediately preceding period of the same length.
  *
  * @phpstan-type PeriodTotals array{runs: int, distance_km: float, trimp_total: float|null}
  * @phpstan-type RangeTotals array{range: string, current: PeriodTotals, comparison: PeriodTotals, ctl_start: float|null, ctl_end: float|null, vdot_start: float|null, vdot_end: float|null, avg_monotony: float|null, avg_strain: float|null}
@@ -25,12 +25,13 @@ final class TrendRangeTool extends NoArgumentTool
      *
      * @var array<string, int>
      */
-    public const array RANGE_DAYS = ['7d' => 7];
+    public const array RANGE_DAYS = ['6w' => 42];
 
     public function __construct(
         private readonly User $user,
         private readonly string $range,
         private readonly TrainingLoad $trainingLoad,
+        private readonly ?Carbon $asOf = null,
     ) {
     }
 
@@ -52,14 +53,14 @@ final class TrendRangeTool extends NoArgumentTool
     public function handle(array $arguments): array
     {
         $days = self::RANGE_DAYS[$this->range];
-        $today = Carbon::today();
+        $today = ($this->asOf ?? Carbon::today())->copy()->startOfDay();
 
         $currentStart = $today->copy()->subDays($days - 1);
         $comparisonStart = $currentStart->copy()->subDays($days);
         $comparisonEnd = $currentStart->copy()->subDay();
 
-        $ctlSeries = $this->trainingLoad->ctlTrend($this->user, $days);
-        $strainSeries = $this->trainingLoad->strainMonotonyTrend($this->user, $days);
+        $ctlSeries = $this->trainingLoad->ctlTrend($this->user, $days, $today);
+        $strainSeries = $this->trainingLoad->strainMonotonyTrend($this->user, $days, $today);
 
         return [
             'range' => $this->range,
@@ -67,8 +68,8 @@ final class TrendRangeTool extends NoArgumentTool
             'comparison' => $this->periodTotals($comparisonStart, $comparisonEnd),
             'ctl_start' => $ctlSeries === [] ? null : $ctlSeries[0]['ctl'],
             'ctl_end' => $ctlSeries === [] ? null : array_last($ctlSeries)['ctl'],
-            'vdot_start' => $this->vdotNear($currentStart, ascending: true),
-            'vdot_end' => $this->vdotNear($today, ascending: false),
+            'vdot_start' => $this->vdotNear($currentStart, $today, ascending: true),
+            'vdot_end' => $this->vdotNear($today, $today, ascending: false),
             'avg_monotony' => $this->average($strainSeries, 'monotony'),
             'avg_strain' => $this->average($strainSeries, 'strain'),
         ];
@@ -95,10 +96,11 @@ final class TrendRangeTool extends NoArgumentTool
         ];
     }
 
-    private function vdotNear(Carbon $date, bool $ascending): ?float
+    private function vdotNear(Carbon $date, Carbon $through, bool $ascending): ?float
     {
         $query = TrendDailySnapshot::query()
             ->where('user_id', $this->user->id)
+            ->where('snapshot_date', '<=', $through->toDateString())
             ->whereNotNull('vdot');
 
         $value = $ascending

@@ -28,13 +28,19 @@ final class PersonalRecordsTool extends ActivityTool
         $records = PersonalRecord::query()
             ->where('activity_id', $this->activity->id)
             ->get(['category', 'value_sec'])
-            ->map(fn (PersonalRecord $record): array => [
-                'category' => $record->category->value,
-                'value_sec' => $record->value_sec,
-                'value_formatted' => DurationFormatter::hms((int) round($record->value_sec)),
-            ])
+            ->map(self::entry(...))
             ->all();
 
         return ['personal_records' => $records];
+    }
+
+    /** @return array{category: string, value_sec: float, value_formatted: string} */
+    public static function entry(PersonalRecord $record): array
+    {
+        return [
+            'category' => $record->category->value,
+            'value_sec' => $record->value_sec,
+            'value_formatted' => DurationFormatter::hms((int) round($record->value_sec)),
+        ];
     }
 }

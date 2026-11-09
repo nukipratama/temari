@@ -25,6 +25,7 @@ function recapAnalysis(
         id: 1,
         status: 'done',
         content: 'Consistent week.',
+        title: null,
         type: 'weekly_recap',
         subject_type: 'weekly_snapshot',
         subject_id: 7,
@@ -187,14 +188,13 @@ describe('WeekSection', () => {
         render(
             <WeekSection
                 bucket={bucket()}
-                snapshot={snapshot({ monotony: 2.1, avg_decoupling_v2: 9.4 })}
+                snapshot={snapshot({ avg_decoupling_v2: 13.4 })}
                 notes={{}}
                 moods={{}}
             />,
         );
 
-        expect(screen.getByText('2.10')).toBeInTheDocument();
-        expect(screen.getByText('9.4%')).toBeInTheDocument();
+        expect(screen.getByText('13.4%')).toBeInTheDocument();
     });
 
     describe('weekly recap fallback', () => {
@@ -215,7 +215,32 @@ describe('WeekSection', () => {
             );
 
             expect(
-                screen.getByText(/you ran 4x this week for 35.5 km/),
+                screen.getByText(
+                    /^You ran 4x this week for 35.5 km\. Load balance -2\.5, /,
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it('writes a one-sentence fallback in lowercase', () => {
+            render(
+                <WeekSection
+                    bucket={bucket()}
+                    snapshot={snapshot({
+                        form: null,
+                        form_status: null,
+                        is_current_week: true,
+                        recap_analysis: recapAnalysis({
+                            status: 'pending',
+                            content: null,
+                        }),
+                    })}
+                    notes={{}}
+                    moods={{}}
+                />,
+            );
+
+            expect(
+                screen.getByText('you ran 4x this week for 35.5 km.'),
             ).toBeInTheDocument();
         });
 

@@ -39,7 +39,7 @@ interface TrendsProps {
 
 /**
  * Trends answers one question: "am I getting fitter, and at what cost?"
- * Temari's 7-day verdict runs first — the only place a call is stated — then
+ * Temari's read runs first — the only place a call is stated — then
  * three stacked comparisons carry the evidence: vs last week, long-term load
  * (the CTL chart lives here), then vs race day (or, with no race, vs the
  * athlete's own year). Laid out on MASTER.md's lane-divided sections, mirroring

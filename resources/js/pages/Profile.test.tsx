@@ -343,6 +343,7 @@ describe('Profile', () => {
                     id: 3,
                     status: 'done',
                     content: "You're getting more consistent every week.",
+                    title: null,
                     type: 'profile_voice',
                     subject_type: 'profile_voice_user',
                     subject_id: 1,

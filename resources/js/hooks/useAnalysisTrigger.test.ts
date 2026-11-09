@@ -15,6 +15,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
+        title: null,
         type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,

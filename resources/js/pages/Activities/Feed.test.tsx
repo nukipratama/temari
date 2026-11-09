@@ -34,6 +34,7 @@ function recapSnapshot(
             id,
             status: 'done',
             content,
+            title: null,
             type: 'weekly_recap',
             subject_type: 'weekly_snapshot',
             subject_id: id,
@@ -219,6 +220,7 @@ describe('Activities/Feed', () => {
                     id: 1,
                     status: 'done' as const,
                     content: 'A consistent week.',
+                    title: null,
                     type: 'weekly_recap' as const,
                     subject_type: 'weekly_snapshot',
                     subject_id: 1,
@@ -236,7 +238,7 @@ describe('Activities/Feed', () => {
         expect(screen.getAllByTestId('run-row').length).toBe(2);
         expect(screen.getByText(/A consistent week/)).toBeInTheDocument();
         expect(
-            screen.getByRole('button', { name: 'short-term load' }),
+            screen.getByRole('button', { name: 'load balance' }),
         ).toBeInTheDocument();
     });
 

@@ -42,15 +42,17 @@ final class MaterialFingerprint
     }
 
     /**
-     * The material a Trends range's read speaks to:
+     * The material the Trends read speaks to:
      * {@see \App\Services\AI\Agent\Tools\TrendRangeTool}'s own output for the range plus
-     * plan-adherence counts, rounded to the granularity the narration reads at, so a scheduled
-     * re-read only spends its cadence when a figure has actually moved.
+     * plan-adherence counts, rounded to the granularity the narration reads at, and the active
+     * race as given, so a scheduled re-read only spends its cadence when a figure has actually
+     * moved or the race changed.
      *
      * @param  RangeTotals  $totals
      * @param  array<string, mixed>  $adherence
+     * @param  array<string, int|string>|null  $race
      */
-    public static function forTrendRead(array $totals, array $adherence = []): string
+    public static function forTrendRead(array $totals, array $adherence = [], ?array $race = null): string
     {
         return self::digest([
             'current' => self::roundedPeriod($totals['current']),
@@ -62,6 +64,7 @@ final class MaterialFingerprint
             'avg_monotony' => self::bucket($totals['avg_monotony']),
             'avg_strain' => self::bucket($totals['avg_strain']),
             'adherence' => self::roundedAdherence($adherence),
+            'race' => $race,
         ]);
     }
 

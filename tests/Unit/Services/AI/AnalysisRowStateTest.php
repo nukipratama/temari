@@ -204,7 +204,7 @@ it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly 
         Activity::class,
         $activity->id,
         null,
-        AnalyzeActivityJob::groupedTypes(),
+        [AnalysisType::PostRunSpeech, AnalysisType::RunInsight],
     );
 
     expect(nonNull($rows->get(AnalysisType::PostRunSpeech->value))->wasRecentlyCreated)->toBeFalse()
@@ -248,7 +248,7 @@ it('marks only rows inserted by this caller as recently created when an insert r
         Activity::class,
         $activity->id,
         null,
-        AnalyzeActivityJob::groupedTypes(),
+        [AnalysisType::PostRunSpeech, AnalysisType::RunInsight],
     );
 
     expect($insertedByRacer)->toBeTrue()
@@ -267,7 +267,7 @@ it('upsertGroupRows flags the rows it created, which stay Pending until the whol
         AnalyzeActivityJob::groupedTypes(),
     );
 
-    expect($rows)->toHaveCount(2)
+    expect($rows)->toHaveCount(1)
         ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
         ->and($rows->keys()->all())->toBe(
@@ -691,6 +691,21 @@ it('keeps the previous narration and supersedes only its own flag when a done ro
         ->and(nonNull($flag->fresh())->superseded_at)->not->toBeNull()
         ->and(nonNull($otherNarration->fresh())->superseded_at)->toBeNull()
         ->and(nonNull($planDay->fresh())->superseded_at)->toBeNull();
+});
+
+it('keeps a done row\'s content through a re-narration\'s claim and processing, and versions it only when the new one lands', function (): void {
+    $row = Analysis::factory()->done('the last read')->create();
+    $state = analysisRowState();
+
+    expect($state->claimForDispatch($row, invalidate: true))->toBeTrue()
+        ->and(nonNull($row->fresh())->content)->toBe('the last read')
+        ->and($state->markProcessing($row))->toBeTrue()
+        ->and(nonNull($row->fresh())->content)->toBe('the last read')
+        ->and(AnalysisVersion::query()->count())->toBe(0);
+
+    $state->markDone($row, 'the new read', ServedBy::Llm);
+
+    expect(AnalysisVersion::query()->sole()->content)->toBe('the last read');
 });
 
 it('writes no version and leaves the flag standing on a first narration, which supersedes nothing', function (): void {

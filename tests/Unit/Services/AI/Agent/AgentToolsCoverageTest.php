@@ -10,6 +10,10 @@ use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\WeeklySnapshot;
+use App\Services\AI\Agent\Tools\MonthRecordsTool;
+use App\Services\AI\Agent\Tools\MonthRunsTool;
+use App\Services\AI\Agent\Tools\WeekRecordsTool;
+use App\Services\AI\Agent\Tools\WeekRunsTool;
 use App\Services\AI\Agent\Tools\WeekTotalsTool;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\EffortContextTool;
@@ -34,6 +38,10 @@ use App\Enums\PlanPhase;
 use App\Enums\PlanOverrideKind;
 use App\Models\PlanAdaptation;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
+use App\Services\AI\Agent\Tools\RaceOutlookTool;
+use App\Models\RaceGoal;
+use App\Services\Run\Plan\RacePresenter;
+use App\Services\Run\Plan\SupportedTimeHistory;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\Run\Plan\PlanRenderer;
 use App\Services\Run\Plan\TrainingBaseline;
@@ -97,10 +105,15 @@ function agentToolFor(string $class): AgentTool
         GetThreadTool::class => new GetThreadTool($a, 1),
         CardIdentityTool::class => new CardIdentityTool(RunCard::factory()->create(['activity_id' => $a->id])),
         WeekTotalsTool::class => new WeekTotalsTool(WeeklySnapshot::factory()->for($user)->create()),
+        WeekRunsTool::class => new WeekRunsTool(WeeklySnapshot::factory()->for($user)->create(), app(VerdictNarrator::class)),
+        WeekRecordsTool::class => new WeekRecordsTool(WeeklySnapshot::factory()->for($user)->create()),
+        MonthRunsTool::class => new MonthRunsTool($user, $today->format('Y-m'), app(VerdictNarrator::class)),
+        MonthRecordsTool::class => new MonthRecordsTool($user, $today->format('Y-m')),
         MonthTotalsTool::class => new MonthTotalsTool($user, $today->format('Y-m')),
-        TrendRangeTool::class => new TrendRangeTool($user, '7d', new TrainingLoad()),
+        TrendRangeTool::class => new TrendRangeTool($user, '6w', new TrainingLoad()),
         LifetimeStatsTool::class => new LifetimeStatsTool($user, $today, app(LifetimeStats::class)),
         PlanAdherenceTool::class => new PlanAdherenceTool($user, $today, null),
+        RaceOutlookTool::class => new RaceOutlookTool($user, $today, RaceGoal::factory()->for($user)->create(), app(RacePresenter::class), app(SupportedTimeHistory::class)),
         PlanContextTool::class => planContextTool($user, $today, $today),
         ProgressionSignalTool::class => new ProgressionSignalTool($user, $today, app(ProgressionSeriesBuilder::class)),
         RecentBaselineTool::class => new RecentBaselineTool($user, $today, new ResolveRunBaselineAction()),
@@ -130,6 +143,8 @@ it('gives every tool an argument-free schema, so none can be pointed at another 
     KmSplitsTool::class => [KmSplitsTool::class],
     LapsTool::class => [LapsTool::class],
     LifetimeStatsTool::class => [LifetimeStatsTool::class],
+    MonthRecordsTool::class => [MonthRecordsTool::class],
+    MonthRunsTool::class => [MonthRunsTool::class],
     MonthTotalsTool::class => [MonthTotalsTool::class],
     PerceivedEffortTool::class => [PerceivedEffortTool::class],
     PersonaMixTool::class => [PersonaMixTool::class],
@@ -137,6 +152,7 @@ it('gives every tool an argument-free schema, so none can be pointed at another 
     PlanAdherenceTool::class => [PlanAdherenceTool::class],
     PlanContextTool::class => [PlanContextTool::class],
     ProgressionSignalTool::class => [ProgressionSignalTool::class],
+    RaceOutlookTool::class => [RaceOutlookTool::class],
     RecentBaselineTool::class => [RecentBaselineTool::class],
     RecentRunsTool::class => [RecentRunsTool::class],
     RunSummaryTool::class => [RunSummaryTool::class],
@@ -147,6 +163,8 @@ it('gives every tool an argument-free schema, so none can be pointed at another 
     WeatherTool::class => [WeatherTool::class],
     WeekStateTool::class => [WeekStateTool::class],
     WeekTotalsTool::class => [WeekTotalsTool::class],
+    WeekRunsTool::class => [WeekRunsTool::class],
+    WeekRecordsTool::class => [WeekRecordsTool::class],
 ]);
 
 // ── GetThreadTool ─────────────────────────────────────────────────────

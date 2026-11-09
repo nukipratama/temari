@@ -45,14 +45,14 @@ it('records a failed command with its exception message', function (): void {
 });
 
 it('keeps the distinguishing argument so same-signature ranges stay attributable', function (): void {
-    $sevenDay = app(Schedule::class)->command('ai:trend-read 7d')->dailyAt('06:00');
+    $arc = app(Schedule::class)->command('ai:trend-read arc')->dailyAt('06:00');
     $thirtyDay = app(Schedule::class)->command('ai:trend-read 30d')->dailyAt('06:00');
 
-    new RecordScheduledTaskRun()->finished(new ScheduledTaskFinished($sevenDay, 1.0));
+    new RecordScheduledTaskRun()->finished(new ScheduledTaskFinished($arc, 1.0));
     new RecordScheduledTaskRun()->finished(new ScheduledTaskFinished($thirtyDay, 1.0));
 
     expect(ScheduledTaskRun::query()->pluck('command')->sort()->values()->all())
-        ->toBe(['ai:trend-read 30d', 'ai:trend-read 7d']);
+        ->toBe(['ai:trend-read 30d', 'ai:trend-read arc']);
 });
 
 it('falls back to getSummaryForDisplay for a closure-based scheduled event (no artisan command to regex-match)', function (): void {

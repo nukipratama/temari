@@ -87,6 +87,7 @@ class SelfHealer
             $rows = AnalysisSubjectMap::whereOwnedBy(
                 Analysis::query()
                     ->knownType()
+                    ->where('analysis_type', '!=', AnalysisType::RunInsight)
                     ->where('status', AnalysisStatus::Failed)
                     ->where('updated_at', '>=', $pauseStartedAt->copy()->subHour()),
                 $userId,

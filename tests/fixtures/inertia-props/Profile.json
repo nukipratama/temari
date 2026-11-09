@@ -48,6 +48,7 @@
     "profileVoice.status",
     "profileVoice.subject_id",
     "profileVoice.subject_type",
+    "profileVoice.title",
     "profileVoice.type",
     "profileVoice.unread_while_away",
     "progressionByCategory",

@@ -15,7 +15,8 @@ use App\Enums\Mood;
 /**
  * Composite read for a run's post-run note: the mood comes from the
  * post-run {@see StoryLine}, the one-liner from the {@see Analysis} row
- * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done.
+ * carrying the {@see AnalysisType::PostRunSpeech} narration once it is Done:
+ * its title, or its body when it has none.
  *
  * Centralised so the page controllers (History / Today) share one produced
  * shape instead of drifting.
@@ -36,18 +37,18 @@ class PostRunNoteReader
             ->value('mood');
         assert($mood === null || $mood instanceof Mood);
 
-        $speech = Analysis::query()
+        $oneline = self::oneline(Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->where('subject_id', $activityId)
-            ->value('content');
+            ->first(['content']));
 
-        if (!$mood instanceof Mood || ! is_string($speech) || $speech === '') {
+        if (!$mood instanceof Mood || $oneline === null || $oneline === '') {
             return null;
         }
 
-        return ['oneline' => $speech, 'mood' => $mood->value];
+        return ['oneline' => $oneline, 'mood' => $mood->value];
     }
 
     /**
@@ -79,25 +80,32 @@ class PostRunNoteReader
 
         $moodByActivity = $this->moodsFor($activityIds);
 
-        /** @var Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->whereIn('subject_id', $activityIds)
-            ->pluck('content', 'subject_id');
+            ->get(['subject_id', 'content'])
+            ->keyBy('subject_id');
 
         $notes = [];
         foreach ($activityIds as $id) {
-            $speech = $speechByActivity->get($id);
+            $oneline = self::oneline($speechByActivity->get($id));
             $mood = $moodByActivity[$id] ?? null;
-            if ($speech === null || $speech === '' || $mood === null) {
+            if ($oneline === null || $oneline === '' || $mood === null) {
                 continue;
             }
-            $notes[$id] = ['oneline' => $speech, 'mood' => $mood];
+            $notes[$id] = ['oneline' => $oneline, 'mood' => $mood];
         }
 
         return ['notes' => $notes, 'moods' => $moodByActivity];
+    }
+
+    private static function oneline(?Analysis $speech): ?string
+    {
+        $narration = $speech?->narration();
+
+        return $narration->title ?? $narration?->body;
     }
 
     /**

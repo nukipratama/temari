@@ -39,6 +39,7 @@
     "narration.status",
     "narration.subject_id",
     "narration.subject_type",
+    "narration.title",
     "narration.type",
     "narration.unread_while_away",
     "raceOutlook",

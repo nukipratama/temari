@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
@@ -12,6 +12,7 @@ function analysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: 1,
         status: 'done',
         content: 'Consistent week.',
+        title: null,
         type: 'weekly_recap',
         subject_type: 'weekly_snapshot',
         subject_id: 7,
@@ -123,4 +124,116 @@ describe('RecapCard', () => {
 
         expect(screen.queryByTestId('recap-secondary')).not.toBeInTheDocument();
     });
+
+    it('renders a titled story as the headline over its paragraphs, breaks kept and lines capped at prose width', () => {
+        const paragraph = (beat: string) =>
+            Array.from(
+                { length: 4 },
+                (_, i) => `${beat} sentence ${i + 1} carries one more run.`,
+            ).join(' ');
+        const body = [
+            paragraph('what happened'),
+            paragraph('what it means'),
+            paragraph('what it points to'),
+        ].join('\n\n');
+        const { container } = render(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({
+                    title: 'the long run held a lighter week together.',
+                    content: body,
+                })}
+                chips={<span>load balance steady</span>}
+            />,
+        );
+
+        const headline = screen.getByText(
+            'the long run held a lighter week together.',
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
+        const story = nonNullStory(container);
+        expect(story.textContent).toBe(body);
+        expect(story).not.toHaveClass('narration-dense');
+        expect(story.closest('.whitespace-pre-line')).not.toBeNull();
+        expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
+            headline,
+        );
+        expect(
+            headline.compareDocumentPosition(story) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.getByTestId('recap-secondary')).toHaveTextContent(
+            'load balance steady',
+        );
+    });
+
+    it('collapses a titled multi-paragraph recap to its headline and first paragraph behind a toggle', () => {
+        const { container } = render(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({
+                    title: 'the long run held a lighter week together.',
+                    content:
+                        'First **beat** of the week.\n\nSecond beat.\n\nThird beat.',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByText('the long run held a lighter week together.'),
+        ).toBeInTheDocument();
+        expect(nonNullStory(container).textContent).toBe(
+            'First beat of the week.',
+        );
+        expect(screen.queryByText(/Second beat/)).not.toBeInTheDocument();
+        expect(screen.getByText('beat').tagName).toBe('STRONG');
+
+        const toggle = screen.getByRole('button', { name: 'read more' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+        fireEvent.click(toggle);
+
+        const open = screen.getByRole('button', { name: 'show less' });
+        expect(open).toHaveAttribute('aria-expanded', 'true');
+        expect(nonNullStory(container).textContent).toContain('Third beat.');
+        expect(screen.getByText('beat').tagName).toBe('STRONG');
+        expect(
+            document.getElementById(
+                open.getAttribute('aria-controls') as string,
+            ),
+        ).toContainElement(nonNullStory(container));
+
+        fireEvent.click(open);
+
+        expect(screen.queryByText(/Second beat/)).not.toBeInTheDocument();
+    });
+
+    it('draws no toggle for a single-paragraph titled recap or an untitled multi-paragraph one', () => {
+        const { rerender } = render(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({
+                    title: 'a quiet week.',
+                    content: 'One beat.',
+                })}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+
+        rerender(
+            <RecapCard
+                mood="easy"
+                analysis={analysis({ content: 'Old beat.\n\nOlder beat.' })}
+            />,
+        );
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+        expect(screen.getByText(/Older beat/)).toBeInTheDocument();
+    });
 });
+
+function nonNullStory(container: HTMLElement): HTMLElement {
+    const story = container.querySelector<HTMLElement>('p.narration');
+    expect(story).not.toBeNull();
+
+    return story as HTMLElement;
+}

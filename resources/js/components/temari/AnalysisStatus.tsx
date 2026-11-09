@@ -1,5 +1,5 @@
 import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 
 import type {
     AnalysisPayload,
@@ -101,6 +101,19 @@ interface Props {
     isChainHead?: boolean;
     /** Show Temari thinking beside the skeleton, for a block no mascot sits near. */
     thinkingMark?: boolean;
+    /**
+     * A titled narration of more than one paragraph shows its headline and
+     * first paragraph behind a `read more` toggle. Every mount starts collapsed.
+     */
+    collapsible?: boolean;
+}
+
+function paragraphsOf(content: string): string[] {
+    return content
+        .trim()
+        .split(/\n\s*\n/)
+        .map((paragraph) => paragraph.trim())
+        .filter((paragraph) => paragraph !== '');
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -169,6 +182,7 @@ export default function AnalysisStatus({
     chained = false,
     isChainHead = false,
     thinkingMark = false,
+    collapsible = false,
 }: Readonly<Props>) {
     const {
         status,
@@ -187,11 +201,14 @@ export default function AnalysisStatus({
     const { hrZonesChangedAt, aiPauseRetriesFailed = false } = useSharedProps();
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
+    const title = analysis.title ?? null;
     const attempts = analysis.attempts ?? 0;
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const rateLimited = error === RATE_LIMITED_ERROR;
     const unreadWhileAway = analysis.unread_while_away === true;
     const awayDescriptionId = useId();
+    const storyId = useId();
+    const [expanded, setExpanded] = useState(false);
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
@@ -201,6 +218,14 @@ export default function AnalysisStatus({
             generatedAt,
             hrZonesChangedAt,
         );
+        const paragraphs = paragraphsOf(content);
+        const collapses =
+            collapsible &&
+            title !== null &&
+            title !== '' &&
+            paragraphs.length > 1;
+        const shownContent =
+            collapses && !expanded ? (paragraphs[0] ?? content) : content;
         const rereadButton = canRegenerate && (
             <button
                 type="button"
@@ -236,12 +261,29 @@ export default function AnalysisStatus({
         return (
             <div className="reveal flex flex-col gap-1">
                 <div
+                    id={storyId}
                     className={`${TEXT_SIZE[size]} whitespace-pre-line text-foreground`}
                 >
+                    {title !== null && title !== '' && (
+                        <h3 className="mb-1.5 max-w-prose font-serif text-headline-sm text-foreground italic">
+                            {renderBold(title)}
+                        </h3>
+                    )}
                     {renderContent
-                        ? renderContent(content)
-                        : renderBold(content)}
+                        ? renderContent(shownContent)
+                        : renderBold(shownContent)}
                 </div>
+                {collapses && (
+                    <button
+                        type="button"
+                        onClick={() => setExpanded((open) => !open)}
+                        aria-expanded={expanded}
+                        aria-controls={storyId}
+                        className="focus-ring pressable self-start rounded-xs text-xs font-semibold text-text-2 underline decoration-dotted underline-offset-4 hover:text-foreground"
+                    >
+                        {expanded ? 'show less' : 'read more'}
+                    </button>
+                )}
                 {analysis.is_stale === true ? (
                     <StalePlanBadge />
                 ) : (

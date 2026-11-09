@@ -10,11 +10,12 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
+        title: null,
         type: 'trend_read',
         is_zone_dependent: true,
         subject_type: 'trend_read_user_range',
         subject_id: 1,
-        discriminator: '7d',
+        discriminator: 'arc',
         ...overrides,
     };
 }
@@ -38,14 +39,43 @@ describe('splitContent', () => {
 });
 
 describe('NarrationCard', () => {
-    it("labels the block temari's read, last 7 days", () => {
+    it("labels the block temari's read, with no window that no longer holds", () => {
         render(<NarrationCard analysis={payload()} />);
-        expect(
-            screen.getByText(/temari.?s read . last 7 days/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/^temari.?s read$/i)).toBeInTheDocument();
+        expect(screen.queryByText(/last 7 days/i)).not.toBeInTheDocument();
     });
 
-    it('renders the title as a headline and the description below it', () => {
+    it('draws a titled read as its headline over the story, paragraphs and bold kept, at prose width', () => {
+        const { container } = render(
+            <NarrationCard
+                analysis={payload({
+                    status: 'done',
+                    title: 'eight weeks out, and the target is a stretch.',
+                    content:
+                        'The supported time came down.\n\nThe **long run** carried it.',
+                })}
+            />,
+        );
+
+        const headline = screen.getByText(
+            'eight weeks out, and the target is a stretch.',
+        );
+        const story = screen.getByText(/The supported time came down\./);
+        expect(headline).toHaveClass('font-serif');
+        expect(headline.tagName).toBe('H3');
+        expect(story).toHaveClass('narration');
+        expect(story).not.toHaveClass('narration-dense');
+        expect(story.textContent).toBe(
+            'The supported time came down.\n\nThe long run carried it.',
+        );
+        expect(screen.getByText('long run').tagName).toBe('STRONG');
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+        expect(container.querySelector('section')).toHaveClass(
+            '[&_p]:max-w-prose',
+        );
+    });
+
+    it('splits an untitled read on its first blank line, at its old width', () => {
         render(
             <NarrationCard
                 analysis={payload({
@@ -55,10 +85,15 @@ describe('NarrationCard', () => {
             />,
         );
 
-        expect(screen.getByText('Fitness is climbing.')).toBeInTheDocument();
+        expect(screen.getByText('Fitness is climbing.')).toHaveClass(
+            'font-serif',
+        );
         expect(
             screen.getByText('CTL moved from 40 to 55.'),
         ).toBeInTheDocument();
+        expect(screen.getByRole('heading').closest('section')).not.toHaveClass(
+            '[&_p]:max-w-prose',
+        );
     });
 
     it('omits the description paragraph when there is none', () => {

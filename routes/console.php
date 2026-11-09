@@ -106,10 +106,10 @@ Schedule::command('schedule:monday-check')->weeklyOn(1, '06:00')->withoutOverlap
 // behind "rarely" — see docs/architecture/scheduler.md.
 Schedule::command('strava:sync-zones')->monthlyOn(1, '00:10')->withoutOverlapping(55);
 
-// Trends tab's "Temari's read" — one verdict, the 7-day window. Scheduled +
-// cached like every other narrator — never generated live per page view. See
-// TREND_READ_RANGES.
-$alertOnFailure(Schedule::command('ai:trend-read 7d')->dailyAt('06:00')->withoutOverlapping(20), 'ai:trend-read 7d');
+// Trends tab's "Temari's read": the closed weeks toward the race, or six weeks
+// against the six before. Daily, but it re-narrates only once a week closes or
+// the race changes (TrendReadFingerprint). Never generated live per page view.
+$alertOnFailure(Schedule::command('ai:trend-read arc')->dailyAt('06:00')->withoutOverlapping(20), 'ai:trend-read arc');
 
 // Reconcile the seven closed days, never the open current day. Activity ingest
 // repairs the affected date immediately; this is the rest-day and missed-event backstop.

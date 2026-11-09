@@ -114,7 +114,7 @@ class RecordScheduledTaskRun
     }
 
     /**
-     * Prefer the artisan command and its arguments (e.g. "ai:trend-read 7d") parsed
+     * Prefer the artisan command and its arguments (e.g. "ai:trend-read arc") parsed
      * from the built command string, so commands that share a signature but differ
      * only by argument stay distinguishable; fall back to Laravel's display summary
      * for anything that isn't a plain artisan command (e.g. a scheduled closure).

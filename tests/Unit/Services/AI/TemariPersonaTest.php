@@ -13,7 +13,7 @@ function temariPrompt(): string
  * MANUAL VOICE SPOT-CHECK (run after meaningful persona edits):
  *  - Hit /dashboard logged in as a user with recent activity and read the
  *    Briefing Temari card. Voice should be first-person ("I" / "you"), dry,
- *    lowercase-leaning, and anchored on a number that moved. No corporate
+ *    cased by the fixed rule, and anchored on a number that moved. No corporate
  *    cheer, no exclamation point on an ordinary day, no profanity/ALL CAPS.
  *  - Open a recent run at /activities/{id} and read all 4 thread entries
  *    (run story, technical translation, split highlight, HR zone). Same
@@ -26,8 +26,8 @@ function temariPrompt(): string
  *
  *  What counts as drift now, beyond stiffness: praise handed out by default,
  *  a warm closer bolted onto a block whose numbers didn't earn one, or a
- *  coast that got named twice. Lowercase is a SOFT tendency, so output that
- *  varies its capitalization between blocks is correct, not a regression.
+ *  coast that got named twice, or a capital where a headline should be
+ *  lowercase (and the reverse for a multi-sentence body).
  *
  *  Voice drift = persona prompt needs tightening. Reasoning lives in the
  *  persona prompt body comments — keep it the single source of truth.
@@ -43,6 +43,7 @@ it('persona prompt wording: who Temari is and how it addresses the user', functi
     }
 })->with([
     'introduces Temari in first person as the partner who keeps score' => ["I'm temari", 'I keep score'],
+    'an output without a headline opens its first sentence from the data' => ['or the first sentence when the output has no headline'],
     'pins the only opponent to the user themselves, never another runner' => ['# Keeping score', 'The only opponent is a past version of the user', 'no percentiles, no cross-user anything'],
     // The register shift is only safe if the hard exclusion list travels with
     // it: calling a fatigued or overreaching runner lazy is the failure mode
@@ -65,7 +66,7 @@ it('persona prompt wording: voice rules, formats and guards', function (string .
     }
 })->with([
     'allows one bold emphasis but bans other markdown, em-dash, and clinical phrasing' => ['**Bold**', 'NO other markdown', 'em dash', 'clinical third person'],
-    'draws a hard line at profanity and shouting while allowing casual contractions' => ['Hard line, never cross it', 'no profanity or crude slang', 'ALL CAPS', '"you\'re"', '"gonna"'],
+    'draws a hard line at profanity and shouting while allowing casual contractions' => ['Hard line, never cross it', 'no profanity or crude slang', 'ALL CAPS', '"you\'re"', '"don\'t"'],
     'makes encouragement soft and optional, not a forced beat' => ['OPTIONAL', "Don't force a positive note"],
     'tells narrators to vary openers and never open with a continuity connector' => ['Opening & variation', 'still riding that', 'Vary how you open'],
     'forbids preachy / coach-mode phrasing like "you have to"' => ['NEVER lecture or preach', '"you have to"'],
@@ -92,6 +93,47 @@ it('persona prompt wording: voice rules, formats and guards', function (string .
     'forbids announcing missing data, not just inventing it' => ['Two rules, both hard', 'NEVER announce it', "Cadence isn't showing up", "I don't want to guess"],
     'forbids narrating its own reading process to the user' => ["narrate your own process", "talking to me"],
 ]);
+
+it('persona prompt fixes the casing rule instead of leaving it a tendency', function (): void {
+    expect(temariPrompt())
+        ->toContain('Casing is a fixed rule')
+        ->toContain('A headline or a one-sentence output')
+        ->toContain('is lowercase')
+        ->toContain('two or more sentences uses normal sentence case')
+        ->toContain('one output never mixes the two styles')
+        ->toContain('Real names and terms keep their capitals everywhere')
+        ->toContain('The name temari stays lowercase even at the start of a sentence')
+        ->toContain('The pronoun is "I" in sentence-case prose and "i" in a lowercase headline')
+        ->toContain('NEVER capitalize a whole word for emphasis')
+        ->and(temariPrompt())->not->toContain('Lowercase-leaning')
+        ->and(temariPrompt())->not->toContain('It\'s a tendency, not a rule')
+        ->and(temariPrompt())->not->toContain('break it whenever a capital reads better');
+});
+
+it('persona prompt caps slang contractions at one per output and bans them from headlines', function (): void {
+    expect(temariPrompt())
+        ->toContain('"gonna", "kinda", "gotta") are allowed at most once per output and never in a headline')
+        ->and(temariPrompt())->not->toContain('"it\'s", "don\'t", "gonna", "kinda", "gotta". Use them');
+});
+
+it('persona prompt examples follow the casing rule', function (): void {
+    expect(temariPrompt())
+        ->toContain('"Three easy runs, three weeks straight. Your legs could do this')
+        ->toContain('"Two runs this week, four last week. The scoreboard noticed."')
+        ->toContain('Right: "You\'re wiped. Take today off."')
+        ->toContain('"Longest you\'ve ever gone. By 1.8 km, so it wasn\'t close."')
+        ->toContain('"Easy pace, short distance. A light start to the day."')
+        ->and(temariPrompt())->not->toContain('"three easy runs, three weeks straight.')
+        ->and(temariPrompt())->not->toContain('"you\'re wiped. take today off."');
+});
+
+it('opens the headline from the data and invites weather only when a tool returned it', function (): void {
+    expect(temariPrompt())
+        ->toContain('Open the headline, or the first sentence when the output has no headline, from whatever is most notable in the data you fetched')
+        ->toContain('the weather only when a tool gave it')
+        ->and(temariPrompt())->not->toContain("this run's data")
+        ->and(temariPrompt())->not->toContain('one atmospheric detail');
+});
 
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
     // An explicit language mandate sits near the top of the prompt, before any

@@ -237,3 +237,11 @@ it('pins the clamp fingerprint for a fixed fixture', function (): void {
         ->and(MaterialFingerprint::forClamp(ReadinessCeiling::EasyOnly, SessionType::Easy, true))
         ->toBe('646ce5aa2bead99e75aa41b22a1b4c08');
 });
+
+it('moves the trend read digest with the race and holds it without one', function (): void {
+    $race = ['id' => 4, 'distance_m' => 21_097, 'goal_time_sec' => 7_200, 'race_date' => '2026-10-11'];
+
+    expect(MaterialFingerprint::forTrendRead(trendTotals(), [], $race))->toBe(MaterialFingerprint::forTrendRead(trendTotals(), [], $race))
+        ->and(MaterialFingerprint::forTrendRead(trendTotals(), [], $race))->not->toBe(MaterialFingerprint::forTrendRead(trendTotals()))
+        ->and(MaterialFingerprint::forTrendRead(trendTotals(), [], [...$race, 'goal_time_sec' => 7_000]))->not->toBe(MaterialFingerprint::forTrendRead(trendTotals(), [], $race));
+});

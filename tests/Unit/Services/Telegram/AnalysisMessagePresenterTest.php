@@ -26,6 +26,32 @@ it('formats a post-run message with the title line, a blank line, the content, a
         ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
+it('formats a JSON narration as its headline and body, never the raw JSON', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => 123,
+        'content' => '{"title":"held it together","body":"Your pace held all the way.","claims":[{"anchor":"split:4","text":"Km 4 was the quickest.","value":"5:18/km","delta":null}]}',
+    ]);
+
+    $message = new AnalysisMessagePresenter()->format($analysis);
+
+    expect($message)->toStartWith("Your run is in\n\nheld it together\n\nYour pace held all the way.")
+        ->and($message)->not->toContain('{"title"')
+        ->and($message)->not->toContain('Km 4 was the quickest.')
+        ->and($message)->not->toContain('5:18/km');
+});
+
+it('formats a citation and bold in the narration as their words alone', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => 123,
+        'content' => '{"title":"held it together","body":"The **last** km was [the quickest](split:5)."}',
+    ]);
+
+    expect(new AnalysisMessagePresenter()->format($analysis))
+        ->toStartWith("Your run is in\n\nheld it together\n\nThe last km was the quickest.");
+});
+
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([

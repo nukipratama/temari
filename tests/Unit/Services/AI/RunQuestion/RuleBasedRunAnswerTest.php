@@ -77,7 +77,7 @@ it('names the slowest kilometre and its pace', function (): void {
         RunQuestionTopic::SlowestSplit->question(),
     );
 
-    expect($answer)->toContain('km 2')->and($answer)->toContain('6:12/km');
+    expect($answer)->toContain('Km 2')->and($answer)->toContain('6:12/km');
 });
 
 it('answers the cadence question with the drop and the average behind it', function (): void {
@@ -119,7 +119,18 @@ it('never invents a number when the run carries none', function (): void {
         'how did this one go?',
     );
 
-    expect($answer)->not->toContain('km ')->and($answer)->toContain('not much on the clock');
+    expect($answer)->not->toContain('km ')->and($answer)->toContain('Not much on the clock');
+});
+
+it('writes every answer in sentence case, each sentence starting with a capital', function (): void {
+    $drift = RuleBasedRunAnswer::for(
+        answerDetail(['drift_metric_version' => 2, 'steady_effort_hr_drift_bpm' => 6.4]),
+        RunQuestionTopic::HrDrift->question(),
+    );
+    $headline = RuleBasedRunAnswer::for(answerDetail([], ['distance' => null, 'moving_time' => null]), 'how did this one go?');
+
+    expect($drift)->toMatch('/^Your heart rate climbed .*\. That gap is the cost/')
+        ->and($headline)->toMatch('/^Not much on the clock for this one\. The numbers/');
 });
 
 it('is deterministic, so re-asking returns the same answer', function (): void {

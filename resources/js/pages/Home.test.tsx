@@ -20,6 +20,7 @@ const briefing: BriefingResult = {
         id: 4,
         status: 'done',
         content: 'Easy 6k.\n\nLegs are asking for it, keep it under 6:00.',
+        title: null,
         type: 'briefing_mascot_voice',
         subject_type: 'briefing_user_day',
         subject_id: 1,

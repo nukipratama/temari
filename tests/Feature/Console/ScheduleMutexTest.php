@@ -136,18 +136,19 @@ it('runs the Strava drain and fallback poll on the cadences they were sized for'
 ]);
 
 /**
- * The 30d/90d/12mo trend reads are retired; this pins the one survivor's
+ * The 7d/30d/90d/12mo trend reads are retired; this pins the one survivor's
  * cadence so a future re-tier is a deliberate, visible change.
  */
-it('runs the 7d trend read daily', function (): void {
-    $sevenDay = requireEvent(scheduledEvent('ai:trend-read 7d'), 'ai:trend-read 7d is not scheduled');
+it('runs the arc trend read daily', function (): void {
+    $arc = requireEvent(scheduledEvent('ai:trend-read arc'), 'ai:trend-read arc is not scheduled');
 
-    expect($sevenDay->expression)->toBe('0 6 * * *');
+    expect($arc->expression)->toBe('0 6 * * *');
 });
 
-it('no longer schedules the retired 30d/90d/12mo trend reads', function (string $command): void {
+it('no longer schedules the retired 7d/30d/90d/12mo trend reads', function (string $command): void {
     expect(scheduledEvent($command))->toBeNull("{$command} should no longer be scheduled");
 })->with([
+    'ai:trend-read 7d',
     'ai:trend-read 30d',
     'ai:trend-read 90d',
     'ai:trend-read 12mo',

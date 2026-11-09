@@ -58,6 +58,14 @@ it('returns the narration of a Done row whose fingerprint matches the live clamp
     expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBe('today is an easy run.');
 });
 
+it('returns the body of a JSON narration', function (): void {
+    $user = clampedAthlete();
+    clampVoiceRow($user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::ModerateOk, SessionType::Easy, false, ['demanding_session_within_24h']));
+    Analysis::query()->update(['content' => '{"title":"easy day","body":"today is an easy run."}']);
+
+    expect(app(ClampVoiceReader::class)->clampVoiceFor($user, Carbon::today()))->toBe('today is an easy run.');
+});
+
 it('returns null for a Done row fingerprinted against a different clamp', function (): void {
     $user = clampedAthlete();
     clampVoiceRow($user, AnalysisStatus::Done, ClampNarrationContext::fingerprint(ReadinessCeiling::EasyOnly, SessionType::Easy, true));

@@ -10,6 +10,7 @@ use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisSubjectMap;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\NarrationOrigin;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -49,7 +50,7 @@ class ReArmNarrationAction
     private function failed(int $userId): Collection
     {
         return AnalysisSubjectMap::whereOwnedBy(
-            Analysis::query()->knownType()->where('status', AnalysisStatus::Failed),
+            Analysis::query()->knownType()->where('analysis_type', '!=', AnalysisType::RunInsight)->where('status', AnalysisStatus::Failed),
             $userId,
         )->get();
     }

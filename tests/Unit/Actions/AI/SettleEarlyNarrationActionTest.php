@@ -231,7 +231,8 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
 
     app(SettleEarlyNarrationAction::class)($user);
 
-    expect(Analysis::query()->whereNotNull('narrated_early_at')->count())->toBe(0);
+    expect(Analysis::query()->whereNotNull('narrated_early_at')->pluck('analysis_type')->all())
+        ->toBe([AnalysisType::RunInsight, AnalysisType::RunInsight]);
 
     // Only the earliest activity's group is dispatched directly; its own
     // chain-advance (untested here, covered by AnalyzeActivityJob's own
@@ -245,54 +246,48 @@ it('rebuilds PRs, replays cards, and regenerates every early-marked row exactly 
     Bus::assertDispatched(AnalyzeBriefingMascotVoiceJob::class);
     Bus::assertDispatched(AnalyzeProfileVoiceJob::class);
 
-    expect(Analysis::query()
+    $statuses = fn (Activity $activity): array => Analysis::query()
         ->where('subject_type', Activity::class)
-        ->where('subject_id', $older->id)
-        ->where('status', AnalysisStatus::Queued)
-        ->count())->toBe(2)
-        ->and(Analysis::query()
-            ->where('subject_type', Activity::class)
-            ->where('subject_id', $newer->id)
-            ->where('status', AnalysisStatus::Pending)
-            ->count())->toBe(2);
+        ->where('subject_id', $activity->id)
+        ->orderBy('analysis_type')
+        ->pluck('status', 'analysis_type')
+        ->all();
+
+    expect($statuses($older))->toBe(['post_run_speech' => AnalysisStatus::Queued, 'run_insight' => AnalysisStatus::Done])
+        ->and($statuses($newer))->toBe(['post_run_speech' => AnalysisStatus::Pending, 'run_insight' => AnalysisStatus::Done]);
 });
 
-it('pairs a lone early RunInsight with its own PostRunSpeech row so the group is never left stranded', function (): void {
+it('leaves a lone early RunInsight row as it is and wakes nothing for it, even past the grace window', function (): void {
     Bus::fake();
     $user = User::factory()->create();
-    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subHour()]);
+    StravaConnection::factory()->for($user)->create(['created_at' => Carbon::now()->subDays(5)]);
     $activity = Activity::factory()->for($user)->create();
-    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDay()]);
-
-    // Only RunInsight was marked early; PostRunSpeech finished a moment later,
-    // after the drain had already emptied, so it settled Done with no mark.
-    $speech = Analysis::factory()->done()->create([
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::now()->subDays(6)]);
+    $speech = Analysis::factory()->done('the speech')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::PostRunSpeech,
         'discriminator' => null,
         'narrated_early_at' => null,
     ]);
-    $insight = Analysis::factory()->done()->create([
+    $insight = Analysis::factory()->done('[]')->create([
         'subject_type' => Activity::class,
         'subject_id' => $activity->id,
         'analysis_type' => AnalysisType::RunInsight,
         'discriminator' => null,
-        'narrated_early_at' => Carbon::now(),
+        'narrated_early_at' => Carbon::now()->subDays(5),
     ]);
 
-    $this->mock(PersonalRecords::class)->shouldReceive('rebuildForUser')->once();
-    $this->mock(RecomputeCardClaimsAction::class)->shouldReceive('__invoke')->once()
-        ->andReturn(['cleared' => [], 'earned' => [], 'moods' => 0]);
+    $this->mock(PersonalRecords::class)->shouldNotReceive('rebuildForUser');
+    $this->mock(RecomputeCardClaimsAction::class)->shouldNotReceive('__invoke');
 
     app(SettleEarlyNarrationAction::class)($user);
 
-    // The group's representative row (chain advance + SelfHealer key on it)
-    // is reset alongside its sibling, not left Done.
-    Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
-    expect($speech->refresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($insight->refresh()->status)->toBe(AnalysisStatus::Queued)
-        ->and($insight->refresh()->narrated_early_at)->toBeNull();
+    Bus::assertNothingDispatched();
+    expect($speech->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($insight->refresh()->status)->toBe(AnalysisStatus::Done)
+        ->and($insight->refresh()->content)->toBe('[]')
+        ->and($insight->refresh()->narrated_early_at)->not->toBeNull();
 });
 
 it('requests the deferred Trends read once the drain empties', function (): void {

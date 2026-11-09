@@ -17,6 +17,7 @@ use App\Services\AI\AnalysisSubjectMap;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\CeilingOverride;
 use App\Services\AI\LlmCostCalculator;
+use App\Services\AI\Narrators\NarrationContent;
 use Illuminate\Support\Carbon;
 
 /**
@@ -122,12 +123,12 @@ class AthleteNarrationReport
                 'latency_ms' => $usage[$row->id]['latency_ms'] ?? null,
                 'steps' => $usage[$row->id]['steps'] ?? 0,
                 'tool_calls' => $usage[$row->id]['tool_calls'] ?? [],
-                'content' => $row->content,
+                'content' => NarrationContent::fromStored($row->content)?->plainText(),
                 'error' => $row->error,
                 'generated_at' => $row->generated_at?->toIso8601String(),
                 'flag' => $flags[$row->id] ?? null,
                 'version_count' => $versions[$row->id]['count'] ?? 0,
-                'previous_content' => $versions[$row->id]['previous_content'] ?? null,
+                'previous_content' => NarrationContent::fromStored($versions[$row->id]['previous_content'] ?? null)?->plainText(),
             ])->all()),
             'next_cursor' => $hasMore ? (int) $rows->last()?->id : null,
         ];

@@ -17,6 +17,7 @@ function makeRecap(overrides: Partial<MonthlyRecap> = {}): MonthlyRecap {
         id: 1,
         status: 'done',
         content: 'May was full and the rhythm held steady.',
+        title: null,
         type: 'monthly_recap',
         subject_type: 'monthly_recap_user_month',
         subject_id: 1,

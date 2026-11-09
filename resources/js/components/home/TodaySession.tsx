@@ -63,12 +63,25 @@ function leadAndBody(text: string): readonly [string, string] {
 }
 
 /**
- * Temari's read on today, split into the line that leads and the rest.
+ * Temari's read on today. A headlined briefing arrives with its title already
+ * drawn by AnalysisStatus, so the text is the story alone; an older plain-text
+ * one is split into the line that leads and the rest.
  */
 function SessionVoice({
     text,
+    titled,
     drawnAnchors,
-}: Readonly<{ text: string; drawnAnchors: ReadonlySet<string> }>) {
+}: Readonly<{
+    text: string;
+    titled: boolean;
+    drawnAnchors: ReadonlySet<string>;
+}>) {
+    if (titled) {
+        return (
+            <p className="narration">{renderNarration(text, drawnAnchors)}</p>
+        );
+    }
+
     const [lead, body] = leadAndBody(text);
 
     if (lead === '') {
@@ -325,6 +338,7 @@ export default function TodaySession({
     drawnAnchors?: ReadonlySet<string>;
 }>) {
     const voice = briefing.mascotVoice;
+    const titled = (voice.title ?? '') !== '';
     const recommendationRef = useRef<HTMLElement>(null);
     useRecommendationView(recommendationRef, today?.recommendation_token);
     const skipped = today?.skipped === true;
@@ -366,16 +380,18 @@ export default function TodaySession({
                 />
             )}
             {showsVoice && (
-                <div className="mt-3">
+                <div className={cn('mt-3', titled && '[&_p]:max-w-prose')}>
                     <AnalysisStatus
                         analysis={voice}
                         inertiaReloadProps={['briefing']}
                         allowReanalyze={false}
+                        collapsible
                         awaitingSchedule={briefing.firstRead}
                         awaitingScheduleLabel="temari is reading your first week…"
                         renderContent={(text) => (
                             <SessionVoice
                                 text={text}
+                                titled={titled}
                                 drawnAnchors={drawnAnchors}
                             />
                         )}

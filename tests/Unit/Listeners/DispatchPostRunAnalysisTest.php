@@ -454,7 +454,8 @@ it('backfill never falls into the filler branch (group rows stay non-Done)', fun
         ->where('subject_id', $backfill->id)
         ->where('analysis_type', AnalysisType::PostRunSpeech)
         ->firstOrFail();
-    expect($row->status)->not->toBe(AnalysisStatus::Done);
+    expect($row->status)->not->toBe(AnalysisStatus::Done)
+        ->and(Analysis::query()->where('subject_id', $backfill->id)->where('analysis_type', AnalysisType::RunInsight)->exists())->toBeFalse();
     Carbon::setTestNow();
 });
 
@@ -553,7 +554,7 @@ it('fills an activity older than the backfill depth cap rule-based (group + card
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
 
     $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
-    expect($groupRows)->toHaveCount(2)
+    expect($groupRows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech])
         ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
 
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
@@ -599,6 +600,8 @@ it('steady-state (fresh run) dispatches the activity group immediately', functio
     fire($fresh);
 
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $fresh->id);
+    expect(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $fresh->id)->pluck('analysis_type')->all())
+        ->toBe([AnalysisType::PostRunSpeech]);
     Carbon::setTestNow();
 });
 
@@ -788,7 +791,7 @@ it('fills a pre-connect run rule-based and dispatches no LLM job for it', functi
     Bus::assertNotDispatched(AnalyzeCardFlavorJob::class);
 
     $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
-    expect($groupRows)->toHaveCount(2)
+    expect($groupRows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech])
         ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue();
 
     $cardRow = Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail();
@@ -851,7 +854,7 @@ it('defers every LLM call for a run synced while the athlete is away from the ap
     Notification::assertNothingSent();
 
     $groupRows = Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $activity->id)->get();
-    expect($groupRows)->toHaveCount(2)
+    expect($groupRows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech])
         ->and($groupRows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Pending))->toBeTrue()
         ->and(Analysis::query()->forSubject(RunCard::class, $card->id, AnalysisType::CardFlavor)->firstOrFail()->status)
         ->toBe(AnalysisStatus::Pending)

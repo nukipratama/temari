@@ -62,13 +62,10 @@ it('requestActivityGroupRuleBased fills all rows Done without dispatching', func
     analysisService()->requestActivityGroupRuleBased($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(2)
+    expect($rows)->toHaveCount(1)
         ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Done))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => is_string($row->content) && $row->content !== ''))->toBeTrue()
-        ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight,
-        ]);
+        ->and($rows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech]);
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
 
@@ -92,11 +89,8 @@ it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, an
     analysisService()->requestActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(2)
-        ->and($rows->pluck('analysis_type')->all())->toEqualCanonicalizing([
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight,
-        ]);
+    expect($rows)->toHaveCount(1)
+        ->and($rows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech]);
     Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $activity->id);
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
 
@@ -106,23 +100,23 @@ it('requestActivityGroup creates its rows, dispatches one AnalyzeActivityJob, an
         ->where('subject_type', Activity::class)
         ->where('subject_id', $activity->id)
         ->whereNull('discriminator')
-        ->count())->toBe(2);
+        ->count())->toBe(1);
 });
 
-it('request() with any activity-group type routes to AnalyzeActivityJob (group)', function (): void {
+it('request() with the post-run speech routes to AnalyzeActivityJob (group)', function (): void {
     $activity = Activity::factory()->create();
 
     analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
-        type: AnalysisType::RunInsight,
+        type: AnalysisType::PostRunSpeech,
     );
 
-    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(2);
+    expect(Analysis::query()->where('subject_id', $activity->id)->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech]);
     Bus::assertDispatched(AnalyzeActivityJob::class);
 });
 
-it('activity group debounces — sibling-type requests dispatch only one AnalyzeActivityJob', function (): void {
+it('activity group debounces — a repeat request dispatches only one AnalyzeActivityJob', function (): void {
     $activity = Activity::factory()->create();
 
     analysisService()->request(
@@ -133,7 +127,7 @@ it('activity group debounces — sibling-type requests dispatch only one Analyze
     analysisService()->request(
         subjectOrType: Activity::class,
         subjectId: $activity->id,
-        type: AnalysisType::RunInsight,
+        type: AnalysisType::PostRunSpeech,
     );
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
@@ -162,7 +156,7 @@ it('withoutDispatching suppresses dispatch but still creates Pending rows', func
         analysisService()->requestActivityGroup($activity);
     });
 
-    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(2)
+    expect(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(1)
         ->and(nonNull(Analysis::query()->where('subject_id', $activity->id)->first())->status)->toBe(AnalysisStatus::Pending);
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });
@@ -265,7 +259,7 @@ it('accepts a Model instance as the subject', function (): void {
     analysisService()->request(
         subjectOrType: $detail->activity,
         subjectId: $detail->activity_id,
-        type: AnalysisType::RunInsight,
+        type: AnalysisType::PostRunSpeech,
     );
 
     Bus::assertDispatched(AnalyzeActivityJob::class);

@@ -8,6 +8,7 @@ use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisSubjectMap;
+use App\Services\AI\AnalysisType;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -45,7 +46,7 @@ class RecoverCommand extends Command
      */
     private function rearmDeadLettered(AnalysisService $service): int
     {
-        $rows = Analysis::query()->deadLettered()->get();
+        $rows = Analysis::query()->deadLettered()->where('analysis_type', '!=', AnalysisType::RunInsight)->get();
         $ownerIds = AnalysisSubjectMap::ownerIdsForRows($rows);
         $athleteIds = User::query()->notDemo()->whereIn('id', array_filter($ownerIds))->pluck('id')->flip();
 

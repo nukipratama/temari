@@ -66,19 +66,14 @@ it('adds one fresh run today and fills today\'s narration with zero queued jobs 
     expect(dailyRefreshTodayRunCount($user))->toBe(1);
     expectDemoDateKeyedNarrationDone($user);
 
-    // The new run's detail page is fully filled (speech + the run insight).
+    // The new run's detail page is fully filled by its one merged speech, with no run insight row.
     $todayActivityId = Activity::query()->where('user_id', $user->id)->max('id');
-    foreach ([
-        AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsight,
-    ] as $type) {
-        $row = Analysis::query()
-            ->where('subject_type', Activity::class)
-            ->where('subject_id', $todayActivityId)
-            ->where('analysis_type', $type)
-            ->first();
-        expect($row?->status)->toBe(AnalysisStatus::Done);
-    }
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $todayActivityId)
+        ->get();
+    expect($rows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech])
+        ->and(nonNull($rows->first())->status)->toBe(AnalysisStatus::Done);
 
     // Zero LLM tokens: nothing was queued/processing (all rule-based-filled).
     expect(Analysis::query()->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Processing])->count())
@@ -103,4 +98,22 @@ it('is idempotent on a same-day re-run', function (): void {
     $this->artisan('demo:daily-refresh')->assertSuccessful();
 
     expect(dailyRefreshTodayRunCount(dailyRefreshDemoUser()))->toBe(1);
+});
+
+it('leaves an old pending run insight row on a demo run as it is', function (): void {
+    Carbon::setTestNow('2026-05-12 00:30:00');
+    $this->artisan('demo:daily-refresh')->assertSuccessful();
+    $activityId = nonNull(Activity::query()->where('user_id', dailyRefreshDemoUser()->id)->latest('id')->first())->id;
+    $insight = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activityId,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $this->artisan('demo:daily-refresh')->assertSuccessful();
+
+    expect($insight->refresh()->status)->toBe(AnalysisStatus::Pending)
+        ->and($insight->content)->toBeNull();
 });

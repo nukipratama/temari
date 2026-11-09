@@ -61,7 +61,7 @@ export default function RecapCard({
             )}
         >
             <MascotWatermark pose={pose} className="-right-14 -bottom-15" />
-            <div className="min-w-0">
+            <div className="min-w-0 [&_p]:max-w-prose">
                 {chips && (
                     <div
                         data-testid="recap-secondary"
@@ -78,10 +78,9 @@ export default function RecapCard({
                     chained
                     isChainHead={isChainHead}
                     size="sm"
+                    collapsible
                     renderContent={(content) => (
-                        <p className="narration-dense m-0">
-                            {renderBold(content)}
-                        </p>
+                        <p className="narration m-0">{renderBold(content)}</p>
                     )}
                 />
                 {fallback && analysis.status !== 'done' && (

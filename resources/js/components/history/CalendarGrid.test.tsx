@@ -88,6 +88,7 @@ function snapshot(
             id: 1,
             status: 'done',
             content: 'Steady week, one strong effort.',
+            title: null,
             type: 'weekly_recap',
             subject_type: 'weekly_snapshot',
             subject_id: 7,
@@ -334,5 +335,107 @@ describe('CalendarGrid', () => {
         expect(
             screen.getByText(/Steady week, one strong effort/),
         ).toBeInTheDocument();
+    });
+
+    it('keeps an untitled legacy recap in its decorative quotes at the dense size', () => {
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, snapshot()]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+
+        const story = screen.getByText(/Steady week, one strong effort/);
+        expect(story).toHaveClass('narration-dense');
+        expect(story.textContent).toBe('"Steady week, one strong effort."');
+    });
+
+    it('draws a titled recap as a headline over the story, with no quote marks, paragraphs kept, at prose width', () => {
+        const body = 'The long run held.\n\nThe **tempo** got away.';
+        const titled = snapshot();
+        titled.recap_analysis = {
+            ...titled.recap_analysis,
+            title: 'the long run carried a short week.',
+            content: body,
+        };
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, titled]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
+
+        const headline = screen.getByRole('heading', {
+            level: 3,
+            name: 'the long run carried a short week.',
+        });
+        const story = screen.getByText(/The long run held\./);
+        expect(story).toHaveClass('narration');
+        expect(story).not.toHaveClass('narration-dense');
+        expect(story.textContent).toBe(
+            'The long run held.\n\nThe tempo got away.',
+        );
+        expect(story.closest('.whitespace-pre-line')).not.toBeNull();
+        expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
+            headline,
+        );
+        expect(screen.getByText('tempo').tagName).toBe('STRONG');
+    });
+
+    it('collapses a titled multi-paragraph week recap behind a toggle that starts closed on every open', () => {
+        const titled = snapshot();
+        titled.recap_analysis = {
+            ...titled.recap_analysis,
+            title: 'the long run carried a short week.',
+            content: 'The long run held.\n\nThe **tempo** got away.',
+        };
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, titled]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        const weekButton = screen.getByRole('button', { name: /week 1/ });
+        fireEvent.click(weekButton);
+
+        expect(screen.getByText('The long run held.')).toBeInTheDocument();
+        expect(screen.queryByText(/got away/)).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
+        expect(screen.getByText('tempo').tagName).toBe('STRONG');
+        expect(
+            screen.getByRole('button', { name: 'show less' }),
+        ).toHaveAttribute('aria-expanded', 'true');
+
+        fireEvent.click(weekButton);
+        fireEvent.click(weekButton);
+
+        expect(screen.queryByText(/got away/)).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'read more' }),
+        ).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('draws no toggle on an untitled legacy recap', () => {
+        render(
+            <CalendarGrid
+                weeks={[PLAIN_WEEK]}
+                snapshotsByWeek={new Map([[PLAIN_WEEK.weekEnding, snapshot()]])}
+                onOpenKey={vi.fn()}
+                onOpenDay={vi.fn()}
+            />,
+        );
+        fireEvent.click(screen.getByRole('button', { name: /week 1/ }));
+
+        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
     });
 });

@@ -6,9 +6,11 @@ use App\Console\Commands\AI\NarrationEvalFixtures;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Services\AI\StructuredChatCaller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
 
@@ -27,10 +29,10 @@ function evalRun(User $user, Carbon $on, int $elapsedSec, bool $heartRate = true
 }
 
 it('offers the three kinds', function (): void {
-    expect(NarrationEvalFixtures::KINDS)->toBe(['briefing_mascot_voice', 'run_insight', 'profile_voice']);
+    expect(NarrationEvalFixtures::KINDS)->toBe(['briefing_mascot_voice', 'post_run_speech', 'profile_voice']);
 });
 
-it('picks the runs furthest from their baseline for the run insight', function (): void {
+it('picks the runs furthest from their baseline for the post-run story', function (): void {
     $demo = User::factory()->demo()->create();
     foreach ([20, 18, 16, 14, 12, 10] as $daysAgo) {
         evalRun($demo, Carbon::now()->subDays($daysAgo), 2880);
@@ -38,7 +40,7 @@ it('picks the runs furthest from their baseline for the run insight', function (
     evalRun($demo, Carbon::now()->subDays(5), 2400);
     evalRun($demo, Carbon::now()->subDays(3), 3800);
 
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     expect($fixtures->keys()->all())->toBe(['faster_than_past_you', 'slower_than_past_you', 'no_heart_rate']);
 
@@ -54,10 +56,10 @@ it('picks the runs furthest from their baseline for the run insight', function (
         ->and($noHr['direction']['forbidden'])->not->toBe([]);
 });
 
-it('skips a run insight fixture the history cannot support', function (): void {
+it('skips a post-run story fixture the history cannot support', function (): void {
     $demo = User::factory()->demo()->create();
 
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     DB::beginTransaction();
     $case = nonNull($fixtures->get('faster_than_past_you'))->build->__invoke();
@@ -75,7 +77,7 @@ it('strips heart rate from the no heart rate run inside the transaction only', f
         'pace_variability_sec' => 4.2,
         'per_km' => [['km' => 1, 'pace' => '6:00', 'avg_hr' => 148]],
     ]]);
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     DB::beginTransaction();
     nonNull($fixtures->get('no_heart_rate'))->build->__invoke();
@@ -100,6 +102,22 @@ it('builds the post run briefing against a run logged today', function (): void 
     DB::rollBack();
 
     expect($ranToday)->toBeTrue();
+});
+
+it('hands the post run briefing to the eval as a plain headline over its body', function (): void {
+    $demo = User::factory()->demo()->create();
+    $client = new ClientFake([fakeAzureResponse(json_encode(['reading' => 'just_ran', 'title' => '8.0 km done as planned.', 'body' => 'Recovery is the rest of the day.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR))]);
+    app()->instance(StructuredChatCaller::class, fakeStructuredCaller($client));
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['briefing_mascot_voice']))->keyBy('name');
+
+    DB::beginTransaction();
+    $case = nonNull($fixtures->get('hit_easy_today'))->build->__invoke();
+    $generate = data_get($case, 'generate');
+    assert($generate instanceof Closure);
+    $text = $generate();
+    DB::rollBack();
+
+    expect($text)->toBe("8.0 km done as planned.\n\nRecovery is the rest of the day.");
 });
 
 it('derives the load direction from the evidence the model reads', function (): void {

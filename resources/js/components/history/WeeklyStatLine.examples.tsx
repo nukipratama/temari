@@ -13,13 +13,10 @@ export default {
             render: () => <WeeklyStatLine snapshot={weeklySnapshot()} />,
         },
         {
-            name: 'flagged variety and drift',
+            name: 'flagged drift',
             render: () => (
                 <WeeklyStatLine
-                    snapshot={weeklySnapshot({
-                        monotony: 1.8,
-                        avg_decoupling_v2: 13.4,
-                    })}
+                    snapshot={weeklySnapshot({ avg_decoupling_v2: 13.4 })}
                 />
             ),
         },

@@ -164,8 +164,16 @@ it('treats only the latest run as the per-activity chain head', function (Analys
         ->and(chainResolver()->isHeadRegenerate($user, $type, $older->id, null, chainDoneRow()))->toBeFalse();
 })->with([
     'post_run_speech' => AnalysisType::PostRunSpeech,
-    'run_insight' => AnalysisType::RunInsight,
 ]);
+
+it('never treats a run insight row as a chain head or a link to resume', function (): void {
+    $user = User::factory()->create();
+    $latest = chainRun($user, '2026-06-10 06:00:00', AnalysisType::RunInsight, AnalysisStatus::Done);
+    chainRun($user, '2026-06-01 06:00:00', AnalysisType::RunInsight, AnalysisStatus::Pending);
+
+    expect(chainResolver()->isHeadRegenerate($user, AnalysisType::RunInsight, $latest->id, null, chainDoneRow()))->toBeFalse()
+        ->and(chainResolver()->earliestUnfilledLink($user, AnalysisType::RunInsight))->toBeNull();
+});
 
 it('never reports a head regenerate for an unchained type', function (): void {
     $user = User::factory()->create();
@@ -230,7 +238,7 @@ it('returns no monthly link when every closed month is Done', function (): void 
     expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::MonthlyRecap))->toBeNull();
 });
 
-it('resumes the earliest run whose clicked-type row is not Done', function (): void {
+it('resumes the earliest run whose speech is not Done, past an old run whose run insight never resolved', function (): void {
     $user = User::factory()->create();
     $oldest = chainRun($user, '2026-06-01 06:00:00', AnalysisType::PostRunSpeech, AnalysisStatus::Done);
     Analysis::factory()->create([
@@ -240,9 +248,9 @@ it('resumes the earliest run whose clicked-type row is not Done', function (): v
         'discriminator' => null,
         'status' => AnalysisStatus::Pending,
     ]);
-    chainRun($user, '2026-06-10 06:00:00', AnalysisType::PostRunSpeech, AnalysisStatus::Pending);
+    $pending = chainRun($user, '2026-06-10 06:00:00', AnalysisType::PostRunSpeech, AnalysisStatus::Pending);
 
-    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::RunInsight)?->subjectId)->toBe($oldest->id);
+    expect(chainResolver()->earliestUnfilledLink($user, AnalysisType::PostRunSpeech)?->subjectId)->toBe($pending->id);
 });
 
 it('returns no per-activity link when every run of that type is Done', function (): void {

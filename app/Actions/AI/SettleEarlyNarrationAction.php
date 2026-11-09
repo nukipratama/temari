@@ -6,7 +6,6 @@ namespace App\Actions\AI;
 
 use App\Actions\Run\Story\RecomputeCardClaimsAction;
 use App\Enums\IngestState;
-use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\RunCard;
@@ -18,6 +17,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\Run\Ingest\HydrationBacklog;
 use App\Services\Run\Metrics\PersonalRecords;
 use App\Services\Run\Metrics\WeeklyAggregator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
@@ -49,8 +49,7 @@ class SettleEarlyNarrationAction
             return;
         }
 
-        $claimableRows = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
-            ->whereNotNull('narrated_early_at');
+        $claimableRows = $this->earlyRows($user);
 
         // Past the grace window this only proceeds if there is still
         // something left to claim, so a drain that outran the grace window
@@ -87,61 +86,43 @@ class SettleEarlyNarrationAction
     }
 
     /**
-     * Clears `narrated_early_at` on every early row this athlete owns, pairing
-     * a lone early RunInsight or PostRunSpeech with its sibling so the
-     * per-activity group's representative row is never left Done while the
-     * other resets alone. Each row is claimed by its own single-row conditional
-     * UPDATE, so a concurrent settle cannot deadlock against PersonalRecords's
-     * row locking.
+     * The athlete's rows still marked early, run insight aside.
+     *
+     * @return Builder<Analysis>
+     */
+    private function earlyRows(User $user): Builder
+    {
+        return AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
+            ->whereNotNull('narrated_early_at')
+            ->where('analysis_type', '!=', AnalysisType::RunInsight);
+    }
+
+    /**
+     * Clears `narrated_early_at` on every early row this athlete owns. Each row
+     * is claimed by its own single-row conditional UPDATE, so a concurrent
+     * settle cannot deadlock against PersonalRecords's row locking.
      *
      * @return Collection<int, Analysis>
      */
     private function claimEarlyRows(User $user): Collection
     {
-        $candidates = AnalysisSubjectMap::whereOwnedBy(Analysis::query(), $user->id)
-            ->whereNotNull('narrated_early_at')
-            ->get();
-
-        if ($candidates->isEmpty()) {
-            return $candidates;
-        }
-
-        $activityIds = $candidates
-            ->filter(fn (Analysis $row): bool => in_array($row->analysis_type, [AnalysisType::PostRunSpeech, AnalysisType::RunInsight], true))
-            ->pluck('subject_id')
-            ->unique();
-
-        if ($activityIds->isNotEmpty()) {
-            $siblings = Analysis::query()
-                ->where('subject_type', AnalyzeActivityJob::subjectType())
-                ->whereIn('analysis_type', [AnalysisType::PostRunSpeech, AnalysisType::RunInsight])
-                ->whereIn('subject_id', $activityIds)
-                ->get();
-
-            $candidates = $candidates->merge($siblings)->unique('id')->values();
-        }
-
-        return $candidates->filter(fn (Analysis $row): bool => $this->claimRow($row));
+        return $this->earlyRows($user)->get()->filter(fn (Analysis $row): bool => $this->claimRow($row));
     }
 
     /**
      * One conditional UPDATE per row: clears `narrated_early_at` and sends it
-     * back to Pending. A sibling swept in alongside its own early-marked pair
-     * (see claimEarlyRows) may already have no `narrated_early_at` of its own,
-     * so only a row that has one is required to still have it — that's the
-     * only row a second caller could otherwise race. Returns whether this call
-     * actually claimed the row.
+     * back to Pending, only while it still has one, since that is the row a
+     * second caller could otherwise race. Returns whether this call actually
+     * claimed the row.
      */
     private function claimRow(Analysis $row): bool
     {
         $attributes = ['narrated_early_at' => null, 'error' => null, 'status' => AnalysisStatus::Pending];
 
-        $query = Analysis::query()->whereKey($row->getKey());
-        if ($row->narrated_early_at !== null) {
-            $query->whereNotNull('narrated_early_at');
-        }
-
-        $claimed = $query->update($attributes) === 1;
+        $claimed = Analysis::query()
+            ->whereKey($row->getKey())
+            ->whereNotNull('narrated_early_at')
+            ->update($attributes) === 1;
 
         if ($claimed) {
             $row->forceFill($attributes)->syncOriginal();
@@ -159,7 +140,7 @@ class SettleEarlyNarrationAction
 
         foreach ($rows as $row) {
             match ($row->analysis_type) {
-                AnalysisType::PostRunSpeech, AnalysisType::RunInsight => $activityIds[] = $row->subject_id,
+                AnalysisType::PostRunSpeech => $activityIds[] = $row->subject_id,
                 AnalysisType::CardFlavor => $this->analysisService->request(
                     subjectOrType: RunCard::class,
                     subjectId: $row->subject_id,

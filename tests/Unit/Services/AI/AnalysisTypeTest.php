@@ -53,10 +53,10 @@ it('flags exactly the heart-rate-zone-derived types as zone-dependent', function
     // A claim's anchor can be zone-derived or not, and the row carries no flag
     // for which shape it landed on, so the whole type is treated as zone-dependent.
     'run insight' => [AnalysisType::RunInsight, true],
+    'post-run speech (its claims anchor to zones too)' => [AnalysisType::PostRunSpeech, true],
     'weekly recap' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (reads zone-weighted CTL for its fitness arc)' => [AnalysisType::MonthlyRecap, true],
     'trend read (reads monotony/strain/CTL, all TRIMP-derived)' => [AnalysisType::TrendRead, true],
-    'post-run speech' => [AnalysisType::PostRunSpeech, false],
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, false],
 ]);
 
@@ -66,7 +66,7 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
     'weekly recap (pilot)' => [AnalysisType::WeeklyRecap, true],
     'monthly recap (wired)' => [AnalysisType::MonthlyRecap, true],
     'post-run speech (per-activity chain)' => [AnalysisType::PostRunSpeech, true],
-    'run insight (per-activity chain)' => [AnalysisType::RunInsight, true],
+    'run insight (retired, never narrated again)' => [AnalysisType::RunInsight, false],
     'card flavor (standalone)' => [AnalysisType::CardFlavor, false],
     'briefing mascot voice (standalone)' => [AnalysisType::BriefingMascotVoice, false],
     'trend read (always as-of-now, never a sequence of closed periods)' => [AnalysisType::TrendRead, false],
@@ -75,7 +75,6 @@ it('flags only the connected + chained kinds wired so far', function (AnalysisTy
 it('is the single source of truth for group membership', function (): void {
     expect(AnalysisType::groupedBy(AnalyzeActivityJob::class))->toBe([
         AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsight,
     ])
         // The job class derives its grouped types from the enum.
         ->and(AnalyzeActivityJob::groupedTypes())->toBe(AnalysisType::groupedBy(AnalyzeActivityJob::class));
@@ -87,7 +86,12 @@ it('returns null group job for non-grouped types', function (AnalysisType $type)
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice],
     'weekly recap' => [AnalysisType::WeeklyRecap],
     'monthly recap' => [AnalysisType::MonthlyRecap],
+    'run insight (retired)' => [AnalysisType::RunInsight],
 ]);
+
+it('names no job for the retired run insight, so no path can dispatch one', function (): void {
+    expect(fn (): string => AnalysisType::RunInsight->jobClass())->toThrow(LogicException::class, 'RunInsight is retired');
+});
 
 it('gives every type a discriminator rule set', function (): void {
     foreach (AnalysisType::cases() as $case) {
@@ -172,7 +176,8 @@ it('bounds TrendRead\'s discriminator to exactly the one live range', function (
 
     expect($result->fails())->toBe(! $valid);
 })->with([
-    '7d' => ['7d', true],
+    'arc' => ['arc', true],
+    '7d (retired range)' => ['7d', false],
     '30d (retired range)' => ['30d', false],
     '90d (retired range)' => ['90d', false],
     '12mo (retired range)' => ['12mo', false],
