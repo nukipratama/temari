@@ -99,3 +99,21 @@ it('is idempotent on a same-day re-run', function (): void {
 
     expect(dailyRefreshTodayRunCount(dailyRefreshDemoUser()))->toBe(1);
 });
+
+it('leaves an old pending run insight row on a demo run as it is', function (): void {
+    Carbon::setTestNow('2026-05-12 00:30:00');
+    $this->artisan('demo:daily-refresh')->assertSuccessful();
+    $activityId = nonNull(Activity::query()->where('user_id', dailyRefreshDemoUser()->id)->latest('id')->first())->id;
+    $insight = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activityId,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $this->artisan('demo:daily-refresh')->assertSuccessful();
+
+    expect($insight->refresh()->status)->toBe(AnalysisStatus::Pending)
+        ->and($insight->content)->toBeNull();
+});

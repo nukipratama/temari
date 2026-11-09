@@ -530,8 +530,8 @@ narrations blind to each other: a thin story and 1-3 independent claims. `PostRu
 now writes both in one call, a headline, a story and the claims, with the union of the two
 toolboxes. `RunInsightNarrator`, its `AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT` routing key and every
 path that created or narrated a row (ingest, chain resume, self-heal, early-narration settle,
-the pause-lift retry, devtools re-arm and replay, the trigger endpoint, the rule-based arm and the
-`narration:eval` fixtures) are gone. Unlike the cuts below, the enum case stays and its rows stay
+the pause-lift retry, `ai:recover`, devtools re-arm and replay, the trigger endpoint, the rule-based
+arm, the demo's rule-based backfill and the `narration:eval` fixtures) are gone. Unlike the cuts below, the enum case stays and its rows stay
 readable, since an old run whose speech is still plain renders its "What stood out" block from
 them; no migration touches them.
 

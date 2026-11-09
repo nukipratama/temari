@@ -342,6 +342,7 @@ class DemoRunSeeder
 
         $rows = Analysis::query()
             ->where('status', '!=', AnalysisStatus::Done)
+            ->where('analysis_type', '!=', AnalysisType::RunInsight)
             ->where(function ($q) use ($user, $activityIds, $weeklyIds, $cardIds): void {
                 $q->where(fn ($qq) => $qq->where('subject_type', Activity::class)->whereIn('subject_id', $activityIds))
                     ->orWhere(fn ($qq) => $qq->where('subject_type', WeeklySnapshot::class)->whereIn('subject_id', $weeklyIds))
