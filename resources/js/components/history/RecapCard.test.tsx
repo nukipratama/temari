@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubNarrationLayout } from '@/test/setup';
 
 import RecapCard from './RecapCard';
 
@@ -150,7 +150,6 @@ describe('RecapCard', () => {
         const headline = screen.getByText(
             'the long run held a lighter week together.',
         );
-        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
         const story = nonNullStory(container);
         expect(story.textContent).toBe(body);
         expect(story).not.toHaveClass('narration-dense');
@@ -167,67 +166,21 @@ describe('RecapCard', () => {
         );
     });
 
-    it('collapses a titled multi-paragraph recap to its headline and first paragraph behind a toggle', () => {
-        const { container } = render(
+    it('clamps a long recap behind a read more toggle that starts closed', () => {
+        stubNarrationLayout(200);
+        render(
             <RecapCard
                 mood="easy"
                 analysis={analysis({
                     title: 'the long run held a lighter week together.',
-                    content:
-                        'First **beat** of the week.\n\nSecond beat.\n\nThird beat.',
+                    content: 'First beat of the week.\n\nSecond beat.',
                 })}
             />,
         );
 
         expect(
-            screen.getByText('the long run held a lighter week together.'),
-        ).toBeInTheDocument();
-        expect(nonNullStory(container).textContent).toBe(
-            'First beat of the week.',
-        );
-        expect(screen.queryByText(/Second beat/)).not.toBeInTheDocument();
-        expect(screen.getByText('beat').tagName).toBe('STRONG');
-
-        const toggle = screen.getByRole('button', { name: 'read more' });
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-
-        fireEvent.click(toggle);
-
-        const open = screen.getByRole('button', { name: 'show less' });
-        expect(open).toHaveAttribute('aria-expanded', 'true');
-        expect(nonNullStory(container).textContent).toContain('Third beat.');
-        expect(screen.getByText('beat').tagName).toBe('STRONG');
-        expect(
-            document.getElementById(
-                open.getAttribute('aria-controls') as string,
-            ),
-        ).toContainElement(nonNullStory(container));
-
-        fireEvent.click(open);
-
-        expect(screen.queryByText(/Second beat/)).not.toBeInTheDocument();
-    });
-
-    it('draws no toggle for a single-paragraph titled recap or an untitled multi-paragraph one', () => {
-        const { rerender } = render(
-            <RecapCard
-                mood="easy"
-                analysis={analysis({
-                    title: 'a quiet week.',
-                    content: 'One beat.',
-                })}
-            />,
-        );
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
-
-        rerender(
-            <RecapCard
-                mood="easy"
-                analysis={analysis({ content: 'Old beat.\n\nOlder beat.' })}
-            />,
-        );
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
-        expect(screen.getByText(/Older beat/)).toBeInTheDocument();
+            screen.getByRole('button', { name: 'read more' }),
+        ).toHaveAttribute('aria-expanded', 'false');
     });
 });
 

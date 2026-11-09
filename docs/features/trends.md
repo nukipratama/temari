@@ -37,7 +37,7 @@ stated, and everything below it is evidence, in the order a runner would ask for
 single `AnalysisPayload` for the `trend_read` / `arc` row, not a per-range map. A `done` row with a
 `title` draws it as the serif headline through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx)
 (which also carries flag-wrong and reread) over the story, paragraph breaks and bold kept, capped at
-prose width; an untitled row (the rule-based fallback) still splits on its first blank line. Any other status (Pending, Queued, Processing, or Failed)
+prose width; an untitled row (the rule-based fallback) still splits on its first blank line. The card opts into `AnalysisStatus`'s `collapsible`, so a read taller than four lines fades out behind the `read more` pill described in [[recaps]] and the charts stay near the top. Any other status (Pending, Queued, Processing, or Failed)
 renders the same honest empty card instead: "not written yet" plus the existing per-block "try
 again" retry, since every number elsewhere on the page is real and current regardless of whether
 the sentence has been written. Direction A deliberately does not distinguish those states further —

@@ -10,7 +10,11 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AnalysisPayload } from '@/types/inertia';
 
 import * as analysisTrigger from '@/hooks/useAnalysisTrigger';
-import { setMockPage } from '@/test/setup';
+import {
+    NARRATION_LINE_HEIGHT,
+    setMockPage,
+    stubNarrationLayout,
+} from '@/test/setup';
 
 import AnalysisStatus, { rendersNothing } from './AnalysisStatus';
 
@@ -101,99 +105,107 @@ describe('AnalysisStatus', () => {
         expect(screen.getByText('quiet').tagName).toBe('STRONG');
     });
 
-    it('collapses a titled multi-paragraph body to its first paragraph when collapsible, and opens it on toggle', () => {
-        render(
-            <AnalysisStatus
-                collapsible
-                analysis={payload({
-                    status: 'done',
-                    title: 'a quiet week',
-                    content: 'One **beat**.\n\nTwo beats.\n\nThree beats.',
-                })}
-            />,
-        );
+    describe('collapsible', () => {
+        function renderStory(
+            content: string,
+            props: { collapsible?: boolean; title?: string | null } = {},
+        ) {
+            const { collapsible = true, title = 'a quiet week' } = props;
 
-        expect(screen.getByText('a quiet week')).toBeInTheDocument();
-        expect(screen.getByText('beat').tagName).toBe('STRONG');
-        expect(screen.queryByText(/Two beats/)).not.toBeInTheDocument();
+            return render(
+                <AnalysisStatus
+                    collapsible={collapsible}
+                    analysis={payload({ status: 'done', title, content })}
+                    renderContent={(text) => <p>{text}</p>}
+                />,
+            );
+        }
 
-        const toggle = screen.getByRole('button', { name: 'read more' });
-        expect(toggle).toHaveAttribute('aria-expanded', 'false');
-        const region = document.getElementById(
-            toggle.getAttribute('aria-controls') as string,
-        );
-        expect(region).toContainElement(screen.getByText('a quiet week'));
+        function clampBox(): HTMLElement {
+            return screen.getByText(/One beat/).parentElement!
+                .parentElement as HTMLElement;
+        }
 
-        fireEvent.click(toggle);
+        it('clamps a body taller than four lines below its headline, and opens it on toggle', () => {
+            stubNarrationLayout(200);
+            renderStory('One beat.\n\nTwo beats.');
 
-        expect(screen.getByText(/Two beats/)).toBeInTheDocument();
-        expect(screen.getByText(/Three beats/)).toBeInTheDocument();
-        expect(screen.getByText('beat').tagName).toBe('STRONG');
-        expect(
-            screen.getByRole('button', { name: 'show less' }),
-        ).toHaveAttribute('aria-expanded', 'true');
+            const toggle = screen.getByRole('button', { name: 'read more' });
+            expect(toggle).toHaveAttribute('aria-expanded', 'false');
+            expect(
+                document.getElementById(
+                    toggle.getAttribute('aria-controls') as string,
+                ),
+            ).toContainElement(screen.getByText('a quiet week'));
+            expect(clampBox()).not.toContainElement(
+                screen.getByText('a quiet week'),
+            );
+            expect(clampBox().style.maxHeight).toBe(
+                `${NARRATION_LINE_HEIGHT * 4}px`,
+            );
+            expect(clampBox().style.maskImage).toContain('linear-gradient');
+            expect(clampBox()).toHaveClass(
+                'overflow-hidden',
+                'motion-reduce:transition-none',
+            );
 
-        fireEvent.click(screen.getByRole('button', { name: 'show less' }));
+            fireEvent.click(toggle);
 
-        expect(screen.queryByText(/Two beats/)).not.toBeInTheDocument();
-    });
+            expect(clampBox().style.maxHeight).toBe('200px');
+            expect(clampBox().style.maskImage).toBe('');
+            expect(
+                screen.getByRole('button', { name: 'show less' }),
+            ).toHaveAttribute('aria-expanded', 'true');
 
-    it('keeps the reread button apart from the toggle when collapsible', () => {
-        render(
-            <AnalysisStatus
-                collapsible
-                analysis={payload({
-                    status: 'done',
-                    title: 'a quiet week',
-                    content: 'One.\n\nTwo.',
-                })}
-            />,
-        );
+            fireEvent.click(screen.getByRole('button', { name: 'show less' }));
 
-        expect(
-            screen.getByRole('button', { name: /reread/ }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'read more' }),
-        ).toBeInTheDocument();
-    });
+            expect(clampBox().style.maxHeight).toBe(
+                `${NARRATION_LINE_HEIGHT * 4}px`,
+            );
+        });
 
-    it('draws no toggle when collapsible but untitled, single-paragraph or not opted in', () => {
-        const { rerender } = render(
-            <AnalysisStatus
-                collapsible
-                analysis={payload({
-                    status: 'done',
-                    content: 'One.\n\nTwo.',
-                })}
-            />,
-        );
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
-        expect(screen.getByText(/Two\./)).toBeInTheDocument();
+        it('clamps an untitled single-paragraph body too', () => {
+            stubNarrationLayout(200);
+            renderStory('One beat, long enough to run past four lines.', {
+                title: null,
+            });
 
-        rerender(
-            <AnalysisStatus
-                collapsible
-                analysis={payload({
-                    status: 'done',
-                    title: 'a quiet week',
-                    content: 'Only one paragraph.\n\n',
-                })}
-            />,
-        );
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
+            expect(
+                screen.getByRole('button', { name: 'read more' }),
+            ).toBeInTheDocument();
+        });
 
-        rerender(
-            <AnalysisStatus
-                analysis={payload({
-                    status: 'done',
-                    title: 'a quiet week',
-                    content: 'One.\n\nTwo.',
-                })}
-            />,
-        );
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
-        expect(screen.getByText(/Two\./)).toBeInTheDocument();
+        it('draws the toggle as a centred pill beside a separate reread button', () => {
+            stubNarrationLayout(200);
+            renderStory('One beat.\n\nTwo beats.');
+
+            expect(
+                screen.getByRole('button', { name: /reread/ }),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByRole('button', { name: 'read more' }),
+            ).toHaveClass('rounded-full', 'self-center');
+        });
+
+        it('draws no toggle and no clamp when the body fits in four lines', () => {
+            stubNarrationLayout(NARRATION_LINE_HEIGHT * 4);
+            renderStory('One beat.\n\nTwo beats.');
+
+            expect(
+                screen.queryByRole('button', { name: /read more/ }),
+            ).toBeNull();
+            expect(clampBox().style.maxHeight).toBe('');
+        });
+
+        it('draws no toggle and no clamp when the surface has not opted in', () => {
+            stubNarrationLayout(200);
+            renderStory('One beat.\n\nTwo beats.', { collapsible: false });
+
+            expect(
+                screen.queryByRole('button', { name: /read more/ }),
+            ).toBeNull();
+            expect(clampBox().style.maxHeight).toBe('');
+        });
     });
 
     it('renders only the body when the payload has no title', () => {

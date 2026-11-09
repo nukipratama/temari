@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { AnalysisPayload } from '@/types/inertia';
 
+import { stubNarrationLayout } from '@/test/setup';
+
 import NarrationCard, { splitContent } from './NarrationCard';
 
 function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
@@ -69,10 +71,27 @@ describe('NarrationCard', () => {
             'The supported time came down.\n\nThe long run carried it.',
         );
         expect(screen.getByText('long run').tagName).toBe('STRONG');
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
         expect(container.querySelector('section')).toHaveClass(
             '[&_p]:max-w-prose',
         );
+    });
+
+    it('clamps a long read behind a read more toggle', () => {
+        stubNarrationLayout(200);
+        render(
+            <NarrationCard
+                analysis={payload({
+                    status: 'done',
+                    title: 'eight weeks out, and the target is a stretch.',
+                    content:
+                        'The supported time came down.\n\nThe long run carried it.',
+                })}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: 'read more' }),
+        ).toHaveAttribute('aria-expanded', 'false');
     });
 
     it('splits an untitled read on its first blank line, at its old width', () => {

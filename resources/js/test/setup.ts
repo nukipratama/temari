@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { router } from '@inertiajs/react';
 import { cleanup } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, onTestFinished, vi } from 'vitest';
 
 import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 
@@ -108,6 +108,29 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
         is_demo: false,
         ...overrides,
     };
+}
+
+export const NARRATION_LINE_HEIGHT = 20;
+
+// jsdom lays nothing out, so a clamped narration body never overflows unless
+// every element reports this height and a NARRATION_LINE_HEIGHT line height.
+export function stubNarrationLayout(height: number) {
+    const computed = window.getComputedStyle.bind(window);
+    const offsetHeight = vi
+        .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+        .mockReturnValue(height);
+    const computedStyle = vi
+        .spyOn(window, 'getComputedStyle')
+        .mockImplementation((element, pseudo) => {
+            const style = computed(element, pseudo);
+            style.lineHeight = `${NARRATION_LINE_HEIGHT}px`;
+
+            return style;
+        });
+    onTestFinished(() => {
+        offsetHeight.mockRestore();
+        computedStyle.mockRestore();
+    });
 }
 
 // Safe default fetch: any test that renders a component which fires fetch on
