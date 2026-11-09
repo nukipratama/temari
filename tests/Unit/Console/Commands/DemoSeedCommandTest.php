@@ -329,7 +329,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)
         ->where('subject_id', $user->id)
         ->where('analysis_type', AnalysisType::TrendRead)
-        ->where('discriminator', '7d')
+        ->where('discriminator', 'arc')
         ->value('served_by'))->toBe(ServedBy::RuleBased);
 
     // The inbox is populated (today's post-run summary at minimum), not

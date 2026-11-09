@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Events\RaceGoalChanged;
 use App\Services\Run\Metrics\VdotEstimator;
 use App\Enums\RaceOutcome;
 use App\Support\SharedPropCacheKey;
@@ -73,8 +74,17 @@ class RaceGoal extends Model
             app(VdotEstimator::class)->forget($race->user);
         };
 
+        $announce = fn (RaceGoal $race) => RaceGoalChanged::dispatch($race->user_id);
+
         static::saved($bust);
         static::deleted($bust);
+        static::created($announce);
+        static::deleted($announce);
+        static::updated(function (RaceGoal $race) use ($announce): void {
+            if ($race->wasChanged(['race_date', 'distance_m', 'goal_time_sec', 'completed_at'])) {
+                $announce($race);
+            }
+        });
     }
 
     /**

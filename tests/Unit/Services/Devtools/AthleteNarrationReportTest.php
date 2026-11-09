@@ -47,10 +47,10 @@ function athleteBlock(User $user, AnalysisType $type = AnalysisType::BriefingMas
         'subject_type' => 'briefing_user_day',
         'subject_id' => $user->id,
         'analysis_type' => $type,
-        // TrendRead's discriminator is a closed set (just '7d');
+        // TrendRead's discriminator is a closed set (just 'arc');
         // the factory's default date-shaped value would be hidden by
         // KnownAnalysisTypeScope for this one type.
-        ...($type === AnalysisType::TrendRead ? ['discriminator' => '7d'] : []),
+        ...($type === AnalysisType::TrendRead ? ['discriminator' => 'arc'] : []),
         ...$attributes,
     ]);
 }

@@ -10,6 +10,13 @@ use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
 use App\Models\PlannedSession;
+use App\Models\RaceGoal;
+use App\Models\Season;
+use App\Actions\Run\Plan\ResolveActiveRaceAction;
+use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Services\AI\TrendReadFingerprint;
+use App\Services\Run\Plan\RacePresenter;
+use App\Services\Run\Plan\SupportedTimeHistory;
 use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
@@ -811,20 +818,96 @@ it('WeekTotalsTool reads the load balance as a state with no signed field', func
 
 // ── TrendReadNarrator ─────────────────────────────────────────────────
 
-it('TrendReadNarrator joins title and description with a blank line on valid JSON', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['reading' => 'load', 'title' => 'Judul.', 'description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
-    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
+function trendReadNarrator(StructuredChatCaller $caller): TrendReadNarrator
+{
+    return new TrendReadNarrator($caller, app(TrainingLoad::class), app(ResolveActiveRaceAction::class), app(ResolveSeasonAction::class), app(RacePresenter::class), app(SupportedTimeHistory::class));
+}
 
-    expect($narrator->generate($user, '7d'))->toBe("Judul.\n\nDeskripsi.");
+function trendReadAnswer(string $reading = 'volume_arc', string $title = 'six weeks bigger than the six before.', string $body = 'The volume climbed.'): string
+{
+    return json_encode(['reading' => $reading, 'title' => $title, 'body' => $body], JSON_THROW_ON_ERROR);
+}
+
+it('TrendReadNarrator stores its headline in lowercase and its story as JSON content, not the reading', function (): void {
+    $user = User::factory()->create();
+
+    $stored = trendReadNarrator(fakeCaller(trendReadAnswer(title: 'Six weeks bigger than the six before.', body: "The volume climbed.\n\nThe plan held.")))->generate($user);
+
+    expect($stored)->toBe(json_encode(['title' => 'six weeks bigger than the six before.', 'body' => "The volume climbed.\n\nThe plan held."], JSON_THROW_ON_ERROR));
 });
 
-it('TrendReadNarrator throws on missing title key', function (): void {
-    $user = User::factory()->create();
-    $caller = fakeCaller(json_encode(['description' => 'Deskripsi.'], JSON_THROW_ON_ERROR));
-    $narrator = new TrendReadNarrator($caller, app(TrainingLoad::class));
-    $narrator->generate($user, '7d');
+it('TrendReadNarrator throws on a missing body key', function (): void {
+    trendReadNarrator(fakeCaller(json_encode(['reading' => 'volume_arc', 'title' => 'x'], JSON_THROW_ON_ERROR)))->generate(User::factory()->create());
 })->throws(UnavailableException::class);
+
+it('TrendReadNarrator picks the race read from the data: an active race gets the race prompt, readings and tool', function (bool $withRace, string $promptConstant, array $readings, array $tools): void {
+    /** @var list<string> $readings */
+    /** @var list<string> $tools */
+    Carbon::setTestNow('2026-08-19 12:00:00');
+    $user = User::factory()->create();
+    if ($withRace) {
+        RaceGoal::factory()->for($user)->create();
+    }
+    [$caller, $client] = capturingCaller(trendReadAnswer($readings[0]));
+
+    trendReadNarrator($caller)->generate($user);
+
+    $client->assertSent(Responses::class, function (string $method, array $params) use ($promptConstant, $readings, $tools): bool {
+        $schema = data_get($params, 'text.format.schema');
+        $system = (string) $params['input'][0]['content'];
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body']
+            && data_get($schema, 'properties.reading.enum') === $readings
+            && array_column(arrayOf(data_get($params, 'tools')), 'name') === $tools
+            && str_contains($system, trim(narratorConstant(TrendReadNarrator::class, $promptConstant)))
+            && data_get($params, 'max_output_tokens') === 2500
+            && $params['input'][1]['content'] === json_encode(['closed_weeks_through' => '2026-08-16'], JSON_THROW_ON_ERROR);
+    });
+    Carbon::setTestNow();
+})->with([
+    'no race' => [false, 'SYSTEM_PROMPT', ['volume_arc', 'load_direction', 'consistency', 'pace_arc', 'adherence'], ['get_trend_range_totals', 'get_plan_adherence']],
+    'race' => [true, 'RACE_SYSTEM_PROMPT', ['on_track', 'gap_to_target', 'support_trend', 'adherence', 'load_direction'], ['get_race_outlook', 'get_trend_range_totals', 'get_plan_adherence']],
+]);
+
+it('TrendReadNarrator reads the six closed weeks ending last Sunday, never the week still open', function (): void {
+    Carbon::setTestNow('2026-08-19 12:00:00');
+    $user = User::factory()->create();
+    $closed = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($closed)->create(['start_date_local' => '2026-08-16 07:00:00', 'distance' => 5000.0]);
+    $open = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($open)->create(['start_date_local' => '2026-08-18 07:00:00', 'distance' => 9000.0]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-06']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-07-05']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-18']);
+
+    $toolbox = trendReadNarrator(fakeCaller('{}'))->toolbox($user, null, TrendReadFingerprint::closedThrough());
+    $arc = json_decode($toolbox->invoke('get_trend_range_totals', '{}'), true, flags: JSON_THROW_ON_ERROR);
+    $adherence = json_decode($toolbox->invoke('get_plan_adherence', '{}'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(data_get($arc, 'range'))->toBe('6w')
+        ->and(data_get($arc, 'current.runs'))->toBe(1)
+        ->and(data_get($arc, 'current.distance_km'))->toEqual(5.0)
+        ->and(data_get($adherence, 'from'))->toBe('2026-07-06')
+        ->and(data_get($adherence, 'through'))->toBe('2026-08-16')
+        ->and(data_get($adherence, 'prescribed'))->toBe(1);
+    Carbon::setTestNow();
+});
+
+it('TrendReadNarrator reads race adherence across the build its season opened', function (): void {
+    Carbon::setTestNow('2026-08-19 12:00:00');
+    $user = User::factory()->create();
+    $race = RaceGoal::factory()->for($user)->create();
+    Season::factory()->for($user)->create(['race_goal_id' => $race->id, 'starts_at' => '2026-05-04']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-04']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-05-03']);
+
+    $toolbox = trendReadNarrator(fakeCaller('{}'))->toolbox($user, $race, TrendReadFingerprint::closedThrough());
+    $adherence = json_decode($toolbox->invoke('get_plan_adherence', '{}'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect(data_get($adherence, 'from'))->toBe('2026-05-04')
+        ->and(data_get($adherence, 'prescribed'))->toBe(1);
+    Carbon::setTestNow();
+});
 
 /**
  * @param  array<string, mixed>  $context
@@ -1022,11 +1105,9 @@ it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not ver
  * the mechanism, so a family added to the prompt without a matching value would
  * be unpickable — and silently so.
  */
-it('TrendReadNarrator offers exactly the readings its prompt describes', function (): void {
-    $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA');
-    $prompt = narratorPrompt(TrendReadNarrator::class);
-
-    expect(data_get($schema, 'reading.enum'))->toBe(['load', 'long_term_load', 'vdot', 'shape', 'adherence']);
+it('TrendReadNarrator offers exactly the readings each prompt describes and commits to one first', function (string $constant, string $schemaConstant): void {
+    $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant($schemaConstant);
+    $prompt = narratorConstant(TrendReadNarrator::class, $constant);
 
     foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
         expect($reading)->toBeString();
@@ -1034,7 +1115,42 @@ it('TrendReadNarrator offers exactly the readings its prompt describes', functio
         expect($prompt)->toContain("`{$reading}`:");
     }
 
-    expect($prompt)->toContain('COMMIT FIRST');
+    expect($prompt)->toContain('COMMIT FIRST')
+        ->and($prompt)->toContain('The five, and `reading` takes exactly one of these values');
+})->with([
+    'no race' => ['SYSTEM_PROMPT', 'READING_PROPERTY_SCHEMA'],
+    'race' => ['RACE_SYSTEM_PROMPT', 'RACE_READING_PROPERTY_SCHEMA'],
+]);
+
+it('TrendReadNarrator prompts ask for a headline and a 200-250 word story in 2-3 connected paragraphs, at most 7 numbers, keeping the still-true rules', function (string $constant): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(TrendReadNarrator::class, $constant));
+
+    expect($prompt)
+        ->toContain('body (2-3 paragraphs, 200-250 words in total')
+        ->toContain('2-3 paragraphs separated by one blank line')
+        ->toContain('at least 3 connected sentences')
+        ->toContain('one beat of the same reading')
+        ->toContain('never one topic per paragraph like a checklist')
+        ->toContain('max 7 numbers across title + body combined')
+        ->toContain('NO PADDING')
+        ->toContain('never to filler')
+        ->toContain('long-term load is their running load averaged over about six weeks, running only')
+        ->toContain('NULLS ARE UNKNOWN, NOT ZERO')
+        ->toContain("Nothing here is a verdict on the user, it's a reading of the weeks")
+        ->and($prompt)->not->toContain('the last 7 days')
+        ->and($prompt)->not->toContain('description');
+})->with(['no race' => ['SYSTEM_PROMPT'], 'race' => ['RACE_SYSTEM_PROMPT']]);
+
+it('TrendReadNarrator race prompt answers on track for race day without forecasting a finish', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(TrendReadNarrator::class, 'RACE_SYSTEM_PROMPT'));
+
+    expect($prompt)
+        ->toContain('the answer to "on track for race day?"')
+        ->toContain('Never forecast a finish time')
+        ->toContain('gap.pct is only the size')
+        ->toContain('dedicated_preparation false')
+        ->toContain("never the race's name")
+        ->toContain('- "eight weeks out, and the target still asks for more than the running shows."');
 });
 
 it('WeeklyRecapNarrator sends only the continuity line and reads the week', function (): void {
@@ -2087,7 +2203,7 @@ it('per-narrator step budgets cover two full read passes and only exist where th
     ksort($declared);
 
     expect($declared)->toBe([
-        'TrendReadNarrator' => 6,
+        'TrendReadNarrator' => 8,
     ]);
 });
 
@@ -2261,7 +2377,7 @@ it('narrator prompt examples follow the casing rule: sentence case from two sent
     'briefing titles stay lowercase, the posture quote in sentence case' => [BriefingMascotVoiceNarrator::class, ['- "easy 30 today, because Thursday\'s tempo is still in the legs."', '- "a long run on the board, and the week is already three runs deep."', '"A light'], ['"Easy 30 today', '"A long run on the board', '"a light']],
     'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, down from four, and the scoreboard noticed."'], []],
     'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
-    'trend read title stays lowercase' => [TrendReadNarrator::class, ['"training load eased back'], []],
+    'trend read titles stay lowercase' => [TrendReadNarrator::class, ['- "six weeks bigger than the six before, and the long-term load followed."'], ['"Six weeks bigger']],
 ]);
 
 // These four narrators' prompts must not train the model to front-load every

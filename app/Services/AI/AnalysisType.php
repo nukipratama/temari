@@ -41,13 +41,14 @@ enum AnalysisType: string
     public const string PLAN_CLAMP_VOICE_SUBJECT_TYPE = 'plan_clamp_voice_user_day';
 
     /**
-     * The one window Trends narrates: not chained, not date-keyed, always "as of now", so the
-     * discriminator names the range, not a period. Stored rows under a retired range are hidden by
+     * The one read Trends narrates: not chained, not date-keyed, so the discriminator names the
+     * read, not a period. `arc` reads the closed weeks toward the active race, or the last six
+     * against the six before. Stored rows under a retired value (`7d`) are hidden by
      * {@see \App\Models\Scopes\KnownAnalysisTypeScope}.
      *
      * @var list<string>
      */
-    public const array TREND_READ_RANGES = ['7d'];
+    public const array TREND_READ_RANGES = ['arc'];
 
     /**
      * How far back a period-keyed discriminator may reach. Deliberately wider

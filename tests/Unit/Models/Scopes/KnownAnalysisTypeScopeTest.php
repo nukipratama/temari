@@ -72,6 +72,12 @@ it('hides a trend_read row under a retired discriminator', function (): void {
         'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
         'subject_id' => 1,
         'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => 'arc',
+    ]);
+    Analysis::factory()->done('an old 7d read')->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => 1,
+        'analysis_type' => AnalysisType::TrendRead,
         'discriminator' => '7d',
     ]);
     Analysis::factory()->done('an old 30d read')->create([

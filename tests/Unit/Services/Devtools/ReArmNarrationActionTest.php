@@ -23,10 +23,10 @@ function reArmFailedBlock(User $user, AnalysisType $type, int $attempts): Analys
         'analysis_type' => $type,
         'status' => AnalysisStatus::Failed,
         'attempts' => $attempts,
-        // TrendRead's discriminator is a closed set (just '7d');
+        // TrendRead's discriminator is a closed set (just 'arc');
         // the factory's default date-shaped value would be hidden by
         // KnownAnalysisTypeScope for this one type.
-        ...($type === AnalysisType::TrendRead ? ['discriminator' => '7d'] : []),
+        ...($type === AnalysisType::TrendRead ? ['discriminator' => 'arc'] : []),
     ]);
 }
 

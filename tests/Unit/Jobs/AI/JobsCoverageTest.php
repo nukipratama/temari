@@ -98,7 +98,7 @@ it('AnalyzeTrendReadJob returns the trend read for the row\'s range', function (
     $user = User::factory()->create();
     mockNarrator(TrendReadNarrator::class, 'The last 30 days, in one read.');
 
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, 'arc');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
     expect($row->refresh()->content)->toBe('The last 30 days, in one read.')
@@ -109,14 +109,14 @@ it('AnalyzeTrendReadJob stamps the range\'s current fingerprint once done', func
     $user = User::factory()->create();
     mockNarrator(TrendReadNarrator::class, 'The last 30 days, in one read.');
 
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, '7d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, 'arc');
     new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class));
 
-    expect($row->refresh()->content_fingerprint)->toBe(app(TrendReadFingerprint::class)->forUser($user, '7d'));
+    expect($row->refresh()->content_fingerprint)->toBe(app(TrendReadFingerprint::class)->forUser($user));
 });
 
 it('AnalyzeTrendReadJob marks the row Failed and rethrows when the user is missing', function (): void {
-    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, 99999, AnalysisType::TrendRead, '7d');
+    $row = rowOf(AnalysisType::TREND_READ_SUBJECT_TYPE, 99999, AnalysisType::TrendRead, 'arc');
 
     expect(fn () => new AnalyzeTrendReadJob($row->id)->handle(app(AnalysisService::class), app(AnalysisRowState::class)))
         ->toThrow(ModelNotFoundException::class);

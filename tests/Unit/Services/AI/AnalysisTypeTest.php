@@ -176,7 +176,8 @@ it('bounds TrendRead\'s discriminator to exactly the one live range', function (
 
     expect($result->fails())->toBe(! $valid);
 })->with([
-    '7d' => ['7d', true],
+    'arc' => ['arc', true],
+    '7d (retired range)' => ['7d', false],
     '30d (retired range)' => ['30d', false],
     '90d (retired range)' => ['90d', false],
     '12mo (retired range)' => ['12mo', false],
