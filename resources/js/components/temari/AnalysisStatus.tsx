@@ -174,7 +174,8 @@ function clampStyle(
     if (expanded) {
         return { maxHeight: clamp.fullHeight };
     }
-    const fade = 'linear-gradient(to bottom, #000 40%, transparent)';
+    const opaque = clamp.collapsedHeight * ((CLAMP_LINES - 1.5) / CLAMP_LINES);
+    const fade = `linear-gradient(to bottom, #000 ${opaque}px, transparent)`;
 
     return { maxHeight: clamp.collapsedHeight, maskImage: fade };
 }
