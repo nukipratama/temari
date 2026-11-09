@@ -1,5 +1,11 @@
-import { Clock, HeartPulse, RefreshCw } from 'lucide-react';
-import { useId, useState, type ReactNode } from 'react';
+import { ChevronDown, Clock, HeartPulse, RefreshCw } from 'lucide-react';
+import {
+    useId,
+    useLayoutEffect,
+    useState,
+    type CSSProperties,
+    type ReactNode,
+} from 'react';
 
 import type {
     AnalysisPayload,
@@ -102,18 +108,83 @@ interface Props {
     /** Show Temari thinking beside the skeleton, for a block no mascot sits near. */
     thinkingMark?: boolean;
     /**
-     * A titled narration of more than one paragraph shows its headline and
-     * first paragraph behind a `read more` toggle. Every mount starts collapsed.
+     * A body taller than {@link CLAMP_LINES} lines shows its headline and those
+     * lines, faded out, behind a `read more` toggle. Every mount starts collapsed.
      */
     collapsible?: boolean;
 }
 
-function paragraphsOf(content: string): string[] {
-    return content
-        .trim()
-        .split(/\n\s*\n/)
-        .map((paragraph) => paragraph.trim())
-        .filter((paragraph) => paragraph !== '');
+const CLAMP_LINES = 4;
+
+/** Room inside the clipped box for a citation's 4px `focus-ring`, given back by a matching negative margin. */
+const RING_ROOM = 4;
+
+interface Clamp {
+    collapsedHeight: number;
+    fullHeight: number;
+}
+
+/**
+ * Measures an unclamped body against {@link CLAMP_LINES} of its first block's
+ * line height; null while it fits.
+ */
+function useClamp(enabled: boolean, content: string) {
+    const [body, setBody] = useState<HTMLDivElement | null>(null);
+    const [clamp, setClamp] = useState<Clamp | null>(null);
+
+    useLayoutEffect(() => {
+        if (!enabled || !body) {
+            return;
+        }
+        const measure = () => {
+            const lineSource = body.firstElementChild ?? body;
+            const lineHeight = Number.parseFloat(
+                getComputedStyle(lineSource).lineHeight,
+            );
+            const collapsedHeight = Math.round(lineHeight * CLAMP_LINES);
+            const fullHeight = body.offsetHeight;
+            const overflows =
+                Number.isFinite(collapsedHeight) &&
+                fullHeight > collapsedHeight + 1;
+            setClamp((previous) => {
+                if (!overflows) {
+                    return null;
+                }
+                const unchanged =
+                    previous?.collapsedHeight === collapsedHeight &&
+                    previous.fullHeight === fullHeight;
+
+                return unchanged ? previous : { collapsedHeight, fullHeight };
+            });
+        };
+        // observe() delivers the first measure, so none runs synchronously here.
+        const observer = new ResizeObserver(measure);
+        observer.observe(body);
+
+        return () => observer.disconnect();
+    }, [enabled, body, content]);
+
+    return { ref: setBody, clamp: enabled ? clamp : null };
+}
+
+function clampStyle(
+    clamp: Clamp | null,
+    expanded: boolean,
+): CSSProperties | undefined {
+    if (clamp === null) {
+        return undefined;
+    }
+    if (expanded) {
+        return { maxHeight: clamp.fullHeight + 2 * RING_ROOM };
+    }
+    const opaque =
+        RING_ROOM + clamp.collapsedHeight * ((CLAMP_LINES - 1.5) / CLAMP_LINES);
+    const fade = `linear-gradient(to bottom, #000 ${opaque}px, transparent)`;
+
+    return {
+        maxHeight: clamp.collapsedHeight + 2 * RING_ROOM,
+        maskImage: fade,
+    };
 }
 
 const TEXT_SIZE: Record<AnalysisStatusSize, string> = {
@@ -209,6 +280,7 @@ export default function AnalysisStatus({
     const awayDescriptionId = useId();
     const storyId = useId();
     const [expanded, setExpanded] = useState(false);
+    const { ref: bodyRef, clamp } = useClamp(collapsible, content ?? '');
 
     if (effectiveStatus === 'done' && content !== null) {
         const cooling = cooldownRemaining > 0;
@@ -218,14 +290,6 @@ export default function AnalysisStatus({
             generatedAt,
             hrZonesChangedAt,
         );
-        const paragraphs = paragraphsOf(content);
-        const collapses =
-            collapsible &&
-            title !== null &&
-            title !== '' &&
-            paragraphs.length > 1;
-        const shownContent =
-            collapses && !expanded ? (paragraphs[0] ?? content) : content;
         const rereadButton = canRegenerate && (
             <button
                 type="button"
@@ -269,19 +333,42 @@ export default function AnalysisStatus({
                             {renderBold(title)}
                         </h3>
                     )}
-                    {renderContent
-                        ? renderContent(shownContent)
-                        : renderBold(shownContent)}
+                    <div
+                        style={clampStyle(clamp, expanded)}
+                        onFocus={() => clamp !== null && setExpanded(true)}
+                        className={cn(
+                            clamp !== null &&
+                                '-m-1 overflow-hidden p-1 transition-[max-height] duration-200 ease-out motion-reduce:transition-none',
+                        )}
+                    >
+                        <div ref={bodyRef}>
+                            {renderContent
+                                ? renderContent(content)
+                                : renderBold(content)}
+                        </div>
+                    </div>
                 </div>
-                {collapses && (
+                {clamp !== null && (
                     <button
                         type="button"
                         onClick={() => setExpanded((open) => !open)}
                         aria-expanded={expanded}
                         aria-controls={storyId}
-                        className="focus-ring pressable self-start rounded-xs text-xs font-semibold text-text-2 underline decoration-dotted underline-offset-4 hover:text-foreground"
+                        className={cn(
+                            TRIGGER_CLASS,
+                            TRIGGER_TONE,
+                            'mt-1 self-center',
+                        )}
                     >
-                        {expanded ? 'show less' : 'read more'}
+                        <span>{expanded ? 'show less' : 'read more'}</span>
+                        <Icon
+                            icon={ChevronDown}
+                            className={cn(
+                                'size-3 transition-transform duration-200 motion-reduce:transition-none',
+                                expanded && 'rotate-180',
+                            )}
+                            aria-hidden
+                        />
                     </button>
                 )}
                 {analysis.is_stale === true ? (

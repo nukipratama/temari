@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BriefingResult, WeekPlanDay } from '@/types/inertia';
 
 import { showToast } from '@/hooks/useToast';
-import { makeUser, setMockPage } from '@/test/setup';
+import { makeUser, setMockPage, stubNarrationLayout } from '@/test/setup';
 
 import TodaySession from './TodaySession';
 
@@ -253,7 +253,6 @@ describe('TodaySession', () => {
         const headline = screen.getByText(
             'easy 30 today, because thursday\u2019s tempo is still in the legs.',
         );
-        fireEvent.click(screen.getByRole('button', { name: 'read more' }));
         const story = container.querySelector<HTMLElement>('p.narration');
         expect(headline).toHaveClass('font-serif', 'italic');
         expect(story?.textContent).toBe(body);
@@ -301,11 +300,12 @@ describe('TodaySession', () => {
         ).toHaveTextContent('an easy run');
     });
 
-    it('collapses a titled multi-paragraph briefing to its first paragraph, keeping the session citation and bold in both states', () => {
+    it('clamps a long briefing behind a read more toggle, keeping the session citation in both states', () => {
+        stubNarrationLayout(200);
         render(
             <TodaySession
                 briefing={briefing(
-                    'So I am keeping this to [an easy run](session:today) and a **loose** jog.\n\nDrop to a walk if HR climbs early.',
+                    'So I am keeping this to [an easy run](session:today).\n\nDrop to a walk if HR climbs early.',
                     'done',
                     'a hook for today.',
                 )}
@@ -317,8 +317,6 @@ describe('TodaySession', () => {
         const citation = () =>
             screen.getByRole('button', { name: /show .* on this page/i });
         expect(citation()).toHaveTextContent('an easy run');
-        expect(screen.getByText('loose').tagName).toBe('STRONG');
-        expect(screen.queryByText(/Drop to a walk/)).not.toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'read more' }),
         ).toHaveAttribute('aria-expanded', 'false');
@@ -326,21 +324,9 @@ describe('TodaySession', () => {
         fireEvent.click(screen.getByRole('button', { name: 'read more' }));
 
         expect(citation()).toHaveTextContent('an easy run');
-        expect(screen.getByText('loose').tagName).toBe('STRONG');
-        expect(screen.getByText(/Drop to a walk/)).toBeInTheDocument();
         expect(
             screen.getByRole('button', { name: 'show less' }),
         ).toHaveAttribute('aria-expanded', 'true');
-    });
-
-    it('draws no toggle for a single-paragraph titled briefing', () => {
-        render(
-            <TodaySession
-                briefing={briefing('One paragraph only.', 'done', 'a hook.')}
-            />,
-        );
-
-        expect(screen.queryByRole('button', { name: /read more/ })).toBeNull();
     });
 
     it('keeps an untitled briefing in the compact lead and body rendering', () => {

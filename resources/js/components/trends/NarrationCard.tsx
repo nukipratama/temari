@@ -68,6 +68,7 @@ export default function NarrationCard({
                     analysis={analysis}
                     inertiaReloadProps={['narration']}
                     awaitingSchedule={false}
+                    collapsible
                     renderContent={(content) => {
                         if (titled) {
                             return (
