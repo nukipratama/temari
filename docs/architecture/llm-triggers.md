@@ -3,7 +3,7 @@ title: The LLM surface — everything that calls a model, what starts it, and wh
 description: The complete inventory of narrators, agent tools and deterministic producers, with the five origins that dispatch them, the seven things that stop them, a proposed verdict per surface, and what the prod rebuild means for spend.
 tags: [architecture, ai]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-09
 code_refs:
   - routes/console.php
   - app/Services/AI/StructuredChatCaller.php
@@ -55,7 +55,7 @@ without a row here is a red build.
 
 ## The five origins
 
-Origin is a property of the dispatcher, not the narrator: the same `RunInsightNarrator` answers an
+Origin is a property of the dispatcher, not the narrator: the same `PostRunSpeechNarrator` answers an
 ingest cascade, a "Reread" and a self-heal. An authenticated web request gets its origin for free —
 [SetDefaultNarrationOrigin](../../app/Http/Middleware/SetDefaultNarrationOrigin.php), appended to
 the `web` middleware group, stamps `AnalysisOrigin::User` on every one of them — and a controller
@@ -186,7 +186,7 @@ demo-exclusion tripwire.
 
 [`DispatchPostRunAnalysis::handle()`](../../app/Listeners/DispatchPostRunAnalysis.php) is queued
 on `ActivityIngested` and is where most per-run spend originates. In order: `CardFlavor` (invalidated only when the run's material fingerprint moved), then the
-grouped `PostRunSpeech` + `RunInsight` pair — both filled rule-based instead, with no dispatch, when
+grouped `PostRunSpeech` (one row since the run insight merged into it) — filled rule-based instead, with no dispatch, when
 [`NarrationEligibility::forIngestedRun()`](../../app/Services/AI/NarrationEligibility.php) says demo,
 too old, or pre-connect and older than the last 7 days (see *the history gate* below), and staged
 `Pending` with every LLM request below skipped (briefing, profile
@@ -223,7 +223,7 @@ narrate them once the window closes, which is why a pending recap row is not a b
   dispatch. See [[scoped-run-qa-not-an-analysis-row]] and [[run-qa-is-a-conversation-about-one-run]].
 - **`PlanController::update`, on a make-up move** — once the lock is released,
   [`RenarrateAfterMakeUp`](../../app/Actions/AI/RenarrateAfterMakeUp.php), called by the controller right after `MakeUpService::notify()`, re-requests the runs on both the made-up
-  day and the day it emptied (`post_run_speech`, `run_insight`) and their `card_flavor` with
+  day and the day it emptied (`post_run_speech`) and their `card_flavor` with
   `invalidate: true`, and re-requests
   today's `briefing_mascot_voice` through `AnalysisService::rebriefAfterPlanEdit()` when the make-up
   lands on today or takes today's session away. The demo athlete never reaches this route:
@@ -280,14 +280,15 @@ origin is `return`, and `AnalysisRowState::markDone()` sends no notification for
 ## The ten surfaces
 
 Nine [`AnalysisType`](../../app/Services/AI/AnalysisType.php) cases plus the scoped run Q&A, which
-is not an Analysis row. Every case is dispatched by at least one origin above, and every case is
-rendered somewhere a user can see — both directions matter, and only one of them used to be checked.
+is not an Analysis row. Every case but the retired `run_insight` is dispatched by at least one origin
+above, and every case is rendered somewhere a user can see — both directions matter, and only one of
+them used to be checked.
 
 | type | narrator | subject · discriminator | origin | renders |
 |---|---|---|---|---|
 | `briefing_mascot_voice` | `BriefingMascotVoiceNarrator` | synthetic user+day · `Y-m-d` | scheduled + ingest + signup + Plan page | `TodaySession` on Home |
-| `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, top of "What Temari says" |
-| `run_insight` | `RunInsightNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What stood out" claims |
+| `post_run_speech` | `PostRunSpeechNarrator` | `Activity` · none | ingest (grouped) | `RunLenses`, "What Temari says": headline, story and claims |
+| `run_insight` | none, retired 2026-11-09 (see *Retired surfaces*) | `Activity` · none | never dispatched | `RunLenses`, "What stood out" on an old run whose speech is still plain |
 | `card_flavor` | `CardFlavorNarrator` | `RunCard` · none | ingest | the share sheet's caption in `ShareCardModal`, never printed on the card image |
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
@@ -367,10 +368,9 @@ whole prefix. That single fact drives everything below.
 
 | narrator | tools | max steps | max output | temp | deployment key |
 |---|---|---|---|---|---|
-| `RunInsightNarrator` | 12 | default (10) | 3000 | 0.7 | `run_insight` |
 | `RunQuestionNarrator` | up to 12 | default (10) | 1200 | 0.7 | `run_question` |
 | `CardFlavorNarrator` | up to 6 | default (10) | 400 | 0.8 | `card_flavor` |
-| `PostRunSpeechNarrator` | 7 | default (10) | 1500 | 0.8 | `post_run_speech` |
+| `PostRunSpeechNarrator` | 14 | default (10) | 3500 | 0.8 | `post_run_speech` |
 | `BriefingMascotVoiceNarrator` | 6 | default (10) | 1800 | 0.8 | `briefing_mascot_voice` |
 | `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
 | `WeeklyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `weekly_recap` |
@@ -452,9 +452,8 @@ inline in its `toolbox()` method.
 
 | narrator | tools |
 |---|---|
-| `RunInsightNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool`, `PerceivedEffortTool` |
 | `RunQuestionNarrator` | `RunSummaryTool`, `GetThreadTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool` always; `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool` only once the run is `Detailed` |
-| `PostRunSpeechNarrator` | `RunSummaryTool`, `TerrainTool`, `WeatherTool`, `PersonalRecordsTool`, `WeekStateTool`, `PlanContextTool`, `PerceivedEffortTool` |
+| `PostRunSpeechNarrator` | `RunSummaryTool`, `KmSplitsTool`, `LapsTool`, `HrZonesTool`, `TerrainTool`, `WeatherTool`, `EffortContextTool`, `TrainingLoadTool`, `RecentBaselineTool`, `TrainingPacesTool`, `PlanContextTool`, `PerceivedEffortTool`, `PersonalRecordsTool`, `WeekStateTool` |
 | `CardFlavorNarrator` | `CardIdentityTool`'s payload in the context, always; `RunSummaryTool`, `KmSplitsTool`, `WeatherTool`, `EffortContextTool`, `PersonalRecordsTool`, `PlanContextTool` when the run has detail |
 | `BriefingMascotVoiceNarrator` | `WeekStateTool`, `RecentRunsTool`, `TrainingLoadTool`, `RecentBaselineTool`, `PlanContextTool` |
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
@@ -491,8 +490,8 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | surface | verdict | why |
 |---|---|---|
 | `briefing_mascot_voice` | earns it | Synthesises five reads into one plain-language morning line. Nothing deterministic produces that. |
-| `post_run_speech` | earns it | The persona's reaction to a run is the product. |
-| `run_insight` | earns it | The most expensive call in the app — 10 tools, 3000 output tokens — and the most substantive block it produces. Finding the non-obvious thing in a run is exactly what the toolbox is for. Ruled 2026-09-04: narrowing it would flatten the output for a saving nobody has measured. |
+| `post_run_speech` | earns it | The persona's reaction to a run is the product, and since it absorbed the run insight it also finds the non-obvious thing in the run and backs it with anchored claims. The most expensive call in the app — 14 tools, 3500 output tokens — but one call where there were two, and the input dominates its cost. |
+| `run_insight` | retired | Merged into `post_run_speech` on 2026-11-09; see *Retired surfaces*. |
 | `card_flavor` | earns it | One line capped at 400 output tokens from up to 6 tools, and it cannot tighten its budget while it carries them (`2 * (6 + 1)` already exceeds the default). Ruled 2026-09-04: the extra tools are conditional on the run having detail, so the 6-tool case is rarer than the table implies, and trimming them makes the flavour line generic. |
 | `weekly_recap` | earns it | Chained, reads a real snapshot. Five tools since the headline + story redesign, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
 | `monthly_recap` | earns it | Same shape as the weekly: five tools, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
@@ -506,7 +505,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 - `CardIdentityTool` returns one bound read with nothing for the model to decide, so
   `CardFlavorNarrator` hands the payload straight to the prompt and skips the tool round trip.
 - `PlanContextTool` is the one plan read bound to a *span* rather than a row, so a narrator with no
-  `PlannedSession` in hand can still say what was prescribed. The four per-run narrators bind it to
+  `PlannedSession` in hand can still say what was prescribed. The three per-run narrators bind it to
   a single day, the date of the run they are describing; the weekly and monthly recaps bind it to
   their own window.
 - `PlanAdherenceTool` is its aggregate counterpart, and the split is about payload shape rather
@@ -515,16 +514,26 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
   to cover ranges up to 12 months before `30d`/`90d`/`12mo` retired, and would have carried
   ~365 entries at that span. The trend read and the profile voice ask about a shape, so they get
   counts, which are the same size at any span.
-- `RunInsightNarrator`'s three user-level tools are the ones to question first if its toolbox is
-  narrowed.
+- `PostRunSpeechNarrator`'s user-level reads (training load, recent baseline, training paces and
+  week state) are the ones to question first if its toolbox is narrowed.
 
 **Cost ranking**, order only, from a structural proxy (tools × step budget × output cap × calls per
 active user per week). It ranks surfaces against each other; it is not a dollar figure:
 
-`run_insight` › `briefing_mascot_voice` › `post_run_speech` › run Q&A › `card_flavor` ›
+`post_run_speech` › `briefing_mascot_voice` › run Q&A › `card_flavor` ›
 `profile_voice` › `trend_read` › `weekly_recap` › `monthly_recap`
 
 ## Retired surfaces
+
+**`run_insight`** (merged into `post_run_speech` 2026-11-09, #2428). The run page drew two
+narrations blind to each other: a thin story and 1-3 independent claims. `PostRunSpeechNarrator`
+now writes both in one call, a headline, a story and the claims, with the union of the two
+toolboxes. `RunInsightNarrator`, its `AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT` routing key and every
+path that created or narrated a row (ingest, chain resume, self-heal, early-narration settle,
+the pause-lift retry, devtools re-arm and replay, the trigger endpoint, the rule-based arm and the
+`narration:eval` fixtures) are gone. Unlike the cuts below, the enum case stays and its rows stay
+readable, since an old run whose speech is still plain renders its "What stood out" block from
+them; no migration touches them.
 
 **`plan_season_voice`** (cut 2026-10-13, [[the-season-has-no-narrated-read]]). The season
 header's "Temari's take" was judged not worth its place under the phase bar or its LLM spend. The
@@ -621,7 +630,7 @@ ORDER BY tokens DESC;
 ```
 
 `kind` names the narrator and `origin` names what started it, so the two together answer questions
-neither can alone: whether `run_insight` spend is ingest or people pressing "Reread", and whether
+neither can alone: whether `post_run_speech` spend is ingest or people pressing "Reread", and whether
 recovery is quietly re-billing. Rows written before the origin column defaulted to `unknown`; so does
 any dispatch site that forgets to declare itself, which is deliberate — unattributed is visible,
 a wrong default is not.

@@ -8,7 +8,6 @@ code_refs:
   - app/Services/AI/Narrators/PlanVerdictRule.php
   - app/Services/AI/Agent/Tools/PlanContextTool.php
   - app/Services/AI/Narrators/PostRunSpeechNarrator.php
-  - app/Services/AI/Narrators/RunInsightNarrator.php
   - app/Services/AI/Narrators/BriefingMascotVoiceNarrator.php
   - app/Services/Run/Plan/IntentOutcome.php
 ---
@@ -16,6 +15,8 @@ code_refs:
 # Run narrators share the day's verdict
 
 **Status:** Accepted (2026-10-15)
+
+> **One fact below is superseded (noted 2026-11-09):** the run insight is now part of the post-run speech's one call (#2428), so the speech and the post-run briefing are the narrators that share the verdict; the decision itself is unchanged.
 
 ## Context
 

@@ -12,12 +12,13 @@ code_refs:
   - app/Http/Controllers/PerceivedEffortController.php
   - app/Services/AI/MaterialFingerprint.php
   - app/Services/AI/Narrators/PostRunSpeechNarrator.php
-  - app/Services/AI/Narrators/RunInsightNarrator.php
 ---
 
 # A first effort score re-narrates the run
 
 **Status:** Accepted (2026-10-15). Supersedes, for narration only, the "no coaching use" half of [[an-effort-score-is-collected-on-every-run]] and the 2026-10-06 "not planned" ruling on #1577. Readiness, plan adjustment and load still read no effort score.
+
+> **One fact below is superseded (noted 2026-11-09):** the run insight is now part of the post-run speech's one call (#2428), so a first effort score re-narrates that one speech; the decision itself is unchanged.
 
 ## Context
 
