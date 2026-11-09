@@ -4,19 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\Season;
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
-use App\Actions\Run\Plan\ResolveSeasonAction;
 use App\Enums\PlanPhase;
 use App\Enums\SessionType;
 use App\Models\AI\Analysis;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
-use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use App\Services\Run\Plan\RacePresenter;
+use App\Services\Run\Plan\SupportedTimeHistory;
 use App\Services\Run\Story\BriefingContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -25,7 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * /trends — Temari's 7-day verdict up top, then three stacked comparisons:
+ * /trends — Temari's read up top, then three stacked comparisons:
  * this week against last (the gain and the cost), long-term load (the CTL
  * chart lives here), and the race target against the time recent runs
  * support — or, with no race set, the athlete's own year.
@@ -39,7 +37,7 @@ class TrendsController extends Controller
         TrainingLoad $trainingLoad,
         RacePresenter $racePresenter,
         ResolveActiveRaceAction $activeRace,
-        ResolveSeasonAction $seasons,
+        SupportedTimeHistory $history,
     ): Response {
         /** @var User $user */
         $user = $request->user();
@@ -52,7 +50,7 @@ class TrendsController extends Controller
             'chartAnnotations' => Inertia::defer(fn (): array => $this->chartAnnotations($user, $today)),
             'narration' => Inertia::defer(fn (): array => $this->narration($user)),
             'raceOutlook' => Inertia::defer(fn (): ?array => $this->raceOutlook($user, $racePresenter)),
-            'supportedHistory' => Inertia::defer(fn (): ?array => $this->supportedHistory($user, $today, $activeRace, $seasons)),
+            'supportedHistory' => Inertia::defer(fn (): ?array => $this->supportedHistory($user, $today, $activeRace, $history)),
         ]);
     }
 
@@ -84,50 +82,13 @@ class TrendsController extends Controller
     }
 
     /**
-     * The supported time at the current race's distance, one point per daily
-     * snapshot taken for that race within its season. A point opens a new
-     * step label only when the effort it rests on changed.
-     *
      * @return array{target_time_sec: int, points: list<array{date: string, supported_time_sec: int, source: array{distance_m: int, date: string}|null, new_source: bool}>}|null
      */
-    private function supportedHistory(User $user, Carbon $today, ResolveActiveRaceAction $activeRace, ResolveSeasonAction $seasons): ?array
+    private function supportedHistory(User $user, Carbon $today, ResolveActiveRaceAction $activeRace, SupportedTimeHistory $history): ?array
     {
         $race = $activeRace($user->id);
-        if (!$race instanceof RaceGoal) {
-            return null;
-        }
 
-        $season = $seasons->latest($user->id);
-        $seasonStart = $season instanceof Season && $season->race_goal_id === $race->id ? $season->starts_at->toDateString() : null;
-        $snapshots = TrendDailySnapshot::query()
-            ->where('user_id', $user->id)
-            ->where('race_goal_id', $race->id)
-            ->whereNotNull('supported_time_sec')
-            ->when($seasonStart, fn ($query, string $start) => $query->where('snapshot_date', '>=', $start))
-            ->where('snapshot_date', '<=', $today->toDateString())
-            ->orderBy('snapshot_date')
-            ->get(['snapshot_date', 'supported_time_sec', 'supported_source_distance_m', 'supported_source_date']);
-
-        if ($snapshots->count() < 2) {
-            return null;
-        }
-
-        $points = [];
-        $previous = null;
-        foreach ($snapshots as $snapshot) {
-            $source = $snapshot->supported_source_distance_m === null || $snapshot->supported_source_date === null
-                ? null
-                : ['distance_m' => $snapshot->supported_source_distance_m, 'date' => $snapshot->supported_source_date->toDateString()];
-            $points[] = [
-                'date' => $snapshot->snapshot_date->toDateString(),
-                'supported_time_sec' => (int) $snapshot->supported_time_sec,
-                'source' => $source,
-                'new_source' => $points !== [] && $source !== null && $source !== $previous,
-            ];
-            $previous = $source;
-        }
-
-        return ['target_time_sec' => $race->goal_time_sec, 'points' => $points];
+        return $race instanceof RaceGoal ? $history->for($user, $race, $today) : null;
     }
 
     /**
@@ -204,7 +165,7 @@ class TrendsController extends Controller
     }
 
     /**
-     * The verdict card's own Analysis payload — the single 7d row.
+     * The verdict card's own Analysis payload — the single `arc` row.
      *
      * @return array<string, mixed>
      */
