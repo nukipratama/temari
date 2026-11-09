@@ -143,30 +143,38 @@ class MonthlyRecapNarrator
      */
     public function context(User $user, string $month): array
     {
-        return NarratorContinuity::fields($this->prevNarrative($user, $month));
+        return NarratorContinuity::fields($this->prevNarratives($user, $month));
     }
 
     /**
-     * The previous chain link's recap narrative for continuity: the prior calendar month's
-     * MonthlyRecap content, if that row is Done. Returns null when no Done predecessor exists, so
-     * the narrator opens standalone.
+     * The previous chain links' recap narratives for continuity, newest first: the MonthlyRecap
+     * content of each of the {@see NarratorContinuity::WINDOW} calendar months before this one
+     * whose row is Done. Empty when none is Done, so the narrator opens standalone.
+     *
+     * @return list<string>
      */
-    public function prevNarrative(User $user, string $month): ?string
+    public function prevNarratives(User $user, string $month): array
     {
-        $previousMonth = Carbon::createFromFormat('!Y-m', $month)
-            ?->subMonthNoOverflow()
-            ->format('Y-m');
-
-        if ($previousMonth === null) {
-            return null;
+        $current = Carbon::createFromFormat('!Y-m', $month);
+        if (!$current instanceof Carbon) {
+            return [];
         }
 
-        $content = Analysis::query()
-            ->forSubject(AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE, $user->id, AnalysisType::MonthlyRecap, $previousMonth)
-            ->where('status', AnalysisStatus::Done)
-            ->value('content');
-        assert($content === null || is_string($content));
+        $previousMonths = array_map(
+            fn (int $back): string => $current->copy()->subMonthsNoOverflow($back)->format('Y-m'),
+            range(1, NarratorContinuity::WINDOW),
+        );
 
-        return $content;
+        $contents = Analysis::query()
+            ->where('subject_type', AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE)
+            ->where('subject_id', $user->id)
+            ->where('analysis_type', AnalysisType::MonthlyRecap)
+            ->whereIn('discriminator', $previousMonths)
+            ->where('status', AnalysisStatus::Done)
+            ->orderByDesc('discriminator')
+            ->pluck('content')
+            ->all();
+
+        return array_values(array_filter($contents, is_string(...)));
     }
 }

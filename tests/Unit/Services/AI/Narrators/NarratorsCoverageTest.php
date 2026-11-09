@@ -27,6 +27,7 @@ use App\Services\AI\Anchor\CitationValidator;
 use App\Services\AI\Anchor\DayAnchorResolver;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\CardFlavorNarrator;
+use App\Services\AI\Narrators\NarrationContent;
 use App\Services\AI\Narrators\NarratorContinuity;
 use App\Services\AI\Narrators\PlanVerdictRule;
 use App\Enums\IntentVerdict;
@@ -55,6 +56,7 @@ use App\Services\Run\Story\Contracts\VerdictNarrator;
 use App\Services\Run\Story\Vibe;
 use App\Support\Numeric;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use OpenAI\Resources\Responses;
@@ -784,13 +786,14 @@ it('PlanClampVoiceNarrator hands the eased session and its reasons in the user m
         'has_run_today' => false,
         'readiness_reasons' => ['demanding_session_within_24h'],
         'readiness_inputs' => [],
-    ], 7);
+    ], 7, Carbon::parse('2026-11-09'));
 
     expect($voice)->toBe('you ran long yesterday, so today is an easy day.');
     assertOneStepWithContext($client, [
         'planned' => 'interval',
         'stepped_down_to' => 'easy',
         'readiness_reasons' => ['demanding_session_within_24h'],
+        ...NarratorContinuity::fields([]),
     ]);
 });
 
@@ -804,7 +807,7 @@ it('PlanClampVoiceNarrator throws on missing voice key', function (): void {
         'has_run_today' => false,
         'readiness_reasons' => [],
         'readiness_inputs' => [],
-    ], 7);
+    ], 7, Carbon::parse('2026-11-09'));
 })->throws(UnavailableException::class);
 
 it('PlanClampVoiceNarrator names the eased session as the one being run today', function (string $narrator): void {
@@ -996,7 +999,7 @@ it('CardFlavorNarrator hands the card identity in the user message', function ()
 
     cardFlavorNarrator($caller)->generate($card);
 
-    $identity = json_encode(new CardIdentityTool($card)->handle([]), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+    $identity = json_encode([...new CardIdentityTool($card)->handle([]), ...NarratorContinuity::fields([])], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
     $client->assertSent(Responses::class, fn (string $method, array $params): bool => $params['input'][1]['content'] === $identity);
 });
 
@@ -1028,7 +1031,7 @@ it('CardFlavorNarrator writes a never-detailed card from its identity in one ste
     cardFlavorNarrator($caller)->generate(nonNull($card));
 
     // Offering tools that can only answer null teaches the model to distrust them.
-    assertOneStepWithContext($client, new CardIdentityTool(nonNull($card))->handle([]));
+    assertOneStepWithContext($client, [...new CardIdentityTool(nonNull($card))->handle([]), ...NarratorContinuity::fields([])]);
 });
 
 it('CardFlavorNarrator throws on missing flavor key', function (): void {
@@ -1997,3 +2000,220 @@ it('tells the briefing and the weekly recap a session the athlete chose to run a
     'briefing' => [BriefingMascotVoiceNarrator::class],
     'weekly recap' => [WeeklyRecapNarrator::class],
 ]);
+
+// ── Continuity window: up to five previous narrations, newest first ──────
+
+function jsonNarration(string $title, string $body): string
+{
+    return new NarrationContent($title, $body)->toStored();
+}
+
+it('PostRunSpeechNarrator passes the five newest earlier narrations, newest first, mixing JSON and plain rows', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $user = $a->user;
+    foreach (range(1, 7) as $day) {
+        priorActivityWithDoneAnalysis(
+            $user,
+            AnalysisType::PostRunSpeech,
+            $day === 6 ? jsonNarration('headline six', 'Body six.') : "Plain narration for day {$day} with extra words to pass here",
+            "2026-05-0{$day}",
+        );
+    }
+    priorActivityWithDoneAnalysis($user, AnalysisType::PostRunSpeech, 'Later than the run itself.', Carbon::today()->addDays(30)->toDateString());
+    priorActivityWithDoneAnalysis($user, AnalysisType::RunInsight, 'Wrong kind, ignored.', '2026-05-08');
+    priorActivityWithDoneAnalysis(User::factory()->create(), AnalysisType::PostRunSpeech, 'Another athlete.', '2026-05-08');
+
+    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
+
+    expect($context['recent_openers'])->toBe([
+        'Plain narration for day 7 with extra words to pass',
+        'headline six',
+        'Plain narration for day 5 with extra words to pass',
+        'Plain narration for day 4 with extra words to pass',
+        'Plain narration for day 3 with extra words to pass',
+    ])
+        ->and($context['prev_narrative'])->toBe('Plain narration for day 7 with extra words to pass here')
+        ->and($context['prev_opener'])->toBe('Plain narration for day 7 with extra words to pass');
+});
+
+it('PostRunSpeechNarrator reads the previous narrations in two queries', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    foreach (range(1, 5) as $day) {
+        priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, "Narration {$day}", "2026-05-0{$day}");
+    }
+    $narrator = postRunNarrator(fakeCaller('{"speech":"x"}'));
+    $detail = $d->refresh();
+
+    DB::enableQueryLog();
+    $narrator->context($a, $detail, 'blazing');
+    $queries = count(DB::getQueryLog());
+    DB::disableQueryLog();
+
+    expect($queries)->toBeLessThanOrEqual(2);
+});
+
+it('RunInsightNarrator passes recent_openers from earlier run-insight rows only', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.', '2026-05-08');
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'A post-run line.', '2026-05-09');
+
+    $context = runInsightNarrator(fakeCaller('{"insights":[]}'))->context($a, $d->refresh());
+
+    expect($context['recent_openers'])->toBe(['Cadence was 168 yesterday, starting to improve.']);
+});
+
+it('WeeklyRecapNarrator passes up to five earlier recaps newest first and skips zero-run and not-Done weeks', function (): void {
+    $user = User::factory()->create();
+    $weeks = ['2026-04-05', '2026-04-12', '2026-04-19', '2026-04-26', '2026-05-03', '2026-05-10'];
+    foreach ($weeks as $i => $weekEnding) {
+        $snapshot = WeeklySnapshot::factory()->for($user)->create(['week_ending' => $weekEnding, 'runs' => 3]);
+        Analysis::factory()->done($i === 4 ? jsonNarration('week five', 'Body five.') : "Recap of week {$i}.")->create([
+            'subject_type' => WeeklySnapshot::class,
+            'subject_id' => $snapshot->id,
+            'analysis_type' => AnalysisType::WeeklyRecap,
+            'discriminator' => null,
+        ]);
+    }
+    $zeroRun = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-11', 'runs' => 0]);
+    Analysis::factory()->done('Zero-run week recap.')->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $zeroRun->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+    ]);
+    $pending = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-12', 'runs' => 3]);
+    Analysis::factory()->create([
+        'subject_type' => WeeklySnapshot::class,
+        'subject_id' => $pending->id,
+        'analysis_type' => AnalysisType::WeeklyRecap,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Pending,
+    ]);
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 3]);
+
+    $narrator = weeklyRecapNarrator(fakeCaller('{"narrative":"x"}'));
+    $context = $narrator->context($current);
+
+    expect($narrator->prevNarratives($current))->toBe([
+        'Recap of week 5.',
+        jsonNarration('week five', 'Body five.'),
+        'Recap of week 3.',
+        'Recap of week 2.',
+        'Recap of week 1.',
+    ])
+        ->and($context['recent_openers'])->toBe(['Recap of week 5.', 'week five', 'Recap of week 3.', 'Recap of week 2.', 'Recap of week 1.'])
+        ->and($context['prev_narrative'])->toBe('Recap of week 5.');
+});
+
+it('MonthlyRecapNarrator passes the Done recaps of the five months before, newest first', function (): void {
+    $user = User::factory()->create();
+    foreach (['2025-12' => 'December', '2026-01' => 'January', '2026-03' => 'March', '2026-04' => 'April', '2026-05' => 'May', '2026-06' => 'June'] as $month => $label) {
+        Analysis::factory()->done("{$label} recap.")->create([
+            'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::MonthlyRecap,
+            'discriminator' => $month,
+        ]);
+    }
+    Analysis::factory()->create([
+        'subject_type' => AnalysisType::MONTHLY_RECAP_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::MonthlyRecap,
+        'discriminator' => '2026-02',
+        'status' => AnalysisStatus::Pending,
+    ]);
+
+    $narrator = monthlyRecapNarrator(fakeCaller('{"narrative":"x"}'));
+
+    expect($narrator->prevNarratives($user, '2026-07'))->toBe(['June recap.', 'May recap.', 'April recap.', 'March recap.'])
+        ->and($narrator->prevNarratives($user, '2026-02'))->toBe(['January recap.', 'December recap.']);
+});
+
+it('BriefingMascotVoiceNarrator passes the five newest earlier daily notes, newest first', function (): void {
+    $user = User::factory()->create();
+    foreach (range(10, 18) as $day) {
+        Analysis::factory()->done($day === 16 ? jsonNarration('sixteenth', 'Body.') : "Note of day {$day} that runs past the ten word opener window")->create([
+            'subject_type' => AnalysisType::BRIEFING_SUBJECT_TYPE,
+            'subject_id' => $user->id,
+            'analysis_type' => AnalysisType::BriefingMascotVoice,
+            'discriminator' => "2026-05-{$day}",
+        ]);
+    }
+
+    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-17'));
+
+    expect($context['recent_openers'])->toBe([
+        'sixteenth',
+        'Note of day 15 that runs past the ten word',
+        'Note of day 14 that runs past the ten word',
+        'Note of day 13 that runs past the ten word',
+        'Note of day 12 that runs past the ten word',
+    ]);
+});
+
+it('CardFlavorNarrator rotates against the athlete\'s five latest flavor lines on other cards and carries the continuity rule', function (): void {
+    $card = cardFixture();
+    $user = $card->activity->user;
+    $flavorFor = function (User $owner, string $content, string $generatedAt) {
+        $other = Activity::factory()->for($owner)->analyzed()->create();
+        $otherCard = RunCard::factory()->create(['activity_id' => $other->id]);
+        Analysis::factory()->done($content)->create([
+            'subject_type' => RunCard::class,
+            'subject_id' => $otherCard->id,
+            'analysis_type' => AnalysisType::CardFlavor,
+            'discriminator' => null,
+            'generated_at' => $generatedAt,
+        ]);
+    };
+    foreach (range(1, 6) as $i) {
+        $flavorFor($user, "Flavor {$i}", "2026-05-0{$i} 10:00:00");
+    }
+    $flavorFor(User::factory()->create(), 'Another athlete flavor', '2026-05-09 10:00:00');
+    Analysis::factory()->done('The card itself.')->create([
+        'subject_type' => RunCard::class,
+        'subject_id' => $card->id,
+        'analysis_type' => AnalysisType::CardFlavor,
+        'discriminator' => null,
+        'generated_at' => '2026-05-08 10:00:00',
+    ]);
+    [$caller, $client] = capturingCaller('{"flavor":"x"}');
+
+    cardFlavorNarrator($caller)->generate($card);
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $context = json_decode(Arr::string($params['input'][1], 'content'), true);
+
+        return is_array($context)
+            && $context['recent_openers'] === ['Flavor 6', 'Flavor 5', 'Flavor 4', 'Flavor 3', 'Flavor 2']
+            && str_contains(Arr::string($params['input'][0], 'content'), NarratorContinuity::RULE);
+    });
+});
+
+it('PlanClampVoiceNarrator rotates against the earlier clamp lines and carries the continuity rule', function (): void {
+    foreach (['2026-11-06' => 'you ran hard friday, so today is easy.', '2026-11-08' => jsonNarration('easy day', 'Body.'), '2026-11-09' => 'Same day, excluded.'] as $day => $content) {
+        Analysis::factory()->done($content)->create([
+            'subject_type' => AnalysisType::PLAN_CLAMP_VOICE_SUBJECT_TYPE,
+            'subject_id' => 7,
+            'analysis_type' => AnalysisType::PlanClampVoice,
+            'discriminator' => $day,
+        ]);
+    }
+    [$caller, $client] = capturingCaller('{"voice":"x"}');
+
+    new PlanClampVoiceNarrator($caller)->generate([
+        'ceiling' => ReadinessCeiling::ModerateOk,
+        'original' => SessionType::Interval,
+        'clamped_to' => SessionType::Easy,
+        'has_run_today' => false,
+        'readiness_reasons' => ['demanding_session_within_24h'],
+        'readiness_inputs' => [],
+    ], 7, Carbon::parse('2026-11-09'));
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $context = json_decode(Arr::string($params['input'][1], 'content'), true);
+
+        return is_array($context)
+            && $context['recent_openers'] === ['easy day', 'you ran hard friday, so today is easy.']
+            && str_contains(Arr::string($params['input'][0], 'content'), NarratorContinuity::RULE);
+    });
+});

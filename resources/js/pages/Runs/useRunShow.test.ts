@@ -42,6 +42,7 @@ const runCard: RunCardDetail = {
         id: 2,
         status: 'done',
         content: 'Breathing strong to the end.',
+        title: null,
         type: 'card_flavor',
         subject_type: String.raw`App\Models\RunCard`,
         subject_id: 1,

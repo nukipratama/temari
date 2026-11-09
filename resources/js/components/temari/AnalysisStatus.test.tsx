@@ -30,6 +30,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
+        title: null,
         type: 'briefing_mascot_voice',
         is_zone_dependent: false,
         subject_type: 'briefing_user_day',
@@ -61,6 +62,34 @@ describe('AnalysisStatus', () => {
         expect(
             screen.getByRole('button', { name: /reread/ }),
         ).toBeInTheDocument();
+    });
+
+    it('renders a headline above the body when the payload has a title', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    title: 'a quiet week',
+                    content: 'Four easy runs held the line.',
+                })}
+            />,
+        );
+        const headline = screen.getByText('a quiet week');
+        expect(headline.tagName).toBe('P');
+        expect(headline).toHaveClass('font-serif', 'italic');
+        expect(headline.parentElement?.textContent).toBe(
+            'a quiet weekFour easy runs held the line.',
+        );
+    });
+
+    it('renders only the body when the payload has no title', () => {
+        const { container } = render(
+            <AnalysisStatus
+                analysis={payload({ status: 'done', content: 'Halo Temari' })}
+            />,
+        );
+        expect(screen.getByText('Halo Temari')).toBeInTheDocument();
+        expect(container.querySelector('p.font-serif')).toBeNull();
     });
 
     it('hides the reanalyze button when allowReanalyze is false', () => {

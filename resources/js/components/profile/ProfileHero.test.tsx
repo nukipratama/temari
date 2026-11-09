@@ -99,6 +99,7 @@ describe('ProfileHero', () => {
                 id: 3,
                 status: 'queued',
                 content: null,
+                title: null,
                 type: 'profile_voice',
                 subject_type: 'profile_voice_user',
                 subject_id: 1,
@@ -119,6 +120,7 @@ describe('ProfileHero', () => {
                 id: 3,
                 status: 'done',
                 content: 'You keep showing up on the hard days.',
+                title: null,
                 type: 'profile_voice',
                 subject_type: 'profile_voice_user',
                 subject_id: 1,
@@ -138,6 +140,7 @@ describe('ProfileHero', () => {
                 status: 'done',
                 content:
                     'You keep showing up on the hard days. That adds up more than any single fast one.',
+                title: null,
                 type: 'profile_voice',
                 subject_type: 'profile_voice_user',
                 subject_id: 1,

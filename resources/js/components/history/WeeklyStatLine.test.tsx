@@ -29,6 +29,7 @@ function snapshot(
             id: 1,
             status: 'done',
             content: 'ok',
+            title: null,
             type: 'weekly_recap',
             subject_type: 'weekly_snapshot',
             subject_id: 1,

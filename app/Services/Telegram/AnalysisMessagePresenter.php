@@ -54,7 +54,7 @@ class AnalysisMessagePresenter
     {
         $message = $this->title($analysis);
 
-        $content = trim((string) $analysis->content);
+        $content = trim((string) $analysis->narration()?->plainText());
         if ($content !== '') {
             $message .= "\n\n" . $content;
         }

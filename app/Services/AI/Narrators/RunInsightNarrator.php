@@ -369,7 +369,7 @@ class RunInsightNarrator
      */
     public function context(Activity $activity, ActivityDetail $detail): array
     {
-        $prevNarrative = $this->previousActivityNarrative(
+        $previousNarratives = $this->previousActivityNarratives(
             $activity,
             $detail,
             AnalysisType::RunInsight,
@@ -378,7 +378,7 @@ class RunInsightNarrator
         $verdict = $this->dayVerdict($activity, $detail);
 
         return [
-            ...NarratorContinuity::fields($prevNarrative),
+            ...NarratorContinuity::fields($previousNarratives),
             ...($verdict === null ? [] : ['day_verdict' => $verdict]),
         ];
     }

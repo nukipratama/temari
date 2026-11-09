@@ -89,6 +89,16 @@ it('skips a story line whose speech is Done but empty', function (): void {
         ->and(app(VerdictTimeline::class)->recent($user))->toBe([]);
 });
 
+it('reads the body of a JSON speech as the verdict oneline', function (): void {
+    $user = User::factory()->create();
+    seedVerdict($user, Carbon::parse('2026-05-10 06:00:00'), Mood::Blazing, '{"title":"held it together","body":"A strong morning run.","claims":[]}', 5000.0);
+
+    $items = app(VerdictTimeline::class)->recent($user);
+
+    expect($items)->toHaveCount(1)
+        ->and($items[0]->oneline)->toBe('A strong morning run.');
+});
+
 it('returns exactly the newest $limit activities when more qualify', function (): void {
     $user = User::factory()->create();
     $ids = [];

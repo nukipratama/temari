@@ -34,6 +34,21 @@ it('returns mood + oneline for a single ready activity', function (): void {
         ->toBe(['oneline' => 'A strong morning run.', 'mood' => 'blazing']);
 });
 
+it('reads the body of a JSON speech as the oneline, for one activity and for a batch', function (): void {
+    $json = '{"title":"held it together","body":"A strong morning run.","claims":[]}';
+    $single = Activity::factory()->create();
+    StoryLine::factory()->for($single)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'blazing']);
+    postRunSpeechFor($single, AnalysisStatus::Done, $json);
+    $batched = Activity::factory()->create();
+    StoryLine::factory()->for($batched)->create(['kind' => StoryLine::KIND_POST_RUN, 'mood' => 'easy']);
+    postRunSpeechFor($batched, AnalysisStatus::Done, $json);
+
+    expect(new PostRunNoteReader()->forActivity($single->id))
+        ->toBe(['oneline' => 'A strong morning run.', 'mood' => 'blazing'])
+        ->and(new PostRunNoteReader()->forActivities([$batched->id]))
+        ->toBe([$batched->id => ['oneline' => 'A strong morning run.', 'mood' => 'easy']]);
+});
+
 it('returns null for a single activity when the speech or mood is not ready', function (AnalysisStatus $status, string $content, ?string $mood): void {
     $activity = Activity::factory()->create();
     if ($mood !== null) {

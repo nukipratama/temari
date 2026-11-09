@@ -28,6 +28,7 @@ export function analysis(
         id: null,
         status: 'done',
         content: NARRATION,
+        title: null,
         type: 'weekly_recap',
         subject_type: 'weekly_snapshot',
         subject_id: NO_SUBJECT,

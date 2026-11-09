@@ -69,13 +69,13 @@ class VerdictTimeline implements VerdictNarrator
             return [];
         }
 
-        /** @var \Illuminate\Support\Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->whereIn('subject_id', $lines->pluck('activity_id')->all())
-            ->pluck('content', 'subject_id');
+            ->get(['subject_id', 'content'])
+            ->keyBy('subject_id');
 
         $items = [];
         foreach ($lines as $line) {
@@ -88,7 +88,7 @@ class VerdictTimeline implements VerdictNarrator
                 activityId: (int) $line->activity_id,
                 mood: $line->mood,
                 moodFace: $this->moodFace($line->mood),
-                oneline: (string) $speechByActivity->get($line->activity_id),
+                oneline: $speechByActivity->get($line->activity_id)?->narration()->body ?? '',
                 startedAt: $detail->start_date_local,
                 distanceKm: DistanceFormatter::km((float) ($detail->distance ?? 0)),
                 intensity: $this->intensity($detail->trimp_edwards, $detail->elapsed_time),

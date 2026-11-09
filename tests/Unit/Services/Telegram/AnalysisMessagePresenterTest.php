@@ -26,6 +26,19 @@ it('formats a post-run message with the title line, a blank line, the content, a
         ->and($message)->toContain('View run details: ' . route('activities.show', 123));
 });
 
+it('formats a JSON narration as its headline and body, never the raw JSON', function (): void {
+    $analysis = Analysis::factory()->make([
+        'analysis_type' => AnalysisType::PostRunSpeech,
+        'subject_id' => 123,
+        'content' => '{"title":"held it together","body":"Your pace held all the way.","claims":[]}',
+    ]);
+
+    $message = new AnalysisMessagePresenter()->format($analysis);
+
+    expect($message)->toStartWith("Your run is in\n\nheld it together\n\nYour pace held all the way.")
+        ->and($message)->not->toContain('{"title"');
+});
+
 it('includes a metrics line for a post-run notification', function (): void {
     $activity = Activity::factory()->create();
     ActivityDetail::factory()->for($activity)->create([

@@ -528,7 +528,7 @@ it('strips continuity context and retries once when the first attempt content-fi
     $payload = fakeStructuredCaller($client)->call(
         'briefing_mascot_voice',
         'sys',
-        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']],
         'TemariBriefingMascotVoice',
         ['speech'],
     );
@@ -541,6 +541,7 @@ it('strips continuity context and retries once when the first attempt content-fi
 
         return $method === 'create'
             && ! str_contains($userMessage, 'prev_narrative')
+            && ! str_contains($userMessage, 'recent_openers')
             && str_contains($userMessage, 'Nuki');
     });
 
@@ -556,7 +557,7 @@ it('propagates ContentFilterException when the continuity-stripped retry still c
     expect(fn () => fakeStructuredCaller($client)->call(
         'briefing_mascot_voice',
         'sys',
-        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']],
         'schema',
         ['speech'],
     ))->toThrow(ContentFilterException::class);
@@ -590,7 +591,7 @@ it('strips continuity and retries when the first response is output-filtered', f
     ])->call(
         'briefing_mascot_voice',
         'sys',
-        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        ['name' => 'Nuki', 'prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']],
         'TemariBriefingMascotVoice',
         ['speech'],
     );
@@ -609,7 +610,7 @@ it('meters both the filtered turn and the strip-retry that followed it', functio
     ])->call(
         'briefing_mascot_voice',
         'sys',
-        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']],
         'schema',
         ['speech'],
     );
@@ -623,7 +624,7 @@ it('meters both the filtered turn and the strip-retry that followed it', functio
 it('propagates ContentFilterException when the output-filtered retry is still filtered', function (): void {
     // Both responses output-filtered: reaches the job so it can degrade to rule-based.
     expect(fn () => callerWithResponses([outputFilteredResponse(), outputFilteredResponse()])
-        ->call('briefing_mascot_voice', 'sys', ['prev_narrative' => 'poison', 'prev_opener' => 'poison'], 'schema', ['speech']))
+        ->call('briefing_mascot_voice', 'sys', ['prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']], 'schema', ['speech']))
         ->toThrow(ContentFilterException::class);
 });
 
@@ -787,7 +788,7 @@ it('keeps the budget across a content-filter retry so the strip cannot double th
     $payload = fakeStructuredCaller($client)->call(
         'briefing_mascot_voice',
         'sys',
-        ['prev_narrative' => 'poison', 'prev_opener' => 'poison'],
+        ['prev_narrative' => 'poison', 'prev_opener' => 'poison', 'recent_openers' => ['poison']],
         'schema',
         ['speech'],
         new ChatCallOptions(toolbox: $toolbox),

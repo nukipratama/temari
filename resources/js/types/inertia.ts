@@ -229,6 +229,7 @@ export interface AnalysisPayload {
     id: number | null;
     status: AnalysisStatus;
     content: string | null;
+    title: string | null;
     type: AnalysisType;
     is_zone_dependent?: boolean;
     subject_type: string;

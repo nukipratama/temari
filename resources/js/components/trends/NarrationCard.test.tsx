@@ -10,6 +10,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: null,
         status: 'pending',
         content: null,
+        title: null,
         type: 'trend_read',
         is_zone_dependent: true,
         subject_type: 'trend_read_user_range',

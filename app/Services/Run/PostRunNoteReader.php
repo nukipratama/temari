@@ -36,18 +36,20 @@ class PostRunNoteReader
             ->value('mood');
         assert($mood === null || $mood instanceof Mood);
 
-        $speech = Analysis::query()
+        $oneline = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->where('subject_id', $activityId)
-            ->value('content');
+            ->first(['content'])
+            ?->narration()
+            ?->body;
 
-        if (!$mood instanceof Mood || ! is_string($speech) || $speech === '') {
+        if (!$mood instanceof Mood || $oneline === null || $oneline === '') {
             return null;
         }
 
-        return ['oneline' => $speech, 'mood' => $mood->value];
+        return ['oneline' => $oneline, 'mood' => $mood->value];
     }
 
     /**
@@ -79,22 +81,22 @@ class PostRunNoteReader
 
         $moodByActivity = $this->moodsFor($activityIds);
 
-        /** @var Collection<int, string|null> $speechByActivity */
         $speechByActivity = Analysis::query()
             ->where('subject_type', Activity::class)
             ->where('analysis_type', AnalysisType::PostRunSpeech)
             ->where('status', AnalysisStatus::Done)
             ->whereIn('subject_id', $activityIds)
-            ->pluck('content', 'subject_id');
+            ->get(['subject_id', 'content'])
+            ->keyBy('subject_id');
 
         $notes = [];
         foreach ($activityIds as $id) {
-            $speech = $speechByActivity->get($id);
+            $oneline = $speechByActivity->get($id)?->narration()?->body;
             $mood = $moodByActivity[$id] ?? null;
-            if ($speech === null || $speech === '' || $mood === null) {
+            if ($oneline === null || $oneline === '' || $mood === null) {
                 continue;
             }
-            $notes[$id] = ['oneline' => $speech, 'mood' => $mood];
+            $notes[$id] = ['oneline' => $oneline, 'mood' => $mood];
         }
 
         return ['notes' => $notes, 'moods' => $moodByActivity];

@@ -275,6 +275,21 @@ it('keeps a long, emoji-heavy narration under the push payload limit, and whole 
         ->and($notification->toInbox($user)?->body)->toBe(trim($narration));
 });
 
+it('carries a JSON narration as plain headline and body on every channel, never the raw JSON', function (): void {
+    $user = User::factory()->create();
+    $analysis = postRunAnalysis($user, json_encode(['title' => 'steady legs', 'body' => 'Pace konsisten.'], JSON_THROW_ON_ERROR));
+    $notification = new AnalysisReadyNotification($analysis);
+
+    $telegram = $notification->toTelegram($user)->text;
+    $push = $notification->toWebPush($user, $notification)->toArray()['body'];
+    $inbox = $notification->toInbox($user)?->body;
+
+    expect($telegram)->toContain("steady legs\n\nPace konsisten.")
+        ->and($telegram)->not->toContain('{"title"')
+        ->and($push)->toBe("steady legs\n\nPace konsisten.")
+        ->and($inbox)->toBe("steady legs\n\nPace konsisten.");
+});
+
 // --- toInbox() ---------------------------------------------------------------
 
 it('keys the inbox row on the analysis, so a re-analysis adds no second row', function (): void {

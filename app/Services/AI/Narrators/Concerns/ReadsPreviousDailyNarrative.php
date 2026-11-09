@@ -7,6 +7,7 @@ namespace App\Services\AI\Narrators\Concerns;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\NarratorContinuity;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,23 +20,26 @@ use Illuminate\Support\Carbon;
 trait ReadsPreviousDailyNarrative
 {
     /**
-     * The given kind's Done content for the user's most recent earlier day
-     * (by 'Y-m-d' discriminator) under $subjectType. Null when no such
-     * predecessor exists (first ever day, or it is not yet narrated), so the
-     * narrator opens standalone.
+     * The given kind's Done contents for the user's most recent earlier days
+     * (by 'Y-m-d' discriminator) under $subjectType, newest first, up to
+     * {@see NarratorContinuity::WINDOW}. Empty when no such predecessor exists
+     * (first ever day, or it is not yet narrated), so the narrator opens standalone.
+     *
+     * @return list<string>
      */
-    private function previousDailyNarrative(string $subjectType, int $userId, AnalysisType $kind, Carbon $currentDay): ?string
+    private function previousDailyNarratives(string $subjectType, int $userId, AnalysisType $kind, Carbon $currentDay): array
     {
-        $content = Analysis::query()
+        $contents = Analysis::query()
             ->where('subject_type', $subjectType)
             ->where('subject_id', $userId)
             ->where('analysis_type', $kind)
             ->where('status', AnalysisStatus::Done)
             ->where('discriminator', '<', $currentDay->toDateString())
             ->orderByDesc('discriminator')
-            ->value('content');
-        assert($content === null || is_string($content));
+            ->limit(NarratorContinuity::WINDOW)
+            ->pluck('content')
+            ->all();
 
-        return $content;
+        return array_values(array_filter($contents, is_string(...)));
     }
 }

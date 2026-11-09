@@ -7,6 +7,7 @@ use App\Models\ActivityDetail;
 use App\Models\TrendDailySnapshot;
 use App\Models\User;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
+use App\Services\AI\AnalysisType;
 use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -133,4 +134,44 @@ it('excludes a not-yet-analyzed activity from the period totals', function (): v
     expect($context['current']['runs'])->toBe(1)
         ->and($context['current']['distance_km'])->toBe(5.0)
         ->and($context['current']['trimp_total'])->toBe(100.0);
+});
+
+it('splits 6w into the last 42 days against the 42 days before that', function (): void {
+    $user = User::factory()->create();
+    seedTrendRun($user, 0, 60.0, 3000.0);    // first day of current
+    seedTrendRun($user, 41, 100.0, 5000.0);  // last day of current
+    seedTrendRun($user, 42, 80.0, 4000.0);   // first day of comparison
+    seedTrendRun($user, 83, 70.0, 7000.0);   // last day of comparison
+    seedTrendRun($user, 84, 999.0, 9000.0);  // outside both
+
+    $context = new TrendRangeTool($user, '6w', trendRangeTrainingLoad())->handle([]);
+
+    expect($context['range'])->toBe('6w')
+        ->and($context['current']['runs'])->toBe(2)
+        ->and($context['current']['distance_km'])->toBe(8.0)
+        ->and($context['current']['trimp_total'])->toBe(160.0)
+        ->and($context['comparison']['runs'])->toBe(2)
+        ->and($context['comparison']['distance_km'])->toBe(11.0)
+        ->and($context['comparison']['trimp_total'])->toBe(150.0);
+});
+
+it('reads 6w ctl and strain from series spanning the 42 days', function (): void {
+    $user = User::factory()->create();
+    for ($i = 0; $i < 84; $i++) {
+        seedTrendRun($user, 83 - $i, 80.0);
+    }
+
+    $context = new TrendRangeTool($user, '6w', trendRangeTrainingLoad())->handle([]);
+    $ctlSeries = trendRangeTrainingLoad()->ctlTrend($user, 42);
+
+    expect($ctlSeries)->toHaveCount(42)
+        ->and($context['ctl_start'])->toBe($ctlSeries[0]['ctl'])
+        ->and($context['ctl_end'])->toBe(nonNull(array_last($ctlSeries))['ctl'])
+        ->and($context['avg_monotony'])->toBeFloat()
+        ->and($context['avg_strain'])->toBeFloat();
+});
+
+it('declares the 6w window without widening the Trends read ranges', function (): void {
+    expect(TrendRangeTool::RANGE_DAYS)->toBe(['7d' => 7, '6w' => 42])
+        ->and(AnalysisType::TREND_READ_RANGES)->toBe(['7d']);
 });

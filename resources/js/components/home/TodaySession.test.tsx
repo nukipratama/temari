@@ -18,6 +18,7 @@ function briefing(content: string, status = 'done'): BriefingResult {
             id: 4,
             status: status as BriefingResult['mascotVoice']['status'],
             content,
+            title: null,
             type: 'briefing_mascot_voice',
             subject_type: 'briefing_user_day',
             subject_id: 1,

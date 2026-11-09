@@ -12,8 +12,8 @@ use App\Services\Run\Metrics\TrainingLoad;
 use Illuminate\Support\Carbon;
 
 /**
- * The range a Trends narration is about: just `7d`, read as of now. The comparison is against the
- * immediately preceding 7-day period.
+ * The range a Trends narration is about (`7d` or `6w`), read as of now. The comparison is against the
+ * immediately preceding period of the same length.
  *
  * @phpstan-type PeriodTotals array{runs: int, distance_km: float, trimp_total: float|null}
  * @phpstan-type RangeTotals array{range: string, current: PeriodTotals, comparison: PeriodTotals, ctl_start: float|null, ctl_end: float|null, vdot_start: float|null, vdot_end: float|null, avg_monotony: float|null, avg_strain: float|null}
@@ -25,7 +25,7 @@ final class TrendRangeTool extends NoArgumentTool
      *
      * @var array<string, int>
      */
-    public const array RANGE_DAYS = ['7d' => 7];
+    public const array RANGE_DAYS = ['7d' => 7, '6w' => 42];
 
     public function __construct(
         private readonly User $user,

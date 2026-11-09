@@ -27,7 +27,7 @@ class AnalyzePlanClampVoiceJob extends AnalyzeRowJob
 
     protected function generateContent(Analysis $row): string
     {
-        return app(PlanClampVoiceNarrator::class)->generate($this->contextFor($row), (int) $row->subject_id);
+        return app(PlanClampVoiceNarrator::class)->generate($this->contextFor($row), (int) $row->subject_id, $this->discriminatorDate($row));
     }
 
     protected function fingerprintFor(Analysis $row): ?string

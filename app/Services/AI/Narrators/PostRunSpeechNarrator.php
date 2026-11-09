@@ -200,7 +200,7 @@ class PostRunSpeechNarrator
      */
     public function context(Activity $activity, ActivityDetail $detail, string $mood): array
     {
-        $prevNarrative = $this->previousActivityNarrative(
+        $previousNarratives = $this->previousActivityNarratives(
             $activity,
             $detail,
             AnalysisType::PostRunSpeech,
@@ -208,7 +208,7 @@ class PostRunSpeechNarrator
 
         return [
             'mood' => $mood,
-            ...NarratorContinuity::fields($prevNarrative),
+            ...NarratorContinuity::fields($previousNarratives),
         ];
     }
 

@@ -12,6 +12,7 @@ use App\Models\Scopes\KnownAnalysisTypeScope;
 use App\Services\AI\AnalysisOrigin;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\NarrationContent;
 use App\Services\AI\ServedBy;
 use App\Support\Cooldown;
 use Database\Factories\AI\AnalysisFactory;
@@ -105,6 +106,11 @@ class Analysis extends Model
             'queued_at' => 'datetime',
             'attempts' => 'integer',
         ];
+    }
+
+    public function narration(): ?NarrationContent
+    {
+        return NarrationContent::fromStored($this->content);
     }
 
     /**
@@ -285,6 +291,7 @@ class Analysis extends Model
      *     id: int|null,
      *     status: string,
      *     content: string|null,
+     *     title: string|null,
      *     type: string,
      *     is_zone_dependent: bool,
      *     subject_type: string,
@@ -309,10 +316,13 @@ class Analysis extends Model
         ?string $discriminator = null,
         ?array $cooldowns = null,
     ): array {
+        $narration = $row?->narration();
+
         return [
             'id' => $row?->id,
             'status' => ($row->status ?? AnalysisStatus::Pending)->value,
-            'content' => $row?->content,
+            'content' => $narration?->body,
+            'title' => $narration?->title,
             'type' => $type->value,
             'is_zone_dependent' => $type->isZoneDependent(),
             'subject_type' => $subjectType,

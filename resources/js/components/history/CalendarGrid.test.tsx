@@ -88,6 +88,7 @@ function snapshot(
             id: 1,
             status: 'done',
             content: 'Steady week, one strong effort.',
+            title: null,
             type: 'weekly_recap',
             subject_type: 'weekly_snapshot',
             subject_id: 7,

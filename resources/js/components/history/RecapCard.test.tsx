@@ -12,6 +12,7 @@ function analysis(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
         id: 1,
         status: 'done',
         content: 'Consistent week.',
+        title: null,
         type: 'weekly_recap',
         subject_type: 'weekly_snapshot',
         subject_id: 7,

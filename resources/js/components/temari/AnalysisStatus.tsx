@@ -187,6 +187,7 @@ export default function AnalysisStatus({
     const { hrZonesChangedAt, aiPauseRetriesFailed = false } = useSharedProps();
     const effectiveStatus = pending ? 'queued' : status;
     const content = analysis.content;
+    const title = analysis.title ?? null;
     const attempts = analysis.attempts ?? 0;
     const cooldownRemaining = useCooldownCountdown(retryAfterSeconds);
     const rateLimited = error === RATE_LIMITED_ERROR;
@@ -238,6 +239,11 @@ export default function AnalysisStatus({
                 <div
                     className={`${TEXT_SIZE[size]} whitespace-pre-line text-foreground`}
                 >
+                    {title !== null && title !== '' && (
+                        <p className="mb-1.5 font-serif text-headline-sm text-foreground italic">
+                            {title}
+                        </p>
+                    )}
                     {renderContent
                         ? renderContent(content)
                         : renderBold(content)}

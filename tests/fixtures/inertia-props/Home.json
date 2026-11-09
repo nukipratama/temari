@@ -15,6 +15,7 @@
     "briefing.mascotVoice.status",
     "briefing.mascotVoice.subject_id",
     "briefing.mascotVoice.subject_type",
+    "briefing.mascotVoice.title",
     "briefing.mascotVoice.type",
     "briefing.mascotVoice.unread_while_away",
     "briefing.mood",

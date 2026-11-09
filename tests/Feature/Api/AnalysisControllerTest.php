@@ -61,7 +61,7 @@ it('triggers a briefing suggestion analysis for the authenticated user', functio
     $response = $this->actingAs($user)
         ->postJson("/api/analyses/briefing_mascot_voice/{$user->id}/trigger?discriminator=2026-05-18")
         ->assertSuccessful()
-        ->assertJsonStructure(['id', 'status', 'content', 'type', 'subject_type', 'subject_id', 'discriminator']);
+        ->assertJsonStructure(['id', 'status', 'content', 'title', 'type', 'subject_type', 'subject_id', 'discriminator']);
 
     expect($response->json('status'))->toBe(AnalysisStatus::Queued->value)
         ->and($response->json('discriminator'))->toBe('2026-05-18');
@@ -133,7 +133,7 @@ it('returns the current state via GET show as a flat payload, not a resource-wra
         ->assertJsonPath('content', 'content here');
 
     expect(array_keys(arrayOf($response->json())))->toEqualCanonicalizing([
-        'id', 'status', 'content', 'type', 'is_zone_dependent',
+        'id', 'status', 'content', 'title', 'type', 'is_zone_dependent',
         'subject_type', 'subject_id', 'discriminator', 'attempts',
         'generated_at', 'retry_after_seconds', 'flagged', 'unread_while_away',
         'is_stale', 'stale_at',

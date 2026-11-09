@@ -18,6 +18,7 @@ function makeAnalysis(
         id,
         status,
         content: status === 'done' ? content : null,
+        title: null,
         type,
         subject_type: 'Activity',
         subject_id: 1,

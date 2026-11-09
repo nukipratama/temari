@@ -277,10 +277,10 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             ->forSubject(Activity::class, $activity->id, AnalysisType::RunInsight)
             ->first();
 
-        if ($row === null || $row->status !== AnalysisStatus::Done || $row->content === null) {
+        if ($row === null || $row->status !== AnalysisStatus::Done) {
             return null;
         }
 
-        return $row->content;
+        return $row->narration()?->plainText();
     }
 }

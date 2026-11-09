@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Models\AI\Analysis;
 use App\Models\RunCard;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
@@ -13,6 +14,8 @@ use App\Services\AI\Agent\Tools\PersonalRecordsTool;
 use App\Services\AI\Agent\Tools\PlanContextTool;
 use App\Services\AI\Agent\Tools\RunSummaryTool;
 use App\Services\AI\Agent\Tools\WeatherTool;
+use App\Services\AI\AnalysisStatus;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\ChatCallOptions;
 use App\Services\AI\StructuredChatCaller;
 use App\Services\Run\Metrics\RelativeEffort;
@@ -113,8 +116,11 @@ class CardFlavorNarrator
 
         $decoded = $this->caller->call(
             kind: 'card_flavor',
-            systemPrompt: self::SYSTEM_PROMPT,
-            context: new CardIdentityTool($card)->handle([]),
+            systemPrompt: self::SYSTEM_PROMPT."\n\n".NarratorContinuity::RULE,
+            context: [
+                ...new CardIdentityTool($card)->handle([]),
+                ...NarratorContinuity::fields($this->previousFlavors($card)),
+            ],
             schemaName: 'TemariCardFlavor',
             requiredKeys: ['flavor'],
             options: new ChatCallOptions(
@@ -128,6 +134,28 @@ class CardFlavorNarrator
         assert(is_string($decoded['flavor']));
 
         return $decoded['flavor'];
+    }
+
+    /**
+     * The athlete's most recently narrated flavor lines on other cards, newest first.
+     *
+     * @return list<string>
+     */
+    private function previousFlavors(RunCard $card): array
+    {
+        $contents = Analysis::query()
+            ->where('subject_type', RunCard::class)
+            ->where('analysis_type', AnalysisType::CardFlavor)
+            ->where('status', AnalysisStatus::Done)
+            ->where('subject_id', '!=', $card->id)
+            ->whereIn('subject_id', RunCard::query()->forUser($card->activity->user_id)->select('id'))
+            ->orderByDesc('generated_at')
+            ->orderByDesc('id')
+            ->limit(NarratorContinuity::WINDOW)
+            ->pluck('content')
+            ->all();
+
+        return array_values(array_filter($contents, is_string(...)));
     }
 
     /**

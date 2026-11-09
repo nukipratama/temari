@@ -163,39 +163,34 @@ class WeeklyRecapNarrator
      */
     public function context(WeeklySnapshot $snapshot): array
     {
-        return NarratorContinuity::fields($this->prevNarrative($snapshot));
+        return NarratorContinuity::fields($this->prevNarratives($snapshot));
     }
 
     /**
-     * The previous chain link's recap narrative for continuity: the most recent earlier week with
-     * runs > 0 whose WeeklyRecap is Done. This follows the chain's own gap-skipping definition of
-     * "previous", so a zero-run week between two running weeks does not sever the thread. Returns
-     * null when no such Done predecessor exists, so the narrator opens standalone.
+     * The previous chain links' recap narratives for continuity, newest first, up to
+     * {@see NarratorContinuity::WINDOW}: the most recent earlier weeks with runs > 0 whose
+     * WeeklyRecap is Done. This follows the chain's own gap-skipping definition of "previous", so
+     * a zero-run week between two running weeks does not sever the thread. Empty when no such Done
+     * predecessor exists, so the narrator opens standalone.
+     *
+     * @return list<string>
      */
-    public function prevNarrative(WeeklySnapshot $snapshot): ?string
+    public function prevNarratives(WeeklySnapshot $snapshot): array
     {
-        $previousLink = WeeklySnapshot::query()
-            ->where('user_id', $snapshot->user_id)
-            ->where('week_ending', '<', $snapshot->week_ending)
-            ->where('runs', '>', 0)
-            ->whereHas('analyses', fn ($query) => $query
-                ->where('analysis_type', AnalysisType::WeeklyRecap)
-                ->where('status', AnalysisStatus::Done))
-            ->orderByDesc('week_ending')
-            ->first();
+        $contents = Analysis::query()
+            ->join('weekly_snapshots', 'weekly_snapshots.id', '=', 'ai_analyses.subject_id')
+            ->where('ai_analyses.subject_type', WeeklySnapshot::class)
+            ->where('ai_analyses.analysis_type', AnalysisType::WeeklyRecap)
+            ->whereNull('ai_analyses.discriminator')
+            ->where('ai_analyses.status', AnalysisStatus::Done)
+            ->where('weekly_snapshots.user_id', $snapshot->user_id)
+            ->where('weekly_snapshots.week_ending', '<', $snapshot->week_ending)
+            ->where('weekly_snapshots.runs', '>', 0)
+            ->orderByDesc('weekly_snapshots.week_ending')
+            ->limit(NarratorContinuity::WINDOW)
+            ->pluck('ai_analyses.content')
+            ->all();
 
-        if ($previousLink === null) {
-            return null;
-        }
-
-        $content = Analysis::query()
-            ->forSubject(WeeklySnapshot::class, $previousLink->id, AnalysisType::WeeklyRecap)
-            ->where('status', AnalysisStatus::Done)
-            ->value('content');
-        assert($content === null || is_string($content));
-
-        return $content;
+        return array_values(array_filter($contents, is_string(...)));
     }
-
-
 }

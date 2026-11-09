@@ -430,7 +430,7 @@ class BriefingMascotVoiceNarrator
     public function context(User $user, ?Carbon $asOf = null): array
     {
         $asOf ??= Carbon::today();
-        $prevNarrative = $this->previousDailyNarrative(
+        $previousNarratives = $this->previousDailyNarratives(
             AnalysisType::BRIEFING_SUBJECT_TYPE,
             $user->id,
             AnalysisType::BriefingMascotVoice,
@@ -446,7 +446,7 @@ class BriefingMascotVoiceNarrator
             'readiness_ceiling' => $briefing->readinessCeiling,
             'build_nudge' => $briefing->buildNudge,
             ...($briefing->historyLoading ? ['history_loading' => true] : []),
-            ...NarratorContinuity::fields($prevNarrative),
+            ...NarratorContinuity::fields($previousNarratives),
         ];
     }
 
