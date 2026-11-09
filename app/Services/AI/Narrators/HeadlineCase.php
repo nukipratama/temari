@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\AI\Narrators;
 
+use App\Enums\Rarity;
+
 final class HeadlineCase
 {
     private const array NAMES = ['Strava'];
@@ -25,7 +27,8 @@ final class HeadlineCase
 
         if ($word === ''
             || preg_match('/\p{N}|\p{Lu}/u', mb_substr($word, 1)) === 1
-            || in_array($word, self::NAMES, true)) {
+            || in_array($word, self::NAMES, true)
+            || Rarity::tryFrom(mb_strtolower($word))?->label() === $word) {
             return $text;
         }
 

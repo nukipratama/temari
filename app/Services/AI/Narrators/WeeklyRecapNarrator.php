@@ -163,7 +163,7 @@ class WeeklyRecapNarrator
 
         Good titles, the shape and not sentences to reuse:
         - "28.4 km, up from 19, and the long run carried it."
-        - "two runs this week, four the week before. the scoreboard noticed."
+        - "two runs this week, down from four, and the scoreboard noticed."
         - "the plan asked for four, the Thursday tempo got away."
 
         ANTI-PATTERN:

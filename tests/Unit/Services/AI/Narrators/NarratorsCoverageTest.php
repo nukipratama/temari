@@ -2218,7 +2218,7 @@ it('narrator prompt examples follow the casing rule: sentence case from two sent
     'profile voice' => [ProfileVoiceNarrator::class, ['"Six of your last ten sessions', 'Those two facts are the', '"Eleven weeks in a row with a run in them. That\'s not motivation'], ['"six of your last ten', 'those two facts', 'that\'s not motivation any more']],
     'run insight' => [RunInsightNarrator::class, ['"Km 5 came in at 5:18', 'You had something left.', 'text "Decoupling climbed', '"km 4 was your slowest."'], ['"km 5 came in', 'you had something left', 'text "decoupling climbed']],
     'briefing' => [BriefingMascotVoiceNarrator::class, ['"easy tempo, 35-45 minutes." / "easy run, 30 minutes."', 'Right: "easy run, 7 km."', '"easy run, 30-40 minutes.', '"A light'], ['"Easy tempo, 35-45 minutes."', 'Right: "Easy run, 7 km."', '"Easy run, 30-40 minutes.', '"a light']],
-    'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, four the week before. the scoreboard noticed."'], []],
+    'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, down from four, and the scoreboard noticed."'], []],
     'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
     'trend read title stays lowercase' => [TrendReadNarrator::class, ['"training load eased back'], []],
 ]);

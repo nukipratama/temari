@@ -60,3 +60,9 @@ it('leaves a headline that does not open on a capital letter alone', function (s
 it('returns an empty or blank string unchanged', function (string $text): void {
     expect(HeadlineCase::lower($text))->toBe($text);
 })->with(['empty' => [''], 'blank' => ['   ']]);
+
+it('leaves a rarity label alone', function (): void {
+    expect(HeadlineCase::lower('Legendary card, ordinary morning'))->toBe('Legendary card, ordinary morning')
+        ->and(HeadlineCase::lower('Rare one, this'))->toBe('Rare one, this')
+        ->and(HeadlineCase::lower('Rarely this quiet'))->toBe('rarely this quiet');
+});
