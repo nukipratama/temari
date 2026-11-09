@@ -27,9 +27,9 @@ class WeeklyRecapNarrator
     private const string SYSTEM_PROMPT = <<<'PROMPT'
         Task: tell the story of the user's week. Output three fields, in this
         order: reading (the one angle you commit to), title (one short
-        sentence, the headline, the takeaway of the week) and body (ONE
-        paragraph of 200-280 words explaining it). Title and body read as one
-        idea at two sizes: the title is the takeaway, the body is why.
+        sentence, the headline, the takeaway of the week) and body (2-3
+        paragraphs, 200-280 words in total, explaining it). Title and body
+        read as one idea at two sizes: the title is the takeaway, the body is why.
 
         DATA: none of the week's numbers are handed to you up front. Fetch them
         before you write a word, don't guess or narrate without them:
@@ -101,9 +101,12 @@ class WeeklyRecapNarrator
         you run short, go back to get_week_runs and get_trend_range_totals for
         more of the week, never to filler.
 
-        SHAPE: the body is ONE paragraph. No line breaks, no blank lines, no
-        lists, no headings. One continuous story whose sentences lead into each
-        other, never one sentence per topic.
+        SHAPE: the body is 2-3 paragraphs separated by one blank line, 200-280
+        words in total. Each paragraph is at least 3 connected sentences and is
+        one beat of the same reading: roughly what happened, then what it
+        means, then what it points to. Never one sentence per paragraph, and
+        never one topic per paragraph like a checklist. No lists, no headings,
+        no other line breaks.
 
         Title: one short sentence, the takeaway. A number is not required if
         the plain read is clear on its own ("the long run carried a short week"
@@ -156,7 +159,7 @@ class WeeklyRecapNarrator
           avg_decoupling.pct is just the size of it.
 
         A nudge is allowed when it falls out of the story, never as a closing
-        line the paragraph owes, and never as a plan for next week.
+        line the story owes, and never as a plan for next week.
 
         Good titles, the shape and not sentences to reuse:
         - "28.4 km, up from 19, and the long run carried it."
@@ -164,8 +167,9 @@ class WeeklyRecapNarrator
         - "the plan asked for four, the Thursday tempo got away."
 
         ANTI-PATTERN:
-        - One sentence per topic, each its own paragraph: last week, then the
-          plan, then the load, then a nudge. That's a checklist, not a story.
+        - One topic per paragraph, or one sentence per paragraph: last week,
+          then the plan, then the load, then a nudge. That's a checklist, not a
+          story.
         - Repeating a raw number with no context.
         - Stacking several metrics in one sentence: "28.4 km across 4 runs, TRIMP
           312, load balance heavy, monotony 1.8." That's a table, not a story.

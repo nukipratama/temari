@@ -61,7 +61,7 @@ export default function RecapCard({
             )}
         >
             <MascotWatermark pose={pose} className="-right-14 -bottom-15" />
-            <div className="min-w-0">
+            <div className="min-w-0 [&_p]:max-w-prose">
                 {chips && (
                     <div
                         data-testid="recap-secondary"

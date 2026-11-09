@@ -125,12 +125,18 @@ describe('RecapCard', () => {
         expect(screen.queryByTestId('recap-secondary')).not.toBeInTheDocument();
     });
 
-    it('renders a titled story as the headline over one body paragraph', () => {
-        const body = Array.from(
-            { length: 24 },
-            (_, i) => `sentence ${i + 1} of the week carries one more run.`,
-        ).join(' ');
-        render(
+    it('renders a titled story as the headline over its paragraphs, breaks kept and lines capped at prose width', () => {
+        const paragraph = (beat: string) =>
+            Array.from(
+                { length: 4 },
+                (_, i) => `${beat} sentence ${i + 1} carries one more run.`,
+            ).join(' ');
+        const body = [
+            paragraph('what happened'),
+            paragraph('what it means'),
+            paragraph('what it points to'),
+        ].join('\n\n');
+        const { container } = render(
             <RecapCard
                 mood="easy"
                 analysis={analysis({
@@ -144,9 +150,12 @@ describe('RecapCard', () => {
         const headline = screen.getByText(
             'the long run held a lighter week together.',
         );
-        const story = screen.getByText(body);
-        expect(story.tagName).toBe('P');
-        expect(story).toHaveClass('narration-dense');
+        const story = nonNullStory(container);
+        expect(story.textContent).toBe(body);
+        expect(story.closest('.whitespace-pre-line')).not.toBeNull();
+        expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
+            headline,
+        );
         expect(
             headline.compareDocumentPosition(story) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
@@ -156,3 +165,10 @@ describe('RecapCard', () => {
         );
     });
 });
+
+function nonNullStory(container: HTMLElement): HTMLElement {
+    const story = container.querySelector<HTMLElement>('p.narration-dense');
+    expect(story).not.toBeNull();
+
+    return story as HTMLElement;
+}

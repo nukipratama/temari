@@ -1906,13 +1906,18 @@ it('monthly recap prompt gives storytelling room (3-4 sentences, no rigid word c
         ->and($prompt)->not->toContain('maksimal 100 kata');
 });
 
-it('WeeklyRecapNarrator prompt asks for a headline and one 200-280 word story paragraph, with no sentence count', function (): void {
+it('WeeklyRecapNarrator prompt asks for a headline and a 200-280 word story in 2-3 connected paragraphs, with no sentence count', function (): void {
     $prompt = preg_replace('/\s+/', ' ', narratorPrompt(WeeklyRecapNarrator::class));
 
     expect($prompt)
-        ->toContain('body (ONE paragraph of 200-280 words')
-        ->toContain('No line breaks, no blank lines')
-        ->toContain('never one sentence per topic')
+        ->toContain('body (2-3 paragraphs, 200-280 words in total')
+        ->toContain('2-3 paragraphs separated by one blank line')
+        ->toContain('at least 3 connected sentences')
+        ->toContain('one beat of the same reading')
+        ->toContain('Never one sentence per paragraph')
+        ->toContain('never one topic per paragraph like a checklist')
+        ->and($prompt)->not->toContain('ONE paragraph')
+        ->and($prompt)->not->toContain('no blank lines')
         ->and($prompt)->not->toContain('3-4 sentences')
         ->and($prompt)->not->toContain('maksimal 90 kata')
         ->and($prompt)->not->toContain('maksimal 100 kata')
