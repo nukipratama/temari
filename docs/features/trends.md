@@ -1,9 +1,9 @@
 ---
 title: Trends
-description: /trends — Temari's 7-day verdict, then three stacked comparisons (vs last week, vs a month ago, vs race day) and the supported time over the race season
+description: /trends — Temari's read (race day, or six weeks against the six before), then three stacked comparisons (vs last week, vs a month ago, vs race day) and the supported time over the race season
 tags: [feature, trends]
 status: living
-reviewed: 2026-10-09
+reviewed: 2026-11-09
 code_refs:
   - resources/js/pages/Trends.tsx
   - app/Http/Controllers/TrendsController.php
@@ -16,6 +16,9 @@ code_refs:
   - resources/js/components/trends/panels/FitnessPanel.tsx
   - resources/js/components/ui/StatTile.tsx
   - app/Services/AI/Narrators/TrendReadNarrator.php
+  - app/Services/AI/TrendReadFingerprint.php
+  - app/Listeners/RefreshTrendReadOnRaceGoalChanged.php
+  - app/Services/Run/Plan/SupportedTimeHistory.php
   - app/Services/AI/AnalysisType.php
   - app/Models/Scopes/KnownAnalysisTypeScope.php
 ---
@@ -25,15 +28,16 @@ code_refs:
 The page answers one question: **"am I getting fitter, and at what cost?"** Server entry is [TrendsController](app/Http/Controllers/TrendsController.php)
 (`__invoke`), rendering the [Trends](resources/js/pages/Trends.tsx) page.
 
-Top to bottom, the page reads as one argument: Temari's 7-day read is the only place a verdict is
+Top to bottom, the page reads as one argument: Temari's read is the only place a verdict is
 stated, and everything below it is evidence, in the order a runner would ask for it.
 
 ## The verdict
 
 [NarrationCard](resources/js/components/trends/NarrationCard.tsx) renders the `narration` prop — a
-single `AnalysisPayload` for the `trend_read` / `7d` row, not a per-range map. A `done` row splits
-on the narrator's `"{title}\n\n{description}"` shape through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx),
-which also carries flag-wrong and reread. Any other status (Pending, Queued, Processing, or Failed)
+single `AnalysisPayload` for the `trend_read` / `arc` row, not a per-range map. A `done` row with a
+`title` draws it as the serif headline through [AnalysisStatus](resources/js/components/temari/AnalysisStatus.tsx)
+(which also carries flag-wrong and reread) over the story, paragraph breaks and bold kept, capped at
+prose width; an untitled row (the rule-based fallback) still splits on its first blank line. Any other status (Pending, Queued, Processing, or Failed)
 renders the same honest empty card instead: "not written yet" plus the existing per-block "try
 again" retry, since every number elsewhere on the page is real and current regardless of whether
 the sentence has been written. Direction A deliberately does not distinguish those states further —
@@ -41,10 +45,20 @@ see the card's own docblock. The retry button calls [useAnalysisTrigger](resourc
 directly rather than going through `AnalysisStatus`'s own non-done branches, which by design render
 nothing for a plain Pending row.
 
-[TrendReadNarrator](app/Services/AI/Narrators/TrendReadNarrator.php) only ever reads the trailing 7
-days now; its prompt no longer branches on range. A settled post-ingest snapshot repair requests
-the read after a per-athlete quiet window, while [`ai:trend-read 7d`](routes/console.php) at 06:00
-remains the fingerprint-gated fallback. First connect still uses
+[TrendReadNarrator](app/Services/AI/Narrators/TrendReadNarrator.php) picks its read from the data
+(decision 8 of #2428). With an active race it answers "on track for race day?" from
+`get_race_outlook` (weeks left, target against supported time, the supported time's direction this
+season), the six closed weeks and plan adherence across the build. With none it reads the last six
+closed weeks against the six before, with adherence over them. Either way the model names a
+`reading`, a lowercase title and a 200-250 word story in 2-3 paragraphs, stored as
+`NarrationContent` JSON. It reads closed weeks only, so it never repeats "vs last week" below it.
+
+It re-narrates at most once per closed week, plus on a race change:
+[TrendReadFingerprint::forUser()](app/Services/AI/TrendReadFingerprint.php) covers the six weeks
+ending last Sunday and adherence over them, plus the active race's id, distance, goal time and
+date. A settled post-ingest snapshot repair, [`ai:trend-read arc`](routes/console.php) at 06:00 and
+[RefreshTrendReadOnRaceGoalChanged](app/Listeners/RefreshTrendReadOnRaceGoalChanged.php) all re-bill
+only when that digest moved. First connect still uses
 [KickoffRecapsJob](app/Jobs/AI/KickoffRecapsJob.php). See [[llm-triggers]] for the re-bill rule.
 
 ## vs last week
@@ -107,7 +121,8 @@ up, the target as a dashed ink-3 line labelled "your target m:ss", and a headlin
 the first point ("3:15 faster since aug 3" in leaf-ink, "slower" in ember-ink). A step is labelled
 "10K · oct 1" only when the effort under it changed. The points are the daily trend snapshots taken for
 the active race from its season's start
-([TrendsController::supportedHistory()](app/Http/Controllers/TrendsController.php)), which
+([SupportedTimeHistory::for()](app/Services/Run/Plan/SupportedTimeHistory.php), which the trend read's
+race tool reads too), which
 [TrendSnapshotWriter::writeRange()](app/Services/Run/Trend/TrendSnapshotWriter.php) fills as of each date. With no
 race, no supported time, or fewer than two days of history the panel is absent. See
 [[supported-time-history-from-daily-trend-snapshots]].
@@ -122,7 +137,7 @@ caller when the range toggle's `load` section went and were deleted along with i
 
 ## Retired trend-read ranges
 
-`AnalysisType::TREND_READ_RANGES` is `['7d']` — `30d`/`90d`/`12mo` retired. Their schedule entries
+`AnalysisType::TREND_READ_RANGES` is `['arc']` — `7d` retired 2026-11-09, `30d`/`90d`/`12mo` before it. Their schedule entries
 in [routes/console.php](routes/console.php) are gone, and stored rows under a retired discriminator
 are hidden by [KnownAnalysisTypeScope](app/Models/Scopes/KnownAnalysisTypeScope.php) the same way a
 retired *type* is (see `plan_week_voice`), except keyed on `(analysis_type, discriminator)`

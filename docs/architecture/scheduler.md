@@ -70,7 +70,7 @@ say about each TTL.
 | `ai:weekly-profile` | Mon 00:21 | 20 | yes | per-active-user dispatch loop, lighter than the recap (one row type) | 4 runs, 0.61 / 1.07 / 1.07s |
 | `plan:regenerate` | Mon 00:26, retried every Monday hour at :26 until one run succeeds that week | 45 | yes | heaviest entry: `Periodizer::regenerate()` per user | 4 runs, 1.61 / 1.78 / 1.78s (92 gate skips) |
 | `strava:sync-zones` | monthly 00:10 | 55 (unchanged) | yes | already guarded pre-DF-1 | 1 run, 1.69 / 1.69 / 1.69s |
-| `ai:trend-read 7d` | daily 06:00 | 20 | yes | one narrator pass across active users | 30 runs, 0.92 / 1.26 / 1.37s |
+| `ai:trend-read arc` | daily 06:00 | 20 | yes | one narrator pass across active users | 30 runs, 0.92 / 1.26 / 1.37s |
 | `ai:self-heal` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | 717 runs, 0.72 / 1.01 / 1.27s |
 | `ai:catch-up` | hourly | 55 (unchanged) | yes | already guarded pre-DF-1 | 717 runs, 0.97 / 1.29 / 2.02s |
 | `ai:spend-digest` | daily 21:00 | 10 | yes | one grouped read of today's `ai_token_usages` rows, then one Telegram push to every admin | 30 runs, 0.72 / 0.96 / 1.00s |
@@ -104,7 +104,7 @@ p95, which is mostly `artisan`'s own bootstrap. `demo:daily-refresh` (3.7s max) 
 (22.9s max, polling Strava inline once per athlete) are the slowest, and both stay far inside their
 10- and 55-minute locks. No p95 comes near its `withoutOverlapping()` lifetime, so every TTL stays as
 sized. Per-user loops such as `ai:daily-briefing`, `ai:weekly-recap`, `plan:score-compliance`,
-`plan:regenerate`, `ai:trend-read 7d` and `strava:sync` grow with the athlete count, so their TTL
+`plan:regenerate`, `ai:trend-read arc` and `strava:sync` grow with the athlete count, so their TTL
 headroom is what covers a larger athlete base.
 
 ## Tick order
@@ -115,7 +115,7 @@ entry therefore delays every entry registered after it in the same minute, thoug
 minute's run. The :00 tick is the busy one: `ai:self-heal`, `ai:catch-up`, `geo:backfill-locations`
 and `streak:settle` every hour, the five- and fifteen-minute entries (`notifications:*`,
 `strava:ingest`, `strava:hydrate-backlog`, `briefing:morning-push`, `intervals-icu:sync`, `schedule:check-late`), and on
-their hours `ai:trend-read 7d`, `schedule:monday-check`, `race:ask-outcome`,
+their hours `ai:trend-read arc`, `schedule:monday-check`, `race:ask-outcome`,
 `fitness:notify-improvement`, `race:remind`, `streak:remind` and the 21:00 digests.
 
 `strava:sync` runs at **:07** (`hourlyAt(7)`), a minute no other entry uses and not a multiple of 5,

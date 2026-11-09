@@ -85,8 +85,9 @@ everyone. See [[narration-spends-only-on-active-athletes]].
 | daily 00:01 | [`ai:daily-briefing`](../../routes/console.php) | one `BriefingMascotVoice` per active non-demo user — narrates right away even for a first connect whose backlog is still draining ([[history-narrates-on-demand]]) |
 | Mon 00:16 | [`ai:weekly-recap`](../../routes/console.php) | `WeeklyRecap`, oldest unfinished link first; `ai:self-heal` usually narrates it at 00:00 |
 | Mon 00:21 | [`ai:weekly-profile`](../../routes/console.php) | `ProfileVoice`, keyed by ISO week — every automatic request waits until that athlete's streak is settled through the closed week and not dirty; the athlete's own Reread does not wait |
-| daily 06:00 | [`ai:trend-read 7d`](../../routes/console.php) | `TrendRead`, discriminator `7d` — the only range left |
+| daily 06:00 | [`ai:trend-read arc`](../../routes/console.php) | `TrendRead`, discriminator `arc` — the only read left; re-bills only once a week closes or the race changed |
 | first connect | [`KickoffRecapsJob`](../../app/Jobs/AI/KickoffRecapsJob.php) | the `trend_read` row, so a new account isn't a day behind |
+| race set, revised, moved, retired or deleted | [`RefreshTrendReadOnRaceGoalChanged`](../../app/Listeners/RefreshTrendReadOnRaceGoalChanged.php) | the `trend_read` row, only when its fingerprint moved (see below) |
 | hourly | [`ai:self-heal`](../../routes/console.php) | recovery only — see origin 4; also the only scheduled path for `MonthlyRecap`, which it narrates from the ingest-staged row once the month closes |
 | hourly | [`ai:catch-up`](../../routes/console.php) | creation only — recreates a kickoff row a missed scheduler minute never staged, never dispatches |
 
@@ -151,17 +152,28 @@ the cron that comes round later finds it done and bills nothing. The kickoff its
 `invalidate`: a `Done` row it finds here can only mean an earlier first-connect link already created it
 moments ago, never that the range's numbers have since moved, so a fingerprint check would only spend a
 lookup for no behaviour change. Used to kick all four `trend_read` ranges at once; `30d`/`90d`/`12mo`
-retired.
+retired, then `7d` gave way to `arc` on 2026-11-09.
 
-**A scheduled trend read re-bills only where the range's own numbers moved.**
-[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php) fingerprints
-[`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s own output for that range
-via [`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
+**A trend read re-bills at most once per closed week, plus on a race change.**
+[`TrendReadFingerprint::forUser()`](../../app/Services/AI/TrendReadFingerprint.php) fingerprints
+[`TrendRangeTool`](../../app/Services/AI/Agent/Tools/TrendRangeTool.php)'s `6w` output as of the last
+closed Sunday and plan adherence over those six weeks, via
+[`MaterialFingerprint::forTrendRead()`](../../app/Services/AI/MaterialFingerprint.php), rounded to
 the granularity the narration actually reads at — km to 1 decimal, run counts and every load/fitness/
-form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — and invalidates the stored row only
-when that digest has moved since [`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php)
-last stamped it. Each range's cadence above still decides *when* the check runs; the fingerprint only
-decides whether that tick spends. A row with no stored fingerprint — every row generated before this
+form figure (TRIMP, CTL, VDOT, monotony, strain) to whole numbers — plus the active race's id,
+distance, goal time and date. A run in the week still open never moves it. Three paths check it and
+invalidate the stored row only when that digest has moved since
+[`AnalyzeTrendReadJob::fingerprintFor()`](../../app/Jobs/AI/AnalyzeTrendReadJob.php) last stamped it:
+[`TrendReadCommand`](../../app/Console/Commands/AI/TrendReadCommand.php) at 06:00,
+[`RefreshTrendReadOnSnapshotsSettled`](../../app/Listeners/RefreshTrendReadOnSnapshotsSettled.php)
+after an ingest's snapshot repair, and
+[`RefreshTrendReadOnRaceGoalChanged`](../../app/Listeners/RefreshTrendReadOnRaceGoalChanged.php),
+which `RaceGoal`'s model events fire after commit when a race is created, deleted, or its date,
+distance, goal time or `completed_at` changes. The race listener is user-origin, so it skips a row
+inside the Reread cooldown and opens one when it lands, and it touches only a `Done` read for an
+active non-demo athlete with no hydration or snapshot repair pending. `CloseFinishedRacesCommand`
+retires a past race with a mass update that fires no model event; the 06:00 check picks that up.
+The cadence decides *when* the check runs; the fingerprint only decides whether that tick spends. A row with no stored fingerprint — every row generated before this
 landed — counts as **changed**, the opposite of the null-handling `DispatchPostRunAnalysis` uses for
 `PostRunSpeech`: each pre-existing Done read refreshes once on its next scheduled run, and the
 fingerprint gate takes over from there.
@@ -293,7 +305,7 @@ them used to be checked.
 | `weekly_recap` | `WeeklyRecapNarrator` | `WeeklySnapshot` · none | staged at ingest, narrated Mon | `WeekSection` and `CalendarWeekRow` |
 | `monthly_recap` | `MonthlyRecapNarrator` | synthetic user+month · `Y-m` | staged at ingest, narrated 1st | calendar month card |
 | `profile_voice` | `ProfileVoiceNarrator` | synthetic user · ISO week | scheduled + ingest | `ProfileHero` |
-| `trend_read` | `TrendReadNarrator` | synthetic user+range · `7d` | scheduled | `NarrationCard` on Trends |
+| `trend_read` | `TrendReadNarrator` | synthetic user+read · `arc` | scheduled + ingest + race change | `NarrationCard` on Trends: headline and story |
 | `plan_clamp_voice` | `PlanClampVoiceNarrator` | synthetic user+day · `Y-m-d` | 00:01 briefing; hourly catch-up staging | an eased day's voice before credit, or an unrecorded step-down, on both surfaces |
 | *(not an Analysis row)* | `RunQuestionNarrator` | `RunQuestion` rows per activity | user | `AskAboutRun` on the run page |
 
@@ -375,7 +387,7 @@ whole prefix. That single fact drives everything below.
 | `ProfileVoiceNarrator` | 5 | default (10) | 1800 | 0.75 | `profile_voice` |
 | `WeeklyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `weekly_recap` |
 | `MonthlyRecapNarrator` | 5 | default (10) | 2500 | 0.7 | `monthly_recap` |
-| `TrendReadNarrator` | 2 | **6** | 1200 | 0.7 | `trend_read` |
+| `TrendReadNarrator` | 2, or 3 with a race | **8** | 2500 | 0.7 | `trend_read` |
 | `PlanClampVoiceNarrator` | 0 | 1 (plain call) | 200 | 0.7 | `plan_clamp_voice` |
 
 Every kind has its own `azure_openai.narrators.*` override key, each defaulting to
@@ -447,6 +459,7 @@ inline in its `toolbox()` method.
 | `PlanContextTool` · `get_planned_sessions` | `days[]` of `date`, `session_type`, `phase`, `distance_km`, `target_pace_sec`, `skipped`, `status`, `compliance_score`, `ran_anyway`, `overridden`, `intent` and `intent_detail` (the stored verdict worded by `IntentOutcome::outcome()` and `::detail()`) | `PlannedSession` rows over the bound span; `PlanAdaptation::$override_date` for `overridden`; `SegmentGenerator::coreKmFor()` for days `ComplianceScorer` has not yet written `prescribed_km` on; `VdotEstimator` into `TrainingPaceCalculator` for the pace |
 | `GetThreadTool` · `get_thread` | `thread`: up to 6 × `{question, answer}`, this run's earlier settled exchanges, oldest first, without the question being answered | stored `RunQuestion` rows for the bound activity and its owner |
 | `PlanAdherenceTool` · `get_plan_adherence` | `from`, `through`, `prescribed`, `done`, `partial`, `missed`, `overreached`, `excused`, `ran_anyway`, `mean_compliance` | `PlannedSession` rows up to the as-of date, counted by `PlannedSessionStatus`; a null `from` means the athlete's whole history |
+| `RaceOutlookTool` · `get_race_outlook` | `distance_km`, `race_date`, `days_to_race`, `weeks_to_race`, `target_time`, `supported_time`, `ambition` (on_track, ambitious, unsupported, low_evidence or unknown), `gap` (`{pct, relation}`: target_faster, target_slower or level; no bare sign), `evidence_confidence`, `support_trend` (`{since, from, to, relation}`: faster, slower or flat), `dedicated_preparation` | `RacePresenter::present()` (the ambition `/race` and `/trends` show) and `SupportedTimeHistory::for()` (the points `SupportedOverTime` draws) |
 
 **Which narrator carries which toolbox:**
 
@@ -459,9 +472,9 @@ inline in its `toolbox()` method.
 | `ProfileVoiceNarrator` | `LifetimeStatsTool`, `PersonaMixTool`, `TrainingPacesTool`, `ProgressionSignalTool`, `PlanAdherenceTool` |
 | `WeeklyRecapNarrator` | `WeekTotalsTool`, `WeekRunsTool`, `PlanContextTool`, `WeekRecordsTool`, `TrendRangeTool` (`6w`) |
 | `MonthlyRecapNarrator` | `MonthTotalsTool`, `MonthRunsTool`, `PlanContextTool`, `MonthRecordsTool`, `TrendRangeTool` (`6w`) |
-| `TrendReadNarrator` | `TrendRangeTool`, `PlanAdherenceTool` |
+| `TrendReadNarrator` | `TrendRangeTool` (`6w`, as of last Sunday), `PlanAdherenceTool` over those six weeks; with an active race, `RaceOutlookTool` too and adherence across the build from its season's start |
 
-Every one of the 28 tools is used by at least one narrator; none is orphaned. One of them,
+Every one of the 29 tools is used by at least one narrator; none is orphaned. One of them,
 `CardIdentityTool`, is read into the context rather than offered as a tool, since the model had no
 choice to make about calling it.
 
@@ -496,7 +509,7 @@ Three-way, and **proposed, not ruled** — the reasoning is here so the call can
 | `weekly_recap` | earns it | Chained, reads a real snapshot. Five tools since the headline + story redesign, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
 | `monthly_recap` | earns it | Same shape as the weekly: five tools, so it takes the default step budget (`2 * (5 + 1)` already exceeds it). |
 | `profile_voice` | earns it | Once a week, four reads, genuinely synthetic. |
-| `trend_read` | earns it | 2 tools and a 6-step budget, one call per active athlete per day since `30d`/`90d`/`12mo` retired. |
+| `trend_read` | earns it | 2 tools, or 3 with a race, and an 8-step budget; at most one call per active athlete per closed week plus one per race change, since the fingerprint covers closed weeks only. |
 | run Q&A | earns it | A free-form question about one run is exactly what rules cannot answer. |
 | `TemariPersona` | earns it | ~4,000 tokens on every turn, but it *is* the product, and the per-kind prompt cache already serves roughly half of it at a tenth of the rate. The largest available lever, and the last one to reach for. |
 

@@ -63,7 +63,7 @@ The daily greeting keeps its `vibe` in the context, because the *caller* decides
 
 Weekly and monthly narration held its arithmetic *in the narrator*: month bounds, per-week distance buckets, the mood mix and the fitness arc. That computation moved wholesale into [MonthTotalsTool](app/Services/AI/Agent/Tools/MonthTotalsTool.php) and [WeekTotalsTool](app/Services/AI/Agent/Tools/WeekTotalsTool.php), which is why these narrators lost more lines than they gained.
 
-The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend caption sends **nothing at all**, since the whole caption is a read.
+The period is fixed at construction — a `WeeklySnapshot`, or a `Y-m` string — so a recap can only ever count the period it was asked about. Weekly and monthly send just the continuity line; the trend read sends only `closed_weeks_through`, the Sunday its six closed weeks end on, since everything else it says is fetched by tools.
 
 ### The profile narrators
 

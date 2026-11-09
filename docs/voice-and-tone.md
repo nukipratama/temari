@@ -109,6 +109,7 @@ Rules, all enforced rather than trusted:
 - **Never on the same words as a `**bold**` span.** A block may carry one of each; the worst case is two marked spans in about 75 words.
 - A citation whose anchor names something the subject does not have is **unwrapped back to plain prose** server-side by [CitationValidator.php](../app/Services/AI/Anchor/CitationValidator.php), and so is a second one. The block is never lost to a bad citation.
 - One that resolves but that the page draws no element for also renders as plain prose, decided on the client ([anchors.ts](../resources/js/lib/anchors.ts)).
+- Push, Telegram and the inbox are plain text, so they carry the cited words alone, through `CitationValidator::unwrapAll()`.
 
 The affordance is a **dotted underline on the cited words and nothing else** ([Citation.tsx](../resources/js/components/temari/Citation.tsx)). A trailing chip and a superscript marker were built against real narration and rejected: the chip restated what the sentence already said, cost a line of height and orphaned the punctuation after it; the marker never showed which words it covered.
 
