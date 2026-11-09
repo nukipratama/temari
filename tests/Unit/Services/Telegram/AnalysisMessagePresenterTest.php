@@ -30,13 +30,15 @@ it('formats a JSON narration as its headline and body, never the raw JSON', func
     $analysis = Analysis::factory()->make([
         'analysis_type' => AnalysisType::PostRunSpeech,
         'subject_id' => 123,
-        'content' => '{"title":"held it together","body":"Your pace held all the way.","claims":[]}',
+        'content' => '{"title":"held it together","body":"Your pace held all the way.","claims":[{"anchor":"split:4","text":"Km 4 was the quickest.","value":"5:18/km","delta":null}]}',
     ]);
 
     $message = new AnalysisMessagePresenter()->format($analysis);
 
     expect($message)->toStartWith("Your run is in\n\nheld it together\n\nYour pace held all the way.")
-        ->and($message)->not->toContain('{"title"');
+        ->and($message)->not->toContain('{"title"')
+        ->and($message)->not->toContain('Km 4 was the quickest.')
+        ->and($message)->not->toContain('5:18/km');
 });
 
 it('includes a metrics line for a post-run notification', function (): void {

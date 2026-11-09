@@ -277,7 +277,9 @@ it('keeps a long, emoji-heavy narration under the push payload limit, and whole 
 
 it('carries a JSON narration as plain headline and body on every channel, never the raw JSON', function (): void {
     $user = User::factory()->create();
-    $analysis = postRunAnalysis($user, json_encode(['title' => 'steady legs', 'body' => 'Pace konsisten.'], JSON_THROW_ON_ERROR));
+    $analysis = postRunAnalysis($user, json_encode(['title' => 'steady legs', 'body' => 'Pace konsisten.', 'claims' => [
+        ['anchor' => 'zone:z2', 'text' => 'Most of it sat in Z2.', 'value' => '70%', 'delta' => null],
+    ]], JSON_THROW_ON_ERROR));
     $notification = new AnalysisReadyNotification($analysis);
 
     $telegram = $notification->toTelegram($user)->text;
