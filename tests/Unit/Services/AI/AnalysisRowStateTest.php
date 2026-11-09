@@ -693,6 +693,21 @@ it('keeps the previous narration and supersedes only its own flag when a done ro
         ->and(nonNull($planDay->fresh())->superseded_at)->toBeNull();
 });
 
+it('keeps a done row\'s content through a re-narration\'s claim and processing, and versions it only when the new one lands', function (): void {
+    $row = Analysis::factory()->done('the last read')->create();
+    $state = analysisRowState();
+
+    expect($state->claimForDispatch($row, invalidate: true))->toBeTrue()
+        ->and(nonNull($row->fresh())->content)->toBe('the last read')
+        ->and($state->markProcessing($row))->toBeTrue()
+        ->and(nonNull($row->fresh())->content)->toBe('the last read')
+        ->and(AnalysisVersion::query()->count())->toBe(0);
+
+    $state->markDone($row, 'the new read', ServedBy::Llm);
+
+    expect(AnalysisVersion::query()->sole()->content)->toBe('the last read');
+});
+
 it('writes no version and leaves the flag standing on a first narration, which supersedes nothing', function (): void {
     $row = Analysis::factory()->queued()->create();
     $flag = Feedback::factory()->onNarration($row->id)->create();
