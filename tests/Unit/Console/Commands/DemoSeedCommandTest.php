@@ -323,7 +323,7 @@ it('seeds a complete, login-ready demo dataset', function (): void {
         ->where('status', 'done')
         ->count())->toBe(count(AnalysisType::TREND_READ_RANGES));
 
-    // The demo account never reaches Azure — every trend_read row, 7d
+    // The demo account never reaches Azure — every trend_read row, arc
     // included, is filled by the rule-based producer.
     expect(Analysis::query()
         ->where('subject_type', AnalysisType::TREND_READ_SUBJECT_TYPE)

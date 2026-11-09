@@ -135,7 +135,7 @@ it('skips a user who has not opened the app in the active window, however recent
     Carbon::setTestNow();
 });
 
-it('re-dispatches a done 7d read whose stored fingerprint is null, exactly once', function (): void {
+it('re-dispatches a done arc read whose stored fingerprint is null, exactly once', function (): void {
     Carbon::setTestNow('2026-08-17 12:00:00');
     Bus::fake();
 
