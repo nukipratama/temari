@@ -53,8 +53,8 @@ final class CitationValidator
         );
     }
 
-    public static function unwrapAll(string $text): string
+    public static function plainWords(string $text): string
     {
-        return (string) preg_replace(self::TOKEN, '$1', $text);
+        return (string) preg_replace([self::TOKEN, '/\*\*(.+?)\*\*/s'], ['$1', '$1'], $text);
     }
 }

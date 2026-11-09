@@ -292,9 +292,9 @@ it('carries a JSON narration as plain headline and body on every channel, never 
         ->and($inbox)->toBe("steady legs\n\nPace konsisten.");
 });
 
-it('carries a citation as its words alone on Telegram, push and the inbox', function (): void {
+it('carries a citation and bold as their words alone on Telegram, push and the inbox', function (): void {
     $user = User::factory()->create();
-    $analysis = postRunAnalysis($user, json_encode(['title' => 'steady legs', 'body' => 'The pace held through [the last km](split:5).'], JSON_THROW_ON_ERROR));
+    $analysis = postRunAnalysis($user, json_encode(['title' => 'steady legs', 'body' => 'The pace **held** through [the last km](split:5).'], JSON_THROW_ON_ERROR));
     $notification = new AnalysisReadyNotification($analysis);
 
     expect($notification->toTelegram($user)->text)->toContain("steady legs\n\nThe pace held through the last km.")

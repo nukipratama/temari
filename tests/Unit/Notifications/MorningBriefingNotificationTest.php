@@ -159,10 +159,10 @@ it('carries a JSON briefing as plain headline and body to Telegram and push', fu
         ->and($push)->toBe("a hook for today\n\neasy 5k, nothing clever.");
 });
 
-it('carries the session citation as its words alone to Telegram and push', function (): void {
+it('carries the session citation and bold as their words alone to Telegram and push', function (): void {
     $user = subscribedUser();
     $briefing = briefingFor($user);
-    $briefing->update(['content' => json_encode(['title' => 'a hook for today', 'body' => 'So I am keeping this to [an easy run](session:today).'], JSON_THROW_ON_ERROR)]);
+    $briefing->update(['content' => json_encode(['title' => 'a hook for today', 'body' => 'So I am **keeping** this to [an easy run](session:today).'], JSON_THROW_ON_ERROR)]);
     $notification = new MorningBriefingNotification($briefing);
 
     expect($notification->toTelegram($user)->text)->toContain("a hook for today\n\nSo I am keeping this to an easy run.")

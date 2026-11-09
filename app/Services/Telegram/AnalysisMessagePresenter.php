@@ -55,7 +55,7 @@ class AnalysisMessagePresenter
     {
         $message = $this->title($analysis);
 
-        $content = trim(CitationValidator::unwrapAll((string) $analysis->narration()?->plainText()));
+        $content = trim(CitationValidator::plainWords((string) $analysis->narration()?->plainText()));
         if ($content !== '') {
             $message .= "\n\n" . $content;
         }

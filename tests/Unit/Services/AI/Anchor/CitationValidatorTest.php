@@ -59,11 +59,11 @@ it('unwraps a link the model invented', function (): void {
     expect($out)->toBe('see the plan for more');
 });
 
-it('turns every citation into its words for plain-text channels', function (string $text, string $plain): void {
-    expect(CitationValidator::unwrapAll($text))->toBe($plain);
+it('turns every citation and bold span into its words for plain-text channels', function (string $text, string $plain): void {
+    expect(CitationValidator::plainWords($text))->toBe($plain);
 })->with([
     'citation' => ['keeping this to [an easy run](session:today) today', 'keeping this to an easy run today'],
     'two citations' => ['[first](split:3) then [second](zone:z2)', 'first then second'],
-    'bold stays as written' => ['a **steady** [easy run](session:today)', 'a **steady** easy run'],
+    'bold' => ['a **steady** [easy run](session:today), **twice**', 'a steady easy run, twice'],
     'plain' => ["Easy run, 25-30 minutes.\n\nslow, effort by feel.", "Easy run, 25-30 minutes.\n\nslow, effort by feel."],
 ]);

@@ -94,7 +94,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
             // High urgency so the push isn't deferred by the OS in Low Power Mode.
             ->options(['urgency' => 'high', 'TTL' => 3 * 86400]);
 
-        return PushBody::attach($message, CitationValidator::unwrapAll((string) $this->analysis->narration()?->plainText()));
+        return PushBody::attach($message, CitationValidator::plainWords((string) $this->analysis->narration()?->plainText()));
     }
 
     /**
@@ -114,7 +114,7 @@ class AnalysisReadyNotification extends Notification implements ShouldQueue
         return new InboxMessage(
             kind: $kind,
             title: $presenter->title($this->analysis),
-            body: trim(CitationValidator::unwrapAll((string) $this->analysis->narration()?->plainText())),
+            body: trim(CitationValidator::plainWords((string) $this->analysis->narration()?->plainText())),
             payload: $this->inboxPayload($presenter),
             subjectType: $this->analysis->subject_type,
             subjectId: $this->analysis->subject_id,
