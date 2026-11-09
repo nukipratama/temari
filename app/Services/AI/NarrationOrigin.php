@@ -8,7 +8,7 @@ namespace App\Services\AI;
  * The origin currently being dispatched or narrated, held for the length of one dispatch block or
  * one job.
  *
- * Origin is a property of the dispatcher, not of the narrator: the same `RunInsightNarrator`
+ * Origin is a property of the dispatcher, not of the narrator: the same `PostRunSpeechNarrator`
  * answers an ingest cascade, a "Reread" and a self-heal. Each entry point declares itself with
  * {@see self::set()}, {@see AnalysisDispatcher} stamps the value onto the job it dispatches, and the
  * job restores it before generating.

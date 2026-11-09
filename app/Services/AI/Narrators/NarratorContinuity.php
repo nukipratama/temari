@@ -6,8 +6,8 @@ namespace App\Services\AI\Narrators;
 
 /**
  * Single home for the connected-chain continuity rule and its prev_opener
- * derivation, shared by every chained narrator (post-run speech, run insight,
- * daily greeting, mascot voice, weekly + monthly recap) so the "don't repeat the
+ * derivation, shared by every chained narrator (post-run speech, daily
+ * greeting, mascot voice, weekly + monthly recap) so the "don't repeat the
  * previous opener" instruction and the way it's computed live in one place.
  */
 final class NarratorContinuity

@@ -27,10 +27,10 @@ function evalRun(User $user, Carbon $on, int $elapsedSec, bool $heartRate = true
 }
 
 it('offers the three kinds', function (): void {
-    expect(NarrationEvalFixtures::KINDS)->toBe(['briefing_mascot_voice', 'run_insight', 'profile_voice']);
+    expect(NarrationEvalFixtures::KINDS)->toBe(['briefing_mascot_voice', 'post_run_speech', 'profile_voice']);
 });
 
-it('picks the runs furthest from their baseline for the run insight', function (): void {
+it('picks the runs furthest from their baseline for the post-run story', function (): void {
     $demo = User::factory()->demo()->create();
     foreach ([20, 18, 16, 14, 12, 10] as $daysAgo) {
         evalRun($demo, Carbon::now()->subDays($daysAgo), 2880);
@@ -38,7 +38,7 @@ it('picks the runs furthest from their baseline for the run insight', function (
     evalRun($demo, Carbon::now()->subDays(5), 2400);
     evalRun($demo, Carbon::now()->subDays(3), 3800);
 
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     expect($fixtures->keys()->all())->toBe(['faster_than_past_you', 'slower_than_past_you', 'no_heart_rate']);
 
@@ -54,10 +54,10 @@ it('picks the runs furthest from their baseline for the run insight', function (
         ->and($noHr['direction']['forbidden'])->not->toBe([]);
 });
 
-it('skips a run insight fixture the history cannot support', function (): void {
+it('skips a post-run story fixture the history cannot support', function (): void {
     $demo = User::factory()->demo()->create();
 
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     DB::beginTransaction();
     $case = nonNull($fixtures->get('faster_than_past_you'))->build->__invoke();
@@ -75,7 +75,7 @@ it('strips heart rate from the no heart rate run inside the transaction only', f
         'pace_variability_sec' => 4.2,
         'per_km' => [['km' => 1, 'pace' => '6:00', 'avg_hr' => 148]],
     ]]);
-    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['run_insight']))->keyBy('name');
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['post_run_speech']))->keyBy('name');
 
     DB::beginTransaction();
     nonNull($fixtures->get('no_heart_rate'))->build->__invoke();

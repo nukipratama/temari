@@ -177,7 +177,7 @@ it('runs every kind and reports each fixture against the demo history', function
     }
 
     $json = static fn (array $payload): string => json_encode($payload, JSON_THROW_ON_ERROR);
-    $claims = $json(['claims' => [['anchor' => 'split:1', 'text' => 'km 1 was quicker than your usual.', 'value' => '6:00/km', 'delta' => null]]]);
+    $claims = $json(['reading' => 'effort_vs_usual', 'title' => 'a quicker one than usual.', 'body' => 'The pace sat ahead of your normal from the start.', 'claims' => [['anchor' => 'split:1', 'text' => 'km 1 was quicker than your usual.', 'value' => '6:00/km', 'delta' => null]]]);
     $client = new ClientFake([
         ...array_fill(0, 2, fakeAzureResponse($json(['mascot_voice' => "8 km done.\n\nrest up.\n\neat well.", 'session_type' => 'rest']))),
         ...array_fill(0, 3, fakeAzureResponse($claims)),
@@ -199,7 +199,7 @@ it('reports a fixture the history cannot support as skipped without spending a c
     User::factory()->demo()->create();
     $client = evalClient(evalVoices());
 
-    $this->artisan('narration:eval', ['--max-calls' => 5, '--kind' => ['run_insight']])
+    $this->artisan('narration:eval', ['--max-calls' => 5, '--kind' => ['post_run_speech']])
         ->expectsOutputToContain('skipped (no history)')
         ->assertSuccessful();
 

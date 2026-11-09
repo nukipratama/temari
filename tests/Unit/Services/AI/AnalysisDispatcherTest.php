@@ -292,7 +292,7 @@ it('re-dispatches when status is failed', function (): void {
         ->and($row->error)->toBeNull();
 });
 
-it('does not claim a pending sibling when another group row is already active', function (): void {
+it('does not re-dispatch an activity group whose speech is already in flight', function (bool $invalidate): void {
     $activity = Activity::factory()->create();
     $rows = app(AnalysisRowState::class)->upsertGroupRows(
         Activity::class,
@@ -307,38 +307,14 @@ it('does not claim a pending sibling when another group row is already active', 
     ]);
     Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
 
-    dispatchActivityGroup($activity);
+    dispatchActivityGroup($activity, $invalidate);
 
     Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-    expect(Analysis::query()->where('subject_id', $activity->id)->where('status', AnalysisStatus::Pending)->count())
-        ->toBe(1);
-});
-
-it('does not invalidate a completed sibling while another group row is active', function (): void {
-    $activity = Activity::factory()->create();
-    $rows = app(AnalysisRowState::class)->upsertGroupRows(
-        Activity::class,
-        $activity->id,
-        null,
-        AnalyzeActivityJob::groupedTypes(),
-    );
-    $token = 'active-generation';
-    $active = nonNull($rows->first());
-    $done = nonNull($rows->last());
-    $active->update(['status' => AnalysisStatus::Queued, 'generation_token' => $token]);
-    $done->update([
-        'status' => AnalysisStatus::Done,
-        'generation_token' => $token,
-        'content' => 'completed sibling',
-    ]);
-    Bus::dispatch(new AnalyzeActivityJob($activity->id, null, $token));
-
-    dispatchActivityGroup($activity, invalidate: true);
-
-    Bus::assertDispatchedTimes(AnalyzeActivityJob::class, 1);
-    expect(nonNull($done->fresh())->status)->toBe(AnalysisStatus::Done)
-        ->and(nonNull($done->fresh())->content)->toBe('completed sibling');
-});
+    expect(nonNull(nonNull($rows->first())->fresh())->generation_token)->toBe($token);
+})->with([
+    'a resume' => [false],
+    'a reread' => [true],
+]);
 
 it('holds an automatic profile voice Pending while the athlete is behind on streak settlement', function (): void {
     Carbon::setTestNow('2026-05-18 00:21:00');
@@ -788,7 +764,7 @@ it('serves a demo-owned activity group from the filler instead of dispatching', 
     dispatchActivityGroup($activity);
 
     $rows = Analysis::query()->where('subject_id', $activity->id)->get();
-    expect($rows)->toHaveCount(2)
+    expect($rows)->toHaveCount(1)
         ->and($rows->every(fn (Analysis $row): bool => $row->served_by === ServedBy::RuleBased))->toBeTrue();
     Bus::assertNotDispatched(AnalyzeActivityJob::class);
 });

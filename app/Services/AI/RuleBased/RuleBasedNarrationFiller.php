@@ -16,6 +16,7 @@ use App\Models\RunCard;
 use App\Models\WeeklySnapshot;
 use App\Models\User;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\NarrationContent;
 use App\Services\Run\Metrics\DecimalFormatter;
 use App\Services\Run\Metrics\DistanceFormatter;
 use App\Services\Run\Metrics\StreamSummary;
@@ -28,6 +29,7 @@ use App\Services\Run\Plan\TimeTrial;
 use App\Services\Run\Plan\TrainingBaseline;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use LogicException;
 use App\Services\Run\Metrics\TrainingFormStatus;
 
 /**
@@ -40,8 +42,8 @@ use App\Services\Run\Metrics\TrainingFormStatus;
  * - the public demo account's triggers, and DemoSeedCommand's backfill
  *
  * Output is deterministic and Temari-voiced. Where the subject's real data is available it drives
- * the copy (run insight via {@see RuleBasedRunInsights}), falling back to seeded variants only when
- * the subject row is missing.
+ * the copy (the post-run speech's claims via {@see RuleBasedRunInsights}), falling back to seeded
+ * variants only when the subject row is missing.
  */
 final readonly class RuleBasedNarrationFiller
 {
@@ -69,7 +71,7 @@ final readonly class RuleBasedNarrationFiller
         return match ($row->analysis_type) {
             AnalysisType::BriefingMascotVoice => $this->briefingMascotVoice($row, $seed),
             AnalysisType::PostRunSpeech => $this->postRunSpeech($seed),
-            AnalysisType::RunInsight => $this->runInsight($seed),
+            AnalysisType::RunInsight => throw new LogicException('RunInsight is retired and is never narrated.'),
             AnalysisType::WeeklyRecap => $this->weeklyRecap($seed),
             AnalysisType::CardFlavor => $this->cardFlavor($seed),
             AnalysisType::ProfileVoice => $this->profileVoice($seed),
@@ -218,8 +220,11 @@ final readonly class RuleBasedNarrationFiller
     private function postRunSpeech(int $activityId): string
     {
         $detail = $this->detailFor($activityId);
+        if (! $detail instanceof ActivityDetail) {
+            return "Done. That one's in the log.";
+        }
 
-        return $detail instanceof ActivityDetail ? $this->postRunSpeechFor($detail, $activityId) : "Done. That one's in the log.";
+        return new NarrationContent(null, $this->postRunSpeechFor($detail, $activityId), RuleBasedRunInsights::claims($detail))->toStored();
     }
 
     public function postRunSpeechFor(ActivityDetail $detail, int $activityId): string
@@ -302,21 +307,6 @@ final readonly class RuleBasedNarrationFiller
         return $codas === [] ? '' : $codas[abs($seed) % count($codas)];
     }
 
-
-    /**
-     * The run-insight block's content is a JSON-encoded claims list, matching
-     * exactly what {@see \App\Services\AI\Narrators\RunInsightNarrator} persists
-     * so the frontend reads one shape regardless of which path filled it. An
-     * activity with no readable detail yet renders no claims, same as a real
-     * run with nothing falsifiable to say.
-     */
-    private function runInsight(int $activityId): string
-    {
-        $detail = $this->detailFor($activityId);
-        $claims = $detail instanceof ActivityDetail ? RuleBasedRunInsights::claims($detail) : [];
-
-        return json_encode($claims, JSON_THROW_ON_ERROR);
-    }
 
     private function weeklyRecap(int $snapshotId): string
     {

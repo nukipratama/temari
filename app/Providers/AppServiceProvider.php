@@ -78,7 +78,7 @@ class AppServiceProvider extends ServiceProvider
             $manager->extend('app-config', fn (): AppConfigMaintenanceMode => new AppConfigMaintenanceMode());
         });
 
-        // Scoped for the same reason, and specifically so the run-insight toolbox
+        // Scoped for the same reason, and specifically so the post-run speech toolbox
         // reads the 28-day baseline once. RelativeEffort and RecentBaselineTool
         // both ask for it with identical arguments, and the memo can only collapse
         // that if they are handed the same instance — otherwise the container

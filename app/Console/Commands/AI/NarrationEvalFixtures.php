@@ -18,16 +18,17 @@ use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
 use App\Services\AI\Narrators\BriefingMascotVoiceNarrator;
 use App\Services\AI\Narrators\ProfileVoiceNarrator;
-use App\Services\AI\Narrators\RunInsightNarrator;
+use App\Services\AI\Narrators\NarrationContent;
+use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\Run\Metrics\PaceCalculator;
+use App\Services\Run\Story\Temari;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
-use RuntimeException;
 
 final readonly class NarrationEvalFixtures
 {
-    public const array KINDS = ['briefing_mascot_voice', 'run_insight', 'profile_voice'];
+    public const array KINDS = ['briefing_mascot_voice', 'post_run_speech', 'profile_voice'];
 
     public const string RETIRED_LOAD_NAMES = '\b(?:ATL|CTL|TSB|acute|chronic)\b';
 
@@ -39,7 +40,7 @@ final readonly class NarrationEvalFixtures
 
     public function __construct(
         private BriefingMascotVoiceNarrator $briefing,
-        private RunInsightNarrator $runInsight,
+        private PostRunSpeechNarrator $speech,
         private ProfileVoiceNarrator $profile,
         private ResolveRunBaselineAction $runBaseline,
     ) {
@@ -53,7 +54,7 @@ final readonly class NarrationEvalFixtures
     {
         $fixtures = [
             ...$this->briefingFixtures($demo),
-            ...$this->runInsightFixtures($demo),
+            ...$this->speechFixtures($demo),
             ...$this->profileFixtures($demo),
         ];
 
@@ -145,12 +146,12 @@ final readonly class NarrationEvalFixtures
     }
 
     /** @return list<NarrationEvalFixture> */
-    private function runInsightFixtures(User $demo): array
+    private function speechFixtures(User $demo): array
     {
         $heartRate = '\b(?:heart rate|HR|bpm|zones?|Z[1-5]|decoupling|drift|cardiac)\b';
 
         return [
-            new NarrationEvalFixture('run_insight', 'faster_than_past_you', fn (): ?array => $this->againstBaseline(
+            new NarrationEvalFixture('post_run_speech', 'faster_than_past_you', fn (): ?array => $this->againstBaseline(
                 $demo,
                 fastest: true,
                 direction: [
@@ -158,7 +159,7 @@ final readonly class NarrationEvalFixtures
                     'forbidden' => ['slower than (?:your|the|usual|normal)|behind (?:your|the)|off (?:your|the|usual)'],
                 ],
             )),
-            new NarrationEvalFixture('run_insight', 'slower_than_past_you', fn (): ?array => $this->againstBaseline(
+            new NarrationEvalFixture('post_run_speech', 'slower_than_past_you', fn (): ?array => $this->againstBaseline(
                 $demo,
                 fastest: false,
                 direction: [
@@ -166,7 +167,7 @@ final readonly class NarrationEvalFixtures
                     'forbidden' => ['(?:faster|quicker) than (?:your|the|usual|normal)|ahead of (?:your|the)'],
                 ],
             )),
-            new NarrationEvalFixture('run_insight', 'no_heart_rate', function () use ($demo, $heartRate): ?array {
+            new NarrationEvalFixture('post_run_speech', 'no_heart_rate', function () use ($demo, $heartRate): ?array {
                 $detail = $this->latestRuns($demo)->first();
                 if ($detail === null) {
                     return null;
@@ -174,7 +175,7 @@ final readonly class NarrationEvalFixtures
 
                 $this->withoutHeartRate($detail);
 
-                return $this->runInsightCase($detail->activity, $detail, ['required' => [], 'forbidden' => [$heartRate]]);
+                return $this->speechCase($detail->activity, $detail, ['required' => [], 'forbidden' => [$heartRate]]);
             }),
         ];
     }
@@ -216,28 +217,30 @@ final readonly class NarrationEvalFixtures
         $pick = $candidates[0];
         $offBaseline = $fastest ? $pick['ratio'] <= 1 - self::MIN_BASELINE_GAP : $pick['ratio'] >= 1 + self::MIN_BASELINE_GAP;
 
-        return $offBaseline ? $this->runInsightCase($pick['detail']->activity, $pick['detail'], $direction) : null;
+        return $offBaseline ? $this->speechCase($pick['detail']->activity, $pick['detail'], $direction) : null;
     }
 
     /**
      * @param  array{required: list<string>, forbidden: list<string>}  $direction
      * @return array{generate: Closure():string, evidence: array<string, mixed>, direction: array{required: list<string>, forbidden: list<string>}}
      */
-    private function runInsightCase(Activity $activity, ActivityDetail $detail, array $direction): array
+    private function speechCase(Activity $activity, ActivityDetail $detail, array $direction): array
     {
-        $evidence = self::evidenceOf($this->runInsight->context($activity, $detail), $this->runInsight->toolbox($activity, $detail));
+        $mood = Temari::moodForActivityOrDefault($activity)->value;
+        $evidence = self::evidenceOf($this->speech->context($activity, $detail, $mood), $this->speech->toolbox($activity, $detail));
 
         return [
-            'generate' => function () use ($activity, $detail): string {
-                $claims = $this->runInsight->generate($activity, $detail)['claims'];
-                if ($claims === []) {
-                    throw new RuntimeException('no claim survived the anchor check');
-                }
+            'generate' => function () use ($activity, $detail, $mood): string {
+                $narration = NarrationContent::fromStored($this->speech->generate($activity, $detail, $mood));
+                assert($narration instanceof NarrationContent);
 
-                return implode(' ', array_map(
-                    static fn (array $claim): string => trim("{$claim['text']} {$claim['value']} {$claim['delta']}"),
-                    $claims,
-                ));
+                return implode(' ', [
+                    $narration->plainText(),
+                    ...array_map(
+                        static fn (array $claim): string => trim("{$claim['text']} {$claim['value']} {$claim['delta']}"),
+                        $narration->claims ?? [],
+                    ),
+                ]);
             },
             'evidence' => $evidence,
             'direction' => self::merge($direction, self::loadDirection($evidence)),

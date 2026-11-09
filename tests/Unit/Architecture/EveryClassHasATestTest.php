@@ -127,7 +127,7 @@ it('has a test class for every concrete app class', function (): void {
         RecordTokenUsageAction::class, // StructuredChatCallerTest
         StravaSyncLog::class,           // SyncOrchestratorTest
         SumsPulseTotals::class,         // trait, exercised via AiPipelineHealthTest + StravaHealthTest
-        ReadsPreviousActivityNarrative::class, // trait, exercised via the PostRunSpeech and RunInsight cases in NarratorsCoverageTest
+        ReadsPreviousActivityNarrative::class, // trait, exercised via the PostRunSpeech cases in NarratorsCoverageTest
         ReadsPreviousDailyNarrative::class, // trait, exercised via the BriefingMascotVoice cases in NarratorsCoverageTest
         RevokesConnectionOnPermanentFailure::class, // trait, exercised via TelegramChannelTest
         ConfirmsPermanentRemoval::class, // trait, exercised via RemoveAthleteCommandTest + UserRemoveCommandTest

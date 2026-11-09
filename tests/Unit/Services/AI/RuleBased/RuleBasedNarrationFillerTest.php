@@ -15,6 +15,7 @@ use App\Models\RunCard;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\AI\AnalysisType;
+use App\Services\AI\Narrators\NarrationContent;
 use App\Services\AI\Narrators\OutcomeLabels;
 use App\Services\AI\RuleBased\RuleBasedRunInsights;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
@@ -323,7 +324,6 @@ it('returns deterministic copy for every subject-free analysis arm', function (A
     expect($copy)->toBe($expected);
 })->with([
     'briefing mascot voice' => [AnalysisType::BriefingMascotVoice, "easy tempo, 35-45 minutes.\n\nNothing quality has gone into the log since last week and your rhythm's been flat and steady the whole time, so today's the day to break that up. 10 minutes easy to warm up, 15-20 minutes a bit quicker than your usual pace, then cool down. Cadence 175+.\n\nWhat to watch: if HR climbs fast at easy pace, drop it to a 15-25 minute run-walk and stop at the cooldown. Brutal heat is reason enough to run the whole thing easy instead."],
-    'run insight (no detail)' => [AnalysisType::RunInsight, '[]'],
     'weekly recap' => [AnalysisType::WeeklyRecap, "Nothing in the log this week. A gap is a gap, I'm not going to call it anything else."],
     'profile voice' => [AnalysisType::ProfileVoice, "You lean **chill** far more than pushed, and the log backs it up: regular, unhurried, never a big jump. That's a base built the slow way. The open question is when you decide to spend it."],
     'monthly recap' => [AnalysisType::MonthlyRecap, "No dated runs found for this month. There's nothing honest to recap yet."],
@@ -422,7 +422,7 @@ it('falls back to a flat post-run speech when the activity detail is missing', f
     expect($speech)->toBe("Done. That one's in the log.");
 });
 
-it('reads the run-insight claims off the run itself, not a seeded variant', function (): void {
+it('carries the run-insight claims read off the run itself beside the post-run speech', function (): void {
     $activity = Activity::factory()->create();
     $detail = ActivityDetail::factory()->create([
         'activity_id' => $activity->id,
@@ -433,16 +433,17 @@ it('reads the run-insight claims off the run itself, not a seeded variant', func
     ]);
 
     $expected = RuleBasedRunInsights::claims($detail->refresh());
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, $activity->id));
+    $speech = nonNull(NarrationContent::fromStored(app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::PostRunSpeech, $activity->id))));
 
     expect($expected)->not->toBe([])
-        ->and(json_decode($insight, true))->toBe($expected);
+        ->and($speech->title)->toBeNull()
+        ->and($speech->body)->toBe(app(RuleBasedNarrationFiller::class)->postRunSpeechFor($detail, $activity->id))
+        ->and($speech->claims)->toBe($expected);
 });
 
-it('falls back to an empty claims list when the insight detail is missing', function (): void {
-    $insight = app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, 999_999));
-
-    expect($insight)->toBe('[]');
+it('fills no run insight, the retired type', function (): void {
+    expect(fn (): string => app(RuleBasedNarrationFiller::class)->fillFor(fillerRow(AnalysisType::RunInsight, 1)))
+        ->toThrow(LogicException::class, 'RunInsight is retired');
 });
 
 it('weaves the snapshot real numbers into the weekly recap', function (): void {

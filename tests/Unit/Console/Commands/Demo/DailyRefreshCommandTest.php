@@ -66,19 +66,14 @@ it('adds one fresh run today and fills today\'s narration with zero queued jobs 
     expect(dailyRefreshTodayRunCount($user))->toBe(1);
     expectDemoDateKeyedNarrationDone($user);
 
-    // The new run's detail page is fully filled (speech + the run insight).
+    // The new run's detail page is fully filled by its one merged speech, with no run insight row.
     $todayActivityId = Activity::query()->where('user_id', $user->id)->max('id');
-    foreach ([
-        AnalysisType::PostRunSpeech,
-        AnalysisType::RunInsight,
-    ] as $type) {
-        $row = Analysis::query()
-            ->where('subject_type', Activity::class)
-            ->where('subject_id', $todayActivityId)
-            ->where('analysis_type', $type)
-            ->first();
-        expect($row?->status)->toBe(AnalysisStatus::Done);
-    }
+    $rows = Analysis::query()
+        ->where('subject_type', Activity::class)
+        ->where('subject_id', $todayActivityId)
+        ->get();
+    expect($rows->pluck('analysis_type')->all())->toBe([AnalysisType::PostRunSpeech])
+        ->and(nonNull($rows->first())->status)->toBe(AnalysisStatus::Done);
 
     // Zero LLM tokens: nothing was queued/processing (all rule-based-filled).
     expect(Analysis::query()->whereIn('status', [AnalysisStatus::Queued, AnalysisStatus::Processing])->count())

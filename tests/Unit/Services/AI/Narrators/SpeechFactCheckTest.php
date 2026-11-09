@@ -29,7 +29,8 @@ it('accepts a speech whose paces, distances and shares all come from the tools, 
 it('rejects a distance, pace or share no tool returned', function (string $speech, string $figure): void {
     expect(SpeechFactCheck::complaint($speech, speechFacts(), null))
         ->toContain($figure)
-        ->toContain('no tool returned');
+        ->toContain('no tool returned')
+        ->toStartWith('Rewrite the title and body: ');
 })->with([
     'derived distance' => ['you went 0.9 km past the plan.', '0.9'],
     'made-up pace' => ['you held 5:50/km through the block.', '5:50'],

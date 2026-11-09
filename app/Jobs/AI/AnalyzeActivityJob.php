@@ -7,7 +7,6 @@ namespace App\Jobs\AI;
 use App\Actions\AI\StaggerBackfillAction;
 use App\Exceptions\AI\UnavailableException;
 use App\Models\Activity;
-use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\StoryLine;
@@ -17,7 +16,6 @@ use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\MaterialFingerprint;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
-use App\Services\AI\Narrators\RunInsightNarrator;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Support\Carbon;
@@ -182,10 +180,6 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
             throw new UnavailableException("StoryLine for activity {$subject->id} missing");
         }
 
-        // Insight resolved first (on purpose): if the insight LLM is down, the
-        // group must fail before the speech LLM is ever billed, not after.
-        $insight = $this->resolveInsight($subject, $detail, $persistGenerated);
-
         $availableWorkerSeconds = $this->remainingWorkerSeconds() - config()->integer('azure_openai.timeout');
         if ($availableWorkerSeconds < self::MINIMUM_SPEECH_DEADLINE_SECONDS) {
             $speech = Analysis::query()
@@ -197,65 +191,22 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
 
             app(AnalysisRowState::class)->revertToPendingWithoutAttempt($speech, $this->generationToken);
 
-            return [AnalysisType::RunInsight->value => $insight];
+            return [];
         }
 
         $speechDeadlineSeconds = min(config()->integer('ai.agent.deadline_seconds'), $availableWorkerSeconds);
-        $speech = $this->narrating(
-            AnalysisType::PostRunSpeech,
-            fn (): string => app(PostRunSpeechNarrator::class)->generate(
-                $subject,
-                $detail,
-                $storyLine->mood->value,
-                $speechDeadlineSeconds,
-            ),
-        );
 
         return [
-            AnalysisType::PostRunSpeech->value => $speech,
-            AnalysisType::RunInsight->value => $insight,
-        ];
-    }
-
-    /**
-     * The run-insight analysis this group persists: a JSON-encoded claims list
-     * (possibly `[]`, see {@see RunInsightNarrator}). Reused verbatim from an
-     * already-Done row so a story-only re-dispatch does not re-bill the insight
-     * LLM; otherwise generated fresh.
-     *
-     * @param  Closure(AnalysisType, string): void  $persistGenerated
-     */
-    private function resolveInsight(Activity $activity, ActivityDetail $detail, Closure $persistGenerated): string
-    {
-        $doneInsight = $this->doneInsight($activity);
-        if ($doneInsight !== null) {
-            return $doneInsight;
-        }
-
-        $claims = $this->narrating(
-            AnalysisType::RunInsight,
-            fn (): array => app(RunInsightNarrator::class)->generate(
-                $activity,
-                $detail,
-                $this->narratorDeadlineSeconds(),
+            AnalysisType::PostRunSpeech->value => $this->narrating(
+                AnalysisType::PostRunSpeech,
+                fn (): string => app(PostRunSpeechNarrator::class)->generate(
+                    $subject,
+                    $detail,
+                    $storyLine->mood->value,
+                    $speechDeadlineSeconds,
+                ),
             ),
-        );
-
-        $insight = json_encode($claims['claims'], JSON_THROW_ON_ERROR);
-        $persistGenerated(AnalysisType::RunInsight, $insight);
-
-        return $insight;
-    }
-
-    private function narratorDeadlineSeconds(): int
-    {
-        $available = $this->remainingWorkerSeconds() - config()->integer('azure_openai.timeout');
-        $available = min(config()->integer('ai.agent.deadline_seconds'), $available);
-        if ($available <= 0) {
-            throw new UnavailableException('Activity narration reached the worker safety deadline');
-        }
-
-        return $available;
+        ];
     }
 
     private function remainingWorkerSeconds(): int
@@ -265,22 +216,5 @@ class AnalyzeActivityJob extends AnalyzeGroupJob
         }
 
         return max(0, $this->workerDeadlineAt->getTimestamp() - CarbonImmutable::now()->getTimestamp());
-    }
-
-    /**
-     * The activity's already-Done run-insight content, or null (signalling a
-     * fresh generation is needed).
-     */
-    private function doneInsight(Activity $activity): ?string
-    {
-        $row = Analysis::query()
-            ->forSubject(Activity::class, $activity->id, AnalysisType::RunInsight)
-            ->first();
-
-        if ($row === null || $row->status !== AnalysisStatus::Done) {
-            return null;
-        }
-
-        return $row->narration()?->plainText();
     }
 }

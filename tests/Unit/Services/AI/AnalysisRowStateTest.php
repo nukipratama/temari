@@ -204,7 +204,7 @@ it('upsertGroupRows leaves pre-existing rows unflagged and flags only the newly 
         Activity::class,
         $activity->id,
         null,
-        AnalyzeActivityJob::groupedTypes(),
+        [AnalysisType::PostRunSpeech, AnalysisType::RunInsight],
     );
 
     expect(nonNull($rows->get(AnalysisType::PostRunSpeech->value))->wasRecentlyCreated)->toBeFalse()
@@ -248,7 +248,7 @@ it('marks only rows inserted by this caller as recently created when an insert r
         Activity::class,
         $activity->id,
         null,
-        AnalyzeActivityJob::groupedTypes(),
+        [AnalysisType::PostRunSpeech, AnalysisType::RunInsight],
     );
 
     expect($insertedByRacer)->toBeTrue()
@@ -267,7 +267,7 @@ it('upsertGroupRows flags the rows it created, which stay Pending until the whol
         AnalyzeActivityJob::groupedTypes(),
     );
 
-    expect($rows)->toHaveCount(2)
+    expect($rows)->toHaveCount(1)
         ->and($rows->every(fn (Analysis $row): bool => $row->wasRecentlyCreated))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => $row->exists && $row->id > 0))->toBeTrue()
         ->and($rows->keys()->all())->toBe(

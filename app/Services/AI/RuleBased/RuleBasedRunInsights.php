@@ -11,12 +11,12 @@ use App\Services\Run\Metrics\PaceConsistency;
 use App\Services\Run\Metrics\StreamSummary;
 
 /**
- * Deterministic run-insight claims for the demo seed and the unconfigured-Azure path, read straight
- * off the run's own stored summary.
+ * Deterministic claims for the rule-based post-run speech, read straight off the run's own stored
+ * summary.
  *
- * A stand-in, not a second implementation of {@see \App\Services\AI\Narrators\RunInsightNarrator}:
- * it stops at what a single ActivityDetail can answer, and every claim it emits anchors to real
- * data, so it always survives the narrator's own falsifiability check.
+ * A stand-in, not a second implementation of the claims {@see \App\Services\AI\Narrators\PostRunSpeechNarrator}
+ * writes: it stops at what a single ActivityDetail can answer, and every claim it emits anchors to
+ * real data, so it always survives the narrator's own falsifiability check.
  */
 final class RuleBasedRunInsights
 {

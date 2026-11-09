@@ -29,7 +29,6 @@ return [
     // uses the primary model.
     'narrators' => [
         'briefing_mascot_voice' => (string) env('AZURE_OPENAI_BRIEFING_MASCOT_VOICE_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
-        'run_insight' => (string) env('AZURE_OPENAI_RUN_INSIGHT_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'post_run_speech' => (string) env('AZURE_OPENAI_POST_RUN_SPEECH_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'weekly_recap' => (string) env('AZURE_OPENAI_WEEKLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),
         'monthly_recap' => (string) env('AZURE_OPENAI_MONTHLY_RECAP_DEPLOYMENT', env('AZURE_OPENAI_DEPLOYMENT')),

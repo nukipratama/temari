@@ -48,7 +48,7 @@ it('does not run a same-generation duplicate while its rows are Processing', fun
         ->where('subject_id', $activity->id)
         ->get();
 
-    expect($rows)->toHaveCount(2)
+    expect($rows)->toHaveCount(1)
         ->and($rows->every(fn (Analysis $row): bool => $row->status === AnalysisStatus::Processing))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => $row->attempts === 1))->toBeTrue()
         ->and($rows->every(fn (Analysis $row): bool => $row->generation_token === $token))->toBeTrue();

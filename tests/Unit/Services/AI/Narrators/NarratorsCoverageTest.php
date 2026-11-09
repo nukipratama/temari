@@ -40,12 +40,13 @@ use App\Services\AI\Narrators\PlanClampVoiceNarrator;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use App\Services\AI\Narrators\PostRunSpeechNarrator;
 use App\Services\AI\Anchor\RunAnchorResolver;
-use App\Services\AI\Narrators\RunInsightNarrator;
 use App\Services\AI\Narrators\TrendReadNarrator;
 use App\Services\AI\Narrators\WeeklyRecapNarrator;
 use App\Services\AI\RuleBased\RuleBasedNarrationFiller;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Services\Run\LifetimeStats;
+use App\Services\Run\Metrics\DecimalFormatter;
+use App\Services\Run\Metrics\DecouplingBands;
 use App\Services\Run\Metrics\PaceFormatter;
 use App\Services\Run\Metrics\RelativeEffort;
 use App\Actions\Run\Metrics\ResolveRunBaselineAction;
@@ -103,7 +104,23 @@ function monthlyRecapNarrator(StructuredChatCaller $caller): MonthlyRecapNarrato
 
 function postRunNarrator(StructuredChatCaller $caller): PostRunSpeechNarrator
 {
-    return new PostRunSpeechNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class));
+    return new PostRunSpeechNarrator($caller, app(TrainingBaseline::class), app(VdotEstimator::class), app(TrainingPaceCalculator::class), new TrainingLoad(), new ResolveRunBaselineAction(), app(RelativeEffort::class), new RunAnchorResolver());
+}
+
+/**
+ * The merged post-run answer the model returns, reading first.
+ *
+ * @param  list<array<string, mixed>>  $claims
+ */
+function speechAnswer(string $title = 'a quiet one', string $body = 'A quiet morning out.', array $claims = [], string $reading = 'conditions'): string
+{
+    return json_encode(['reading' => $reading, 'title' => $title, 'body' => $body, 'claims' => $claims], JSON_THROW_ON_ERROR);
+}
+
+/** @return list<array{anchor: string, text: string, value: string|null, delta: string|null}> */
+function storedClaims(string $stored): array
+{
+    return nonNull(nonNull(NarrationContent::fromStored($stored))->claims);
 }
 
 function cardFlavorNarrator(StructuredChatCaller $caller): CardFlavorNarrator
@@ -118,11 +135,6 @@ function profileVoiceJson(string $paragraph): string
         'evidence_secondary' => '',
         'profile_voice' => $paragraph,
     ], JSON_THROW_ON_ERROR);
-}
-
-function runInsightNarrator(StructuredChatCaller $caller): RunInsightNarrator
-{
-    return new RunInsightNarrator($caller, new TrainingLoad(), new ResolveRunBaselineAction(), app(VdotEstimator::class), app(TrainingPaceCalculator::class), app(RelativeEffort::class), new RunAnchorResolver(), app(TrainingBaseline::class));
 }
 
 // ── PostRunSpeechNarrator ─────────────────────────────────────────────
@@ -142,21 +154,86 @@ function postRunFixture(): array
     return ['activity' => $activity, 'detail' => $detail];
 }
 
-it('PostRunSpeechNarrator returns speech on valid JSON', function (): void {
+it('PostRunSpeechNarrator stores the lowercased title, the body and the claims that resolve', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $caller = fakeCaller(json_encode(['speech' => 'Nice run today!'], JSON_THROW_ON_ERROR));
-    $narrator = postRunNarrator($caller);
-    expect($narrator->generate($a, $d, 'blazing'))->toBe('Nice run today!');
+    $d->update(['stream_summary' => [
+        'per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '5:50'], ['km' => 3, 'pace' => '5:45']],
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 12.0,
+    ]]);
+    $caller = fakeCaller(speechAnswer('Quicker every km', "First paragraph.\n\nSecond paragraph.", [
+        ['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null],
+        ['anchor' => 'metric:decoupling', 'text' => 'Decoupling ran high.', 'value' => '+12%', 'delta' => null],
+        ['anchor' => 'split:99', 'text' => 'A km this run never ran.', 'value' => null, 'delta' => null],
+    ], 'pacing'));
+
+    $stored = postRunNarrator($caller)->generate($a, $d->refresh(), 'blazing');
+
+    expect(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('quicker every km', "First paragraph.\n\nSecond paragraph.", [
+        ['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null],
+        ['anchor' => 'metric:decoupling', 'text' => 'Decoupling ran high.', 'value' => '+12%', 'delta' => null],
+    ]));
 });
 
-/**
- * The home briefing leads on get_week_state's week-over-week pair, and a runner
- * who reads home then opens today's run saw "9 runs and 51.1 km against 36 runs
- * and 297.6 km" twice in one session. Both narrators keep the tool; only this one
- * is told the pair is the last thing it should reach for.
- */
-it('PostRunSpeechNarrator ranks the run-scoped reads above the shared week pair', function (): void {
+it('PostRunSpeechNarrator asks for reading, title, body and claims, the reading picked from its seven angles, with no step override', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    [$caller, $client] = capturingCaller(speechAnswer());
+
+    postRunNarrator($caller)->generate($a, $d, 'easy');
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = data_get($params, 'text.format.schema');
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body', 'claims']
+            && data_get($schema, 'properties.reading.enum') === ['pacing', 'heart_rate', 'effort_vs_usual', 'plan', 'record', 'conditions', 'week_arc']
+            && data_get($schema, 'properties.claims.items.required') === ['anchor', 'text', 'value', 'delta']
+            && data_get($params, 'max_output_tokens') === 3500;
+    });
+    expect(declaredMaxSteps(PostRunSpeechNarrator::class))->toBeNull();
+});
+
+it('PostRunSpeechNarrator offers exactly the readings its prompt describes and commits to one first', function (): void {
+    $schema = new ReflectionClass(PostRunSpeechNarrator::class)->getConstant('PROPERTY_SCHEMA');
     $prompt = narratorPrompt(PostRunSpeechNarrator::class);
+
+    foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
+        expect($reading)->toBeString();
+        assert(is_string($reading));
+        expect($prompt)->toContain("`{$reading}`:");
+    }
+
+    expect($prompt)->toContain('COMMIT FIRST')
+        ->and($prompt)->toContain('The seven, and `reading` takes exactly one of these values');
+});
+
+it('PostRunSpeechNarrator prompt asks for a headline and a 200-300 word story in 2-3 connected paragraphs, at most 7 numbers outside the claims', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
+
+    expect($prompt)
+        ->toContain('body (2-3 paragraphs, 200-300 words in total')
+        ->toContain('2-3 paragraphs separated by one blank line')
+        ->toContain('at least 3 connected sentences')
+        ->toContain('one beat of the same reading')
+        ->toContain('never one topic per paragraph like a checklist')
+        ->toContain('max 7 numbers across title + body combined')
+        ->toContain("The claims carry their own figures in value and delta, and those don't count against it")
+        ->toContain('NO PADDING')
+        ->and($prompt)->not->toContain('max 75 words')
+        ->and($prompt)->not->toContain('2-4 sentences');
+});
+
+it('PostRunSpeechNarrator prompt drops the four-blocks lens and the bans it carried', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
+
+    expect($prompt)->toContain('A claim never repeats a sentence of the body')
+        ->and($prompt)->not->toContain('YOUR LENS')
+        ->and($prompt)->not->toContain('four blocks')
+        ->and($prompt)->not->toContain('Technical translation')
+        ->and($prompt)->not->toContain('NEVER dissect pacing');
+});
+
+it('PostRunSpeechNarrator ranks the run-scoped reads above the shared week pair', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
 
     expect($prompt)
         ->toContain('RUN-SCOPED first')
@@ -164,44 +241,174 @@ it('PostRunSpeechNarrator ranks the run-scoped reads above the shared week pair'
         ->toContain("the same pair the home page's daily briefing already leads with");
 });
 
-it('PostRunSpeechNarrator throws on missing key', function (): void {
+it('PostRunSpeechNarrator throws on a missing key', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $caller = fakeCaller(json_encode(['other' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = postRunNarrator($caller);
-    $narrator->generate($a, $d, 'blazing');
-})->throws(UnavailableException::class, 'missing speech');
+    $caller = fakeCaller(json_encode(['reading' => 'pacing', 'title' => 'x', 'body' => 'y'], JSON_THROW_ON_ERROR));
 
-it('PostRunSpeechNarrator does not fatal when the stream summary is null', function (): void {
+    postRunNarrator($caller)->generate($a, $d, 'blazing');
+})->throws(UnavailableException::class);
+
+it('PostRunSpeechNarrator does not fatal when the stream summary is null, and keeps no claims', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => null]);
-    $caller = fakeCaller(json_encode(['speech' => 'Mantap'], JSON_THROW_ON_ERROR));
-    $narrator = postRunNarrator($caller);
-    expect($narrator->generate($a, $d->refresh(), 'dim'))->toBe('Mantap');
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => 'metric:decoupling', 'text' => 'z', 'value' => null, 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'chill')))->toBe([]);
 });
 
-it('PostRunSpeechNarrator narrates a run with a populated stream summary', function (): void {
+it('PostRunSpeechNarrator hands the day\'s judged verdict over up front', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $evidence = ['basis' => 'heart_rate', 'stimulus_family' => 'easy', 'effective_type' => 'easy'];
+    PlannedSession::factory()->for($a->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'done',
+        'intent_verdict' => 'hit',
+        'intent_evidence' => $evidence,
+    ]);
+
+    expect(postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'easy')['day_verdict'])
+        ->toBe(IntentOutcome::outcome(IntentVerdict::Hit, $evidence));
+});
+
+it('PostRunSpeechNarrator hands over no verdict for a day not judged yet', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    PlannedSession::factory()->for($a->user)->create(['date' => Carbon::today()->toDateString(), 'intent_verdict' => null]);
+
+    expect(postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'easy'))->not->toHaveKey('day_verdict');
+});
+
+it('PostRunSpeechNarrator drops a Z3-or-heavier claim on an easy day judged a hit', function (string $verdict, array $evidence, string $anchor, bool $kept): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 30, 'Z3' => 60, 'Z4' => 8, 'Z5' => 2]]]);
+    PlannedSession::factory()->for($a->user)->create([
+        'date' => Carbon::today()->toDateString(),
+        'status' => 'done',
+        'intent_verdict' => $verdict,
+        'intent_evidence' => $evidence,
+    ]);
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => $anchor, 'text' => 'Most of the run sat in this zone.', 'value' => '60%', 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toHaveCount($kept ? 1 : 0);
+})->with([
+    'Z3 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', false],
+    'Z4 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z4', false],
+    'Z5 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z5', false],
+    'Z2 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z2', true],
+    'Z3 on an easy day run too hard' => ['too_hard', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', true],
+    'Z3 on a marathon-effort hit' => ['hit', ['ceiling_pace_sec' => 380, 'limit' => 'marathon'], 'zone:z3', true],
+]);
+
+it('PostRunSpeechNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, ?string $stored): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['per_km' => [
+        ['km' => 1, 'pace' => '7:10'], ['km' => 2, 'pace' => '7:05'], ['km' => 3, 'pace' => '7:08'],
+        ['km' => 4, 'pace' => '7:01'], ['km' => 5, 'pace' => '7:20'], ['km' => 6, 'pace' => '7:47'],
+    ]]]);
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => 'split:6', 'text' => 'km 6 was the slowest.', 'value' => '7:47', 'delta' => $delta],
+    ]));
+
+    $claims = storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'wobbly'));
+
+    expect($stored === 'dropped' ? $claims : array_column($claims, 'delta'))->toBe($stored === 'dropped' ? [] : [$stored]);
+})->with([
+    'the right gap' => ['+0:46 vs km 4', '+0:46 vs km 4'],
+    'the right gap with the sign flipped' => ['-0:46 vs km 4', '+0:46 vs km 4'],
+    'the right gap, unsigned' => ['0:46 vs km 4', '+0:46 vs km 4'],
+    'a wrong gap' => ['-1:00 vs km 4', 'dropped'],
+    'a km the run never recorded' => ['-0:30 vs km 9', 'dropped'],
+    'no comparison' => [null, null],
+    'a comparison to something other than a km' => ['+0:12 vs 28d avg', '+0:12 vs 28d avg'],
+]);
+
+it('PostRunSpeechNarrator keeps a claim anchored to a reading the run has', function (array $summary, string $anchor): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => $summary]);
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => $anchor, 'text' => 'A real reading.', 'value' => null, 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toHaveCount(1);
+})->with([
+    'a split the run has' => [['per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '5:50']]], 'split:2'],
+    'a zone with a real HR breakdown' => [['time_in_zone_pct' => ['Z2' => 70, 'Z3' => 30]], 'zone:z2'],
+]);
+
+it('PostRunSpeechNarrator drops a claim whose anchor the run has no reading for', function (string $anchor, string $text): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']], 'decoupling_pct' => 3.0]]);
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => $anchor, 'text' => $text, 'value' => null, 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toBe([]);
+})->with([
+    'a split the run never recorded' => ['split:5', 'A km that never happened.'],
+    'a zone with no HR breakdown' => ['zone:z4', 'Mostly Z4.'],
+    'a metric never computed for this run' => ['metric:hr_drift', 'HR crept up.'],
+    'an anchor outside the closed namespace' => ['weather:hot', 'It was hot.'],
+    'empty text' => ['split:1', ''],
+]);
+
+it('PostRunSpeechNarrator caps claims at 3 even when the model returns more valid ones', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $d->update(['stream_summary' => [
-        'time_in_zone_pct' => ['Z1' => 10, 'Z2' => 70, 'Z3' => 20],
-        'decoupling_pct' => 5.2,
-        'negative_split' => true,
+        'drift_metric_version' => 2,
+        'steady_effort_decoupling_pct' => 6.0,
+        'steady_effort_hr_drift_bpm' => 5.0,
+        'cadence_drop_spm' => 3.0,
+        'pace_variability_sec' => 20.0,
     ]]);
-    $caller = fakeCaller(json_encode(['speech' => 'Base solid'], JSON_THROW_ON_ERROR));
-    $narrator = postRunNarrator($caller);
-    expect($narrator->generate($a, $d->refresh(), 'blazing'))->toBe('Base solid');
+    $caller = fakeCaller(speechAnswer(claims: [
+        ['anchor' => 'metric:decoupling', 'text' => 'a', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:hr_drift', 'text' => 'b', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:cadence_drop', 'text' => 'c', 'value' => null, 'delta' => null],
+        ['anchor' => 'metric:pace_variability', 'text' => 'd', 'value' => null, 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toHaveCount(3);
 });
 
-// On a page where all four blocks render side by side, handing the speech the
-// insight blocks would make it a fourth telling of the same run. Its lens is what
-// the other three cannot hold -- the day around the run and where it sits in the
-// athlete's history -- so the triplet never reaches it.
-it('PostRunSpeechNarrator is not handed the insight blocks it used to retell', function (): void {
+it('PostRunSpeechNarrator prompt carries the readings it took over from the run insight', function (string $first, string $second): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
+
+    expect($prompt)->toContain($first)
+        ->and($prompt)->toContain($second);
+})->with([
+    'quality-session framing so it stops assuming easy' => ['session_intent', 'QUALITY SESSIONS'],
+    'fetches its own numbers and does not invent the rest' => ['Fetch them yourself', 'NEVER make up'],
+    'a lap-structured session is the shape, not messy pacing' => ['STRUCTURED SESSION', 'recovery_sec'],
+    'a missing reading is not material' => ['it is simply not material for this run', "Don't mention that something is missing"],
+    'claims stay short' => ['text (REQUIRED): the observation, 1-2 sentences', 'NEVER pad'],
+    'heat explains decoupling' => ['WEATHER & DECOUPLING', 'not a sign of lost fitness'],
+    'rain is hedged when forecast' => ['weather_rain_source', 'hedge ("forecast called for light rain")'],
+    'grey zone skips a day judged easy' => ['GREY ZONE', 'Skip it too if day_verdict in your context says the day stayed at the easy effort it asked for'],
+    'the effort label never judges the ask' => ["belongs to the day's verdict from get_planned_sessions", 'intensity_label'],
+    'the effort score disagreeing with the verdict says both' => ['HOW IT FELT', 'say both: the verdict reads the watch, the score is how it felt'],
+    'the PR gate' => ['NEVER mention "PR" or "personal record" unless', 'get_personal_records AND the list actually has something in it'],
+    'the coast is named once and only when unexplained' => ['COASTING', 'And never twice.'],
+    'the baseline is not a past run' => ['PAST YOU', 'The 28-day average from get_recent_baseline is not a past run'],
+    'no grades and no next session' => ['never as a grade or a score out of anything', 'NEVER prescribe the next session'],
+    'plain, natural phrasing with run terms kept' => ['LANGUAGE:', 'plain and conversational, not clinical'],
+]);
+
+it('PostRunSpeechNarrator sends a prompt with no em-dash and the decoupling band it reads filled in', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
+    [$caller, $client] = capturingCaller(speechAnswer());
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
-        ->context($a, $d->refresh(), 'blazing');
+    postRunNarrator($caller)->generate($a, $d, 'easy');
 
-    expect($context)->not->toHaveKey('insights');
+    expect(narratorPrompt(PostRunSpeechNarrator::class))->not->toContain('—');
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $system = (string) $params['input'][0]['content'];
+
+        return ! str_contains($system, '{decoupling_high}')
+            && str_contains(preg_replace('/\s+/', ' ', $system) ?? '', 'decoupling.pct is high (>'.DecimalFormatter::trimmed(DecouplingBands::HIGH).'%)');
+    });
 });
 
 /**
@@ -231,16 +438,26 @@ it('PostRunSpeechNarrator feeds prev_narrative from the prior activity post-run 
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'The run yesterday was very easy.');
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBe('The run yesterday was very easy.')
-        // prev_opener is the first few words, so the model can steer away from it.
         ->and($context['prev_opener'])->toBe('The run yesterday was very easy.');
+});
+
+it('PostRunSpeechNarrator feeds a merged predecessor as its title and body, never its claims', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, new NarrationContent('the hills won', 'Body of it.', [
+        ['anchor' => 'metric:grade', 'text' => 'Steepest stretch.', 'value' => '8%', 'delta' => null],
+    ])->toStored());
+
+    $context = postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'blazing');
+
+    expect($context['prev_narrative'])->toBe("the hills won\n\nBody of it.")
+        ->and($context['prev_opener'])->toBe('the hills won');
 });
 
 it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done post-run', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
-    // A prior activity exists but its post-run is only Pending, so it is not a usable predecessor.
     $prior = Activity::factory()->for($a->user)->analyzed()->create();
     ActivityDetail::factory()->for($prior)->create(['start_date_local' => Carbon::parse('2026-05-09')]);
     Analysis::factory()->create([
@@ -251,7 +468,7 @@ it('PostRunSpeechNarrator leaves prev_narrative null when there is no prior Done
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_narrative'])->toBeNull()
         ->and($context['prev_opener'])->toBeNull();
@@ -265,7 +482,7 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
         'Still carrying yesterday, and this time your close was livelier with a tidier finishing pace.',
     );
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'blazing');
 
     expect($context['prev_opener'])->toBe('Still carrying yesterday, and this time your close was livelier')
         ->and(str_word_count(Arr::string($context, 'prev_opener')))->toBeLessThanOrEqual(10);
@@ -274,310 +491,21 @@ it('PostRunSpeechNarrator truncates prev_opener to the first few words of a long
 it('PostRunSpeechNarrator keeps only what no tool can serve in the context', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))
+    $context = postRunNarrator(fakeCaller(speechAnswer()))
         ->context($a, $d->refresh(), 'blazing');
 
-    // mood is the call's own argument, so it is not readable from anywhere.
     expect(array_keys($context))
         ->toBe(['mood', ...NarratorContinuity::CONTEXT_KEYS]);
 });
 
-it('PostRunSpeechNarrator is not offered the splits or zones its insights already interpret', function (): void {
+it('PostRunSpeechNarrator offers every run reading as a tool bound to this activity', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $names = array_column(
-        postRunNarrator(fakeCaller('{"speech":"x"}'))
+        postRunNarrator(fakeCaller(speechAnswer()))
             ->toolbox($a, $d)->definitions(),
         'name',
     );
-
-    // Handing it the raw per-km table produced a fourth recitation of the same
-    // "km 3 slowed, km 5 closed fastest" the three insight blocks already gave.
-    expect($names)->toBe([
-        'get_run_summary',
-        'get_terrain',
-        'get_weather',
-        'get_personal_records',
-        'get_week_state',
-        'get_planned_sessions',
-        'get_perceived_effort',
-    ]);
-});
-
-// ── RunInsightNarrator ────────────────────────────────────────────────
-
-it('RunInsightNarrator returns the claims payload on valid JSON, dropping only the invalid anchor', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => [
-        'per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '5:50'], ['km' => 3, 'pace' => '5:45']],
-        'drift_metric_version' => 2,
-        'steady_effort_decoupling_pct' => 12.0,
-    ]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null],
-        ['anchor' => 'metric:decoupling', 'text' => 'Decoupling ran high.', 'value' => '+12%', 'delta' => null],
-        ['anchor' => 'split:99', 'text' => 'A km this run never ran.', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    $payload = $narrator->generate($a, $d->refresh());
-
-    expect($payload['claims'])->toHaveCount(2)
-        ->and($payload['claims'][0])->toBe(['anchor' => 'split:2', 'text' => 'Km 2 was the fastest.', 'value' => '5:50/km', 'delta' => null])
-        ->and($payload['claims'][1]['anchor'])->toBe('metric:decoupling');
-});
-
-it('RunInsightNarrator throws on missing keys', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $caller = fakeCaller(json_encode(['something_else' => 'x'], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-    $narrator->generate($a, $d);
-})->throws(UnavailableException::class);
-
-it('RunInsightNarrator does not fatal when the stream summary is null, and renders no claims', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => null]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'metric:decoupling', 'text' => 'z', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    $payload = $narrator->generate($a, $d->refresh());
-
-    // Every anchor kind is stream-summary-derived, so a run with no stream
-    // summary at all can never resolve a claim -- same "nothing to say"
-    // outcome as an all-invalid model response.
-    expect($payload['claims'])->toBe([]);
-});
-
-// Prod: the insight skipped get_planned_sessions twice and nudged a day judged easy.
-it('RunInsightNarrator hands the day\'s judged verdict over up front', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $evidence = ['basis' => 'heart_rate', 'stimulus_family' => 'easy', 'effective_type' => 'easy'];
-    PlannedSession::factory()->for($a->user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'status' => 'done',
-        'intent_verdict' => 'hit',
-        'intent_evidence' => $evidence,
-    ]);
-
-    expect(runInsightNarrator(fakeCaller('{"claims":[]}'))->context($a, $d->refresh())['day_verdict'])
-        ->toBe(IntentOutcome::outcome(IntentVerdict::Hit, $evidence));
-});
-
-it('RunInsightNarrator hands over no verdict for a day not judged yet', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    PlannedSession::factory()->for($a->user)->create(['date' => Carbon::today()->toDateString(), 'intent_verdict' => null]);
-
-    expect(runInsightNarrator(fakeCaller('{"claims":[]}'))->context($a, $d->refresh()))->not->toHaveKey('day_verdict');
-});
-
-// Prod: handed day_verdict, the insight still nudged an easy day judged a hit toward easy pace.
-it('RunInsightNarrator drops a Z3-or-heavier claim on an easy day judged a hit', function (string $verdict, array $evidence, string $anchor, bool $kept): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 30, 'Z3' => 60, 'Z4' => 8, 'Z5' => 2]]]);
-    PlannedSession::factory()->for($a->user)->create([
-        'date' => Carbon::today()->toDateString(),
-        'status' => 'done',
-        'intent_verdict' => $verdict,
-        'intent_evidence' => $evidence,
-    ]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => $anchor, 'text' => 'Most of the run sat in this zone.', 'value' => '60%', 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-
-    expect(runInsightNarrator($caller)->generate($a, $d->refresh())['claims'])->toHaveCount($kept ? 1 : 0);
-})->with([
-    'Z3 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', false],
-    'Z4 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z4', false],
-    'Z5 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z5', false],
-    'Z2 on an easy hit' => ['hit', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z2', true],
-    'Z3 on an easy day run too hard' => ['too_hard', ['ceiling_pace_sec' => 443, 'basis' => 'heart_rate'], 'zone:z3', true],
-    'Z3 on a marathon-effort hit' => ['hit', ['ceiling_pace_sec' => 380, 'limit' => 'marathon'], 'zone:z3', true],
-]);
-
-// Prod: one run's km 6 was narrated as 46 seconds and then 1:00 off km 4, from the same splits.
-it('RunInsightNarrator drops a split claim whose gap to another km is not what the splits say', function (?string $delta, ?string $stored): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [
-        ['km' => 1, 'pace' => '7:10'], ['km' => 2, 'pace' => '7:05'], ['km' => 3, 'pace' => '7:08'],
-        ['km' => 4, 'pace' => '7:01'], ['km' => 5, 'pace' => '7:20'], ['km' => 6, 'pace' => '7:47'],
-    ]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'split:6', 'text' => 'km 6 was the slowest.', 'value' => '7:47', 'delta' => $delta],
-    ]], JSON_THROW_ON_ERROR));
-
-    $claims = runInsightNarrator($caller)->generate($a, $d->refresh())['claims'];
-
-    expect($stored === 'dropped' ? $claims : array_column($claims, 'delta'))->toBe($stored === 'dropped' ? [] : [$stored]);
-})->with([
-    'the right gap' => ['+0:46 vs km 4', '+0:46 vs km 4'],
-    // Prod wrote "-0:46 vs km 4" for this slower km; the chip shows the delta verbatim.
-    'the right gap with the sign flipped' => ['-0:46 vs km 4', '+0:46 vs km 4'],
-    'the right gap, unsigned' => ['0:46 vs km 4', '+0:46 vs km 4'],
-    'a wrong gap' => ['-1:00 vs km 4', 'dropped'],
-    'a km the run never recorded' => ['-0:30 vs km 9', 'dropped'],
-    'no comparison' => [null, null],
-    'a comparison to something other than a km' => ['+0:12 vs 28d avg', '+0:12 vs 28d avg'],
-]);
-
-// ── RunInsightNarrator anchor falsifiability ───────────────────────────
-
-it('RunInsightNarrator survives a claim anchored to a split the run actually has', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00'], ['km' => 2, 'pace' => '5:50']]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'split:2', 'text' => 'Km 2 was quick.', 'value' => '5:50/km', 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(1);
-});
-
-it('RunInsightNarrator drops a claim whose anchor the run has no reading for', function (string $anchor, string $text): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => $anchor, 'text' => $text, 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
-})->with([
-    'a split the run never recorded' => ['split:5', 'A km that never happened.'],
-    'a zone with no HR breakdown' => ['zone:z4', 'Mostly Z4.'],
-    'a metric never computed for this run' => ['metric:hr_drift', 'HR crept up.'],
-]);
-
-it('RunInsightNarrator survives a zone claim when the run has a real HR breakdown', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['time_in_zone_pct' => ['Z2' => 70, 'Z3' => 30]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'zone:z2', 'text' => 'Mostly Z2.', 'value' => '70%', 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(1);
-});
-
-it('RunInsightNarrator drops a claim whose anchor is not in the closed namespace at all', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['decoupling_pct' => 3.0]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'weather:hot', 'text' => 'It was hot.', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
-});
-
-it('RunInsightNarrator renders nothing when every claim in the response is invalid', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'split:9', 'text' => 'a', 'value' => null, 'delta' => null],
-        ['anchor' => 'zone:z1', 'text' => 'b', 'value' => null, 'delta' => null],
-        ['anchor' => 'metric:cadence_drop', 'text' => 'c', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toBe([]);
-});
-
-it('RunInsightNarrator caps claims at 3 even when the model returns more valid ones', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    $d->update(['stream_summary' => [
-        'drift_metric_version' => 2,
-        'steady_effort_decoupling_pct' => 6.0,
-        'steady_effort_hr_drift_bpm' => 5.0,
-        'cadence_drop_spm' => 3.0,
-        'pace_variability_sec' => 20.0,
-    ]]);
-    $caller = fakeCaller(json_encode(['claims' => [
-        ['anchor' => 'metric:decoupling', 'text' => 'a', 'value' => null, 'delta' => null],
-        ['anchor' => 'metric:hr_drift', 'text' => 'b', 'value' => null, 'delta' => null],
-        ['anchor' => 'metric:cadence_drop', 'text' => 'c', 'value' => null, 'delta' => null],
-        ['anchor' => 'metric:pace_variability', 'text' => 'd', 'value' => null, 'delta' => null],
-    ]], JSON_THROW_ON_ERROR));
-    $narrator = runInsightNarrator($caller);
-
-    expect($narrator->generate($a, $d->refresh())['claims'])->toHaveCount(3);
-});
-
-it('RunInsightNarrator prompt carries its framing wording', function (string $first, string $second): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)->toContain($first)
-        ->and($prompt)->toContain($second);
-})->with([
-    'quality-session framing so it stops assuming easy' => ['session_intent', 'QUALITY SESSIONS'],
-    'fetches its own numbers and does not invent the rest' => ['Fetch them yourself', 'NEVER make up'],
-]);
-
-// Without this carve-out an interval session reads as sloppy pacing: the pace
-// spread is wide by design, and pace_consistency bands it as "naik-turun" all
-// the same, which the model then explains away as terrain or unstable effort.
-it('RunInsightNarrator prompt exempts a lap-structured session from the pace-consistency reading', function (): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)->toContain('STRUCTURED SESSION')
-        ->and($prompt)->toContain('rep_count')
-        ->and($prompt)->toContain('recovery_sec')
-        ->and($prompt)->toContain('warmup');
-});
-
-// The adaptive claims schema asks for short, per-anchor observations.
-it('RunInsightNarrator prompt keeps each claim short (1-2 sentences), not the old fixed-slot paragraphs', function (): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)->toContain('1-2 sentences')
-        ->and($prompt)->not->toContain('2-3 short paragraphs');
-});
-
-// A metric or zone anchor with no real reading behind it is simply not a
-// candidate, and the anchor resolver drops it even if the model tries anyway --
-// so the prompt only needs the general no-invention rule.
-it('RunInsightNarrator prompt treats a missing reading as simply not a claim candidate, not something to redirect around', function (): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)->toContain('not a candidate for a claim')
-        ->and($prompt)->not->toContain('IF CADENCE/HR/DECOUPLING IS MISSING')
-        ->and($prompt)->not->toContain('IF THE ZONES ARE MISSING');
-});
-
-it('RunInsightNarrator feeds prev_narrative from the prior activity run-insight when Done', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.');
-
-    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-    $context = $narrator->context($a, $d->refresh());
-
-    expect($context['prev_narrative'])->toBe('Cadence was 168 yesterday, starting to improve.');
-});
-
-it('RunInsightNarrator leaves prev_narrative null when no prior run-insight is Done', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-
-    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-    $context = $narrator->context($a, $d->refresh());
-
-    expect($context['prev_narrative'])->toBeNull();
-});
-
-it('RunInsightNarrator sends no run data in the context, only the continuity the filter retry must be able to strip', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-
-    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-
-    expect(array_keys($narrator->context($a, $d->refresh())))
-        ->toBe(NarratorContinuity::CONTEXT_KEYS);
-});
-
-it('RunInsightNarrator offers every run reading as a tool bound to this activity', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-
-    $narrator = runInsightNarrator(fakeCaller('{"claims":[]}'));
-    $names = array_column($narrator->toolbox($a, $d)->definitions(), 'name');
 
     expect($names)->toBe([
         'get_run_summary',
@@ -592,6 +520,8 @@ it('RunInsightNarrator offers every run reading as a tool bound to this activity
         'get_training_paces',
         'get_planned_sessions',
         'get_perceived_effort',
+        'get_personal_records',
+        'get_week_state',
     ]);
 });
 
@@ -915,19 +845,33 @@ function sentSystemPromptCarriesPlanVerdictRule(ClientFake $client): void
     $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) $params['input'][0]['content'], PlanVerdictRule::RULE));
 }
 
-it('PostRunSpeechNarrator re-asks a speech that quotes a distance no tool returned', function (): void {
+it('PostRunSpeechNarrator re-asks a story whose title or body quotes a distance no tool returned', function (string $title, string $body): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     $client = new ClientFake([
-        fakeAzureResponse(json_encode(['speech' => '5 km, and 0.9 km more than last time.'], JSON_THROW_ON_ERROR)),
-        fakeAzureResponse(json_encode(['speech' => '5 km on a quiet morning.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(speechAnswer($title, $body)),
+        fakeAzureResponse(speechAnswer('5 km on a quiet morning', 'Nothing more to it.')),
     ]);
 
-    expect(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'easy'))
-        ->toBe('5 km on a quiet morning.');
-    $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) end($params['input'])['content'], 'it quotes 0.9, which no tool returned'));
+    expect(nonNull(NarrationContent::fromStored(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'easy')))->title)
+        ->toBe('5 km on a quiet morning');
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) end($params['input'])['content'], 'Rewrite the title and body: it quotes 0.9, which no tool returned'));
+})->with([
+    'in the title' => ['0.9 km more than last time', 'A quiet morning.'],
+    'in the body' => ['a quiet morning', '5 km, and 0.9 km more than last time.'],
+]);
+
+it('PostRunSpeechNarrator leaves the claims figures to the anchor gate, not the fact check', function (): void {
+    ['activity' => $a, 'detail' => $d] = postRunFixture();
+    $d->update(['stream_summary' => ['per_km' => [['km' => 1, 'pace' => '6:00']]]]);
+    [$caller, $client] = capturingCaller(speechAnswer(claims: [
+        ['anchor' => 'split:1', 'text' => 'Km 1 ran 0.9 km into the hill.', 'value' => '6:00/km', 'delta' => null],
+    ]));
+
+    expect(storedClaims(postRunNarrator($caller)->generate($a, $d->refresh(), 'easy')))->toHaveCount(1);
+    $client->assertSent(Responses::class, 1);
 });
 
-it('PostRunSpeechNarrator re-asks a speech that turns the day\'s verdict around', function (): void {
+it('PostRunSpeechNarrator re-asks a story that turns the day\'s verdict around', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
     PlannedSession::factory()->for($a->user)->create([
         'date' => nonNull($d->start_date_local)->toDateString(),
@@ -935,47 +879,25 @@ it('PostRunSpeechNarrator re-asks a speech that turns the day\'s verdict around'
         'intent_verdict' => IntentVerdict::TooHard,
     ]);
     $client = new ClientFake([
-        fakeAzureResponse(json_encode(['speech' => 'this one came in easier than written.'], JSON_THROW_ON_ERROR)),
-        fakeAzureResponse(json_encode(['speech' => 'the block ran past what it asked.'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(speechAnswer('this one came in easier than written', 'The block sat calm.')),
+        fakeAzureResponse(speechAnswer('the block ran past what it asked', 'The block ran hot.')),
     ]);
 
-    expect(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'overloaded'))
-        ->toBe('the block ran past what it asked.');
+    expect(nonNull(NarrationContent::fromStored(postRunNarrator(fakeStructuredCaller($client))->generate($a, $d, 'overloaded')))->title)
+        ->toBe('the block ran past what it asked');
 });
 
-it('hands the speech, the insight and the post-run brief the same plan verdict rule', function (): void {
+it('hands the post-run story and the post-run brief the same plan verdict rule', function (): void {
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
-    [$speechCaller, $speechClient] = capturingCaller(json_encode(['speech' => 'x'], JSON_THROW_ON_ERROR));
+    [$speechCaller, $speechClient] = capturingCaller(speechAnswer());
     postRunNarrator($speechCaller)->generate($a, $d, 'easy');
-
-    [$insightCaller, $insightClient] = capturingCaller(json_encode(['claims' => []], JSON_THROW_ON_ERROR));
-    runInsightNarrator($insightCaller)->generate($a, $d);
 
     [$briefCaller, $briefClient] = capturingCaller(json_encode(['mascot_voice' => '5 km logged, no plan for today.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR));
     bootMascotNarratorWithCaller($briefCaller)->generate($a->user, Carbon::today());
 
     sentSystemPromptCarriesPlanVerdictRule($speechClient);
-    sentSystemPromptCarriesPlanVerdictRule($insightClient);
     sentSystemPromptCarriesPlanVerdictRule($briefClient);
-});
-
-it('RunInsightNarrator leaves whether the effort matched the ask to the verdict, not the intensity label', function (): void {
-    expect(narratorPrompt(RunInsightNarrator::class))
-        ->toContain('belongs to the day\'s verdict from')
-        ->and(narratorPrompt(RunInsightNarrator::class))->not->toContain('source of truth for how intense this session was');
-});
-
-it('RunInsightNarrator keeps the grey-zone nudge off an easy day the verdict says stayed easy', function (): void {
-    expect(narratorPrompt(RunInsightNarrator::class))
-        ->toContain('says the day stayed at the easy effort it asked for')
-        ->toContain('Skip it too if');
-});
-
-it('RunInsightNarrator reads the grey-zone skip from the verdict it is handed', function (): void {
-    expect(narratorPrompt(RunInsightNarrator::class))
-        ->toContain('Skip it too if day_verdict in')
-        ->toContain('that day is dropped.');
 });
 
 it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent', function (): void {
@@ -2181,18 +2103,6 @@ it('WeeklyRecapNarrator offers exactly the readings its prompt describes and com
         ->and(preg_replace('/\s+/', ' ', $prompt))->toContain('still says in words which way the week moved');
 });
 
-it('PostRunSpeechNarrator prompt hands the mechanics to the other three lenses', function (): void {
-    // The two blocks render side by side, so a speech that re-tells the
-    // pacing is visibly redundant; it gets a lens of its own instead.
-    $prompt = narratorPrompt(PostRunSpeechNarrator::class);
-
-    expect($prompt)
-        ->toContain('YOUR LENS')
-        ->toContain("That's not your part.")
-        ->toContain('NEVER dissect pacing')
-        ->toContain('this run mattered');
-});
-
 it('WeeklyRecapNarrator prompt caps the number count so the recap stops reading as a table', function (): void {
     // Prod shipped ten numbers across four sentences: the field list read as a
     // menu to recite, and "sebutkan 1-2 angka" was no ceiling against it.
@@ -2227,26 +2137,15 @@ it('narrator prompt examples follow the casing rule: sentence case from two sent
         expect($prompt)->not->toContain($needle);
     }
 })->with([
-    'post-run speech' => [PostRunSpeechNarrator::class, ['"First run in eleven days. The week barely existed', '"Wet, dark, and you went anyway. That\'s the whole story'], ['"first run in eleven days.', 'wet, dark, and you went anyway. that\'s']],
+    'post-run story titles stay lowercase, claim texts in sentence case' => [PostRunSpeechNarrator::class, ['- "first run in eleven days, and the legs remembered most of it."', '- "the last two km paid for the first three."', '"Km 5 came in at 5:18', 'You had something left.'], ['"First run in eleven days', '"km 5 came in', 'you had something left']],
     'profile voice' => [ProfileVoiceNarrator::class, ['"Six of your last ten sessions', 'Those two facts are the', '"Eleven weeks in a row with a run in them. That\'s not motivation'], ['"six of your last ten', 'those two facts', 'that\'s not motivation any more']],
-    'run insight' => [RunInsightNarrator::class, ['"Km 5 came in at 5:18', 'You had something left.', 'text "Decoupling climbed', '"km 4 was your slowest."'], ['"km 5 came in', 'you had something left', 'text "decoupling climbed']],
     'briefing' => [BriefingMascotVoiceNarrator::class, ['"easy tempo, 35-45 minutes." / "easy run, 30 minutes."', 'Right: "easy run, 7 km."', '"easy run, 30-40 minutes.', '"A light'], ['"Easy tempo, 35-45 minutes."', 'Right: "Easy run, 7 km."', '"Easy run, 30-40 minutes.', '"a light']],
     'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, down from four, and the scoreboard noticed."'], []],
     'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
     'trend read title stays lowercase' => [TrendReadNarrator::class, ['"training load eased back'], []],
 ]);
 
-it('RunInsightNarrator prompt steers toward plain, natural phrasing while keeping run terms English', function (): void {
-    $prompt = narratorPrompt(RunInsightNarrator::class);
-
-    expect($prompt)
-        ->toContain('LANGUAGE:')
-        ->toContain('plain and conversational, not clinical')
-        ->toContain('negative split')
-        ->and($prompt)->not->toContain('—');
-});
-
-// These five narrators' prompts must not train the model to front-load every
+// These four narrators' prompts must not train the model to front-load every
 // tool into one turn; the loop supports more steps, so this is prompt wording,
 // not code.
 it('invites iterative tool follow-up instead of front-loading everything into one turn', function (string $class): void {
@@ -2258,7 +2157,6 @@ it('invites iterative tool follow-up instead of front-loading everything into on
         ->not->toContain('call several at once in a single turn')
         ->toContain("Don't front-load every tool into one turn out of habit");
 })->with([
-    RunInsightNarrator::class => [RunInsightNarrator::class],
     PostRunSpeechNarrator::class => [PostRunSpeechNarrator::class],
     ProfileVoiceNarrator::class => [ProfileVoiceNarrator::class],
     CardFlavorNarrator::class => [CardFlavorNarrator::class],
@@ -2314,7 +2212,7 @@ it('never wires the retired past-you tools into a narrator toolbox', function ()
     ['activity' => $a, 'detail' => $d] = postRunFixture();
 
     $postRunNames = array_column(
-        postRunNarrator(fakeCaller('{"speech":"x"}'))->toolbox($a, $d)->definitions(),
+        postRunNarrator(fakeCaller(speechAnswer()))->toolbox($a, $d)->definitions(),
         'name',
     );
     $briefingNames = array_column(
@@ -2357,7 +2255,7 @@ it('PostRunSpeechNarrator passes the five newest earlier narrations, newest firs
     priorActivityWithDoneAnalysis($user, AnalysisType::RunInsight, 'Wrong kind, ignored.', '2026-05-08');
     priorActivityWithDoneAnalysis(User::factory()->create(), AnalysisType::PostRunSpeech, 'Another athlete.', '2026-05-08');
 
-    $context = postRunNarrator(fakeCaller('{"speech":"x"}'))->context($a, $d->refresh(), 'blazing');
+    $context = postRunNarrator(fakeCaller(speechAnswer()))->context($a, $d->refresh(), 'blazing');
 
     expect($context['recent_openers'])->toBe([
         'Plain narration for day 7 with extra words to pass',
@@ -2375,7 +2273,7 @@ it('PostRunSpeechNarrator reads the previous narrations in two queries', functio
     foreach (range(1, 5) as $day) {
         priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, "Narration {$day}", "2026-05-0{$day}");
     }
-    $narrator = postRunNarrator(fakeCaller('{"speech":"x"}'));
+    $narrator = postRunNarrator(fakeCaller(speechAnswer()));
     $detail = $d->refresh();
 
     DB::enableQueryLog();
@@ -2384,16 +2282,6 @@ it('PostRunSpeechNarrator reads the previous narrations in two queries', functio
     DB::disableQueryLog();
 
     expect($queries)->toBeLessThanOrEqual(2);
-});
-
-it('RunInsightNarrator passes recent_openers from earlier run-insight rows only', function (): void {
-    ['activity' => $a, 'detail' => $d] = postRunFixture();
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::RunInsight, 'Cadence was 168 yesterday, starting to improve.', '2026-05-08');
-    priorActivityWithDoneAnalysis($a->user, AnalysisType::PostRunSpeech, 'A post-run line.', '2026-05-09');
-
-    $context = runInsightNarrator(fakeCaller('{"insights":[]}'))->context($a, $d->refresh());
-
-    expect($context['recent_openers'])->toBe(['Cadence was 168 yesterday, starting to improve.']);
 });
 
 it('WeeklyRecapNarrator passes up to five earlier recaps newest first and skips zero-run and not-Done weeks', function (): void {
