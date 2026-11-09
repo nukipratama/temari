@@ -95,3 +95,45 @@ it('opens with the title when present, else the first words of the body', functi
         ->and(new NarrationContent(null, 'The run yesterday was very easy.')->opener())->toBe('The run yesterday was very easy.')
         ->and(new NarrationContent(null, 'one two three four five')->opener(3))->toBe('one two three');
 });
+
+it('round-trips anchored claims next to the title and body', function (): void {
+    $claims = [
+        ['anchor' => 'split:4', 'text' => 'Km 4 was the quickest.', 'value' => '5:18/km', 'delta' => '-0:14 vs km 3'],
+        ['anchor' => 'metric:decoupling', 'text' => 'Heart rate held against pace.', 'value' => null, 'delta' => null],
+    ];
+
+    $stored = new NarrationContent('a quiet tempo that held', 'Body.', $claims)->toStored();
+
+    expect($stored)->toBe(json_encode(['title' => 'a quiet tempo that held', 'body' => 'Body.', 'claims' => $claims], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE))
+        ->and(NarrationContent::fromStored($stored)?->claims)->toBe($claims);
+});
+
+it('stores an empty claims list, and leaves claims out when there are none to carry', function (): void {
+    expect(new NarrationContent('t', 'b', [])->toStored())->toBe('{"title":"t","body":"b","claims":[]}')
+        ->and(NarrationContent::fromStored('{"title":"t","body":"b","claims":[]}')?->claims)->toBe([])
+        ->and(new NarrationContent('t', 'b')->toStored())->toBe('{"title":"t","body":"b"}')
+        ->and(NarrationContent::fromStored('{"title":"t","body":"b"}')?->claims)->toBeNull()
+        ->and(NarrationContent::fromStored('Plain speech.')?->claims)->toBeNull();
+});
+
+it('keeps only claims with a string anchor and text, reading a non-string value or delta as null', function (): void {
+    $content = nonNull(NarrationContent::fromStored(json_encode(['body' => 'b', 'claims' => [
+        ['anchor' => 'zone:z2', 'text' => 'Mostly Z2.', 'value' => 70, 'delta' => null],
+        ['anchor' => 'split:1'],
+        'not a claim',
+        ['anchor' => 3, 'text' => 'numeric anchor'],
+    ]], JSON_THROW_ON_ERROR)));
+
+    expect($content->claims)->toBe([['anchor' => 'zone:z2', 'text' => 'Mostly Z2.', 'value' => null, 'delta' => null]]);
+});
+
+it('reads a claims value that is not a list as no claims', function (): void {
+    expect(NarrationContent::fromStored('{"body":"b","claims":"split:1"}')?->claims)->toBeNull();
+});
+
+it('leaves claims out of the plain text and the opener', function (): void {
+    $content = new NarrationContent('a quiet tempo', 'The body.', [['anchor' => 'split:1', 'text' => 'Km 1 ran easy.', 'value' => null, 'delta' => null]]);
+
+    expect($content->plainText())->toBe("a quiet tempo\n\nThe body.")
+        ->and($content->opener())->toBe('a quiet tempo');
+});
