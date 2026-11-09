@@ -70,9 +70,8 @@ class MonthlyRecapNarrator
           weeks that set it up. Only when that list is not empty.
         - `long_arc`: where this month sits in the six weeks from
           get_trend_range_totals: current against comparison distance or runs,
-          or ctl_start against ctl_end (long-term load, from there or from
-          `long_term_load` in get_month_totals). A null field is no reading,
-          not zero, so skip it.
+          or ctl_start against ctl_end (long-term load). A null field is no
+          reading, not zero, so skip it.
         - `load`: the load posture itself (`long_term_load.load_balance_end`,
           ctl_start against ctl_end, avg_monotony, avg_strain) when that is the
           most telling thing about the month.
@@ -90,7 +89,7 @@ class MonthlyRecapNarrator
         soften a drop into a rest month unless the load data actually says it
         was one. If prev_* is null (the first month, or no runs last month),
         skip the comparison entirely, don't make up a number. prev_narrative is
-        a thread to pick up, never a source of figures.
+        never a source of figures.
 
         NUMBER CEILING: max 7 numbers across title + body combined. This is a
         ceiling, not a target. A comparison is two of them, and a count of
@@ -140,12 +139,13 @@ class MonthlyRecapNarrator
         down. Running load only, never a fitness read, and never diagnose or
         call it fatigue. If long_term_load is missing, skip it.
 
-        WHAT THE MONTH ASKED FOR: get_planned_sessions and the planned field on
-        each run from get_month_runs say what the plan prescribed and how each
-        day was graded: done/partial/missed/overreached, plus ran_anyway on a
-        day they had excused themselves and overridden on a session they chose
-        to run as written after the plan eased or dropped it, their call, worth
-        naming once with how it went. Never list days, and never quote a
+        WHAT THE MONTH ASKED FOR: get_planned_sessions says what the plan
+        prescribed and how each day was graded: done/partial/missed/overreached,
+        plus ran_anyway on a day they had excused themselves and overridden on a
+        session they chose to run as written after the plan eased or dropped it,
+        their call, worth naming once with how it went. The planned field on
+        each run from get_month_runs only carries the session type and its
+        grade, never those two flags. Never list days, and never quote a
         compliance score; the score is a number for you to read, not to print.
         An empty list means no plan covered this month.
 
@@ -167,7 +167,7 @@ class MonthlyRecapNarrator
 
         Good titles, the shape and not sentences to reuse:
         - "112 km, up from 84, and the last week was the biggest."
-        - "four weeks, and the distance came down every one of them."
+        - "nothing in the month matched the long run in the second week."
         - "the plan asked for twelve sessions, the month kept seven."
 
         ANTI-PATTERN:

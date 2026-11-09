@@ -627,7 +627,7 @@ it('BriefingMascotVoiceNarrator post-run prompt asks for a title about the run a
         ->toContain('the headline about the run that just landed and what it means for the rest of today and the week')
         ->toContain('Do not offer another run today')
         ->toContain('The `session_type` output field MUST be `rest`')
-        ->toContain('- "10.0 km done against 6.2 km planned, harder than the easy day asked for."');
+        ->toContain('- "10 km done against 6.2 km planned, harder than the easy day asked for."');
 });
 
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
@@ -738,6 +738,59 @@ it('WeeklyRecapNarrator leaves previous-week deltas null on the first week', fun
         ->and($context['prev_runs'])->toBeNull()
         ->and($context['prev_pace_sec_per_km'])->toBeNull()
         ->and($context['prev_pace_formatted'])->toBeNull();
+});
+
+it('WeekTotalsTool leaves previous-week fields null when the previous week had no runs', function (): void {
+    $user = User::factory()->create();
+    WeeklySnapshot::factory()->for($user)->create([
+        'week_ending' => '2026-05-10', 'distance_km' => 0.0, 'runs' => 0, 'elapsed_time_sec' => 0,
+    ]);
+    $current = WeeklySnapshot::factory()->for($user)->create(['week_ending' => '2026-05-17', 'runs' => 4]);
+
+    $context = new WeekTotalsTool($current)->handle([]);
+
+    expect($context['prev_runs'])->toBeNull()
+        ->and($context['prev_distance_km'])->toBeNull()
+        ->and($context['prev_pace_sec_per_km'])->toBeNull()
+        ->and($context['prev_pace_formatted'])->toBeNull();
+});
+
+it('PostRunSpeechNarrator gives the effort score to the effort_vs_usual reading and quotes the formatted easy pace', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(PostRunSpeechNarrator::class));
+
+    expect($prompt)
+        ->toContain('The effort score the athlete gave, from get_perceived_effort, against the range that session usually feels belongs here too')
+        ->toContain('the effort score is a number of the `effort_vs_usual` reading, so quote it only when that is your reading')
+        ->toContain('quote easy_pace_formatted from get_training_paces')
+        ->and($prompt)->not->toContain('convert easy_pace_sec');
+});
+
+it('the weekly and monthly recap prompts point at get_planned_sessions for ran_anyway and overridden, and ban listing days and a compliance score', function (string $class, string $runsTool): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt($class));
+
+    expect($prompt)
+        ->toContain("The planned field on each run from {$runsTool} only carries the session type and its grade, never those two flags")
+        ->toContain('Never list days, and never quote a compliance score')
+        ->and($prompt)->not->toContain('get_planned_sessions and the planned field');
+})->with([
+    'weekly' => [WeeklyRecapNarrator::class, 'get_week_runs'],
+    'monthly' => [MonthlyRecapNarrator::class, 'get_month_runs'],
+]);
+
+it('MonthlyRecapNarrator takes the long_arc numbers from get_trend_range_totals alone and leaves the thread to the continuity rule', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(MonthlyRecapNarrator::class));
+
+    expect($prompt)
+        ->toContain('or ctl_start against ctl_end (long-term load). A null field is no reading, not zero, so skip it.')
+        ->toContain('prev_narrative is never a source of figures')
+        ->and($prompt)->not->toContain('from there or from')
+        ->and($prompt)->not->toContain('a thread to pick up');
+});
+
+it('BriefingMascotVoiceNarrator says its week-state read-only fields have their own tools for the last two', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(BriefingMascotVoiceNarrator::class));
+
+    expect($prompt)->toContain('get_week_state carries every field below except the last two, which have their own tools');
 });
 
 it('WeekTotalsTool formats a sub-4:00 average pace the same way the app shows it', function (): void {
@@ -865,7 +918,7 @@ it('TrendReadNarrator picks the race read from the data: an active race gets the
     });
     Carbon::setTestNow();
 })->with([
-    'no race' => [false, 'SYSTEM_PROMPT', ['volume_arc', 'load_direction', 'consistency', 'pace_arc', 'adherence'], ['get_trend_range_totals', 'get_plan_adherence']],
+    'no race' => [false, 'SYSTEM_PROMPT', ['volume_arc', 'load_direction', 'adherence'], ['get_trend_range_totals', 'get_plan_adherence']],
     'race' => [true, 'RACE_SYSTEM_PROMPT', ['on_track', 'gap_to_target', 'support_trend', 'adherence', 'load_direction'], ['get_race_outlook', 'get_trend_range_totals', 'get_plan_adherence']],
 ]);
 
@@ -1105,7 +1158,7 @@ it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not ver
  * the mechanism, so a family added to the prompt without a matching value would
  * be unpickable — and silently so.
  */
-it('TrendReadNarrator offers exactly the readings each prompt describes and commits to one first', function (string $constant, string $schemaConstant): void {
+it('TrendReadNarrator offers exactly the readings each prompt describes and commits to one first', function (string $constant, string $schemaConstant, string $count): void {
     $schema = new ReflectionClass(TrendReadNarrator::class)->getConstant($schemaConstant);
     $prompt = narratorConstant(TrendReadNarrator::class, $constant);
 
@@ -1116,11 +1169,31 @@ it('TrendReadNarrator offers exactly the readings each prompt describes and comm
     }
 
     expect($prompt)->toContain('COMMIT FIRST')
-        ->and($prompt)->toContain('The five, and `reading` takes exactly one of these values');
+        ->and($prompt)->toContain("The {$count}, and `reading` takes exactly one of these values");
 })->with([
-    'no race' => ['SYSTEM_PROMPT', 'READING_PROPERTY_SCHEMA'],
-    'race' => ['RACE_SYSTEM_PROMPT', 'RACE_READING_PROPERTY_SCHEMA'],
+    'no race' => ['SYSTEM_PROMPT', 'READING_PROPERTY_SCHEMA', 'three'],
+    'race' => ['RACE_SYSTEM_PROMPT', 'RACE_READING_PROPERTY_SCHEMA', 'five'],
 ]);
+
+it('TrendReadNarrator no-race prompt offers no reading that has no per-week data or only a VDOT score behind it', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(TrendReadNarrator::class, 'SYSTEM_PROMPT'));
+
+    expect($prompt)
+        ->and($prompt)->not->toContain('`consistency`')
+        ->and($prompt)->not->toContain('pace_arc')
+        ->and($prompt)->not->toContain('vdot')
+        ->and($prompt)->not->toContain('pace estimate')
+        ->and(data_get(new ReflectionClass(TrendReadNarrator::class)->getConstant('READING_PROPERTY_SCHEMA'), 'reading.enum'))
+        ->toBe(['volume_arc', 'load_direction', 'adherence']);
+});
+
+it('TrendReadNarrator race support_trend reads the direction and the gap, with no projection', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(TrendReadNarrator::class, 'RACE_SYSTEM_PROMPT'));
+
+    expect($prompt)
+        ->toContain('how big the gap to the target still is. No projection of where it ends up')
+        ->and($prompt)->not->toContain('close the gap');
+});
 
 it('TrendReadNarrator prompts ask for a headline and a 200-250 word story in 2-3 connected paragraphs, at most 7 numbers, keeping the still-true rules', function (string $constant): void {
     $prompt = preg_replace('/\s+/', ' ', narratorConstant(TrendReadNarrator::class, $constant));
@@ -1220,8 +1293,9 @@ it('CardFlavorNarrator prompt writes its examples by sentence count', function (
     $prompt = narratorPrompt(CardFlavorNarrator::class);
 
     expect($prompt)
-        ->toContain('"Your fastest 5k landed inside this one. The Legendary label is just the')
-        ->and($prompt)->not->toContain('"your fastest 5k landed inside this one. the Legendary')
+        ->toContain('"your fastest 5k landed inside this one, and the Legendary label is just the')
+        ->and($prompt)->not->toContain('this one. The Legendary')
+        ->and($prompt)->not->toContain('8 degrees')
         ->and($prompt)->toContain('Right: "you held Z2 for 90%');
 });
 
@@ -2375,8 +2449,8 @@ it('narrator prompt examples follow the casing rule: sentence case from two sent
     'post-run story titles stay lowercase, claim texts in sentence case' => [PostRunSpeechNarrator::class, ['- "first run in eleven days, and the legs remembered most of it."', '- "the last two km paid for the first three."', '"Km 5 came in at 5:18', 'You had something left.'], ['"First run in eleven days', '"km 5 came in', 'you had something left']],
     'profile voice' => [ProfileVoiceNarrator::class, ['"Six of your last ten sessions', 'Those two facts are the', '"Eleven weeks in a row with a run in them. That\'s not motivation'], ['"six of your last ten', 'those two facts', 'that\'s not motivation any more']],
     'briefing titles stay lowercase, the posture quote in sentence case' => [BriefingMascotVoiceNarrator::class, ['- "easy 30 today, because Thursday\'s tempo is still in the legs."', '- "a long run on the board, and the week is already three runs deep."', '"A light'], ['"Easy 30 today', '"A long run on the board', '"a light']],
-    'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, down from four, and the scoreboard noticed."'], []],
-    'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
+    'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "the scoreboard noticed: two runs this week, where last week had four."'], []],
+    'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "nothing in the month matched the long run in the second week."'], []],
     'trend read titles stay lowercase' => [TrendReadNarrator::class, ['- "six weeks bigger than the six before, and the long-term load followed."'], ['"Six weeks bigger']],
 ]);
 

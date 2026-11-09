@@ -96,9 +96,9 @@ class CardFlavorNarrator
         Good examples:
         - "'Silent Steps' went Rare because the second half was quicker than the
           first, in rain, which is not the usual order of events."
-        - "Common card, but 'New Morning' at 8 degrees is the kind of session nobody
-          talks you into."
-        - "Your fastest 5k landed inside this one. The Legendary label is just the
+        - "Common card, but 'New Morning' on a day you'd already excused yourself from
+          is the kind of session nobody talks you into."
+        - "your fastest 5k landed inside this one, and the Legendary label is just the
           receipt."
         PROMPT;
 

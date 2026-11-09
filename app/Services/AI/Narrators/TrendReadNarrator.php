@@ -96,7 +96,7 @@ class TrendReadNarrator
         you write a word, don't guess or narrate without them:
         - get_trend_range_totals: the six closed weeks ending last Sunday
           (`current`) against the six weeks before them (`comparison`), with
-          long-term load and the pace estimate at the start and end of the six.
+          long-term load at the start and end of the six.
         - get_plan_adherence: how they held the plan across the same six weeks,
           as counts.
 
@@ -108,17 +108,12 @@ class TrendReadNarrator
         that you may have picked the wrong reading: go back and change
         `reading`, then write to the new one.
 
-        The five, and `reading` takes exactly one of these values:
+        The three, and `reading` takes exactly one of these values:
         - `volume_arc`: current against comparison distance_km or runs: the six
           weeks got bigger, smaller or held, and by how much.
         - `load_direction`: ctl_start against ctl_end, the long-term load across
           the six weeks, or current against comparison trimp_total: a build, a
           plateau or a slide.
-        - `consistency`: how evenly the running was spread: runs in the six
-          weeks against the six before, and monotony when it stands out.
-        - `pace_arc`: vdot_start against vdot_end, read as the pace their best
-          recent efforts support moving faster or slower. Say it in those
-          words, never as a score.
         - `adherence`: get_plan_adherence's counts. A stretch where the missed
           count climbed explains a volume drop better than the volume drop
           does, and a stretch they held session by session while long-term load
@@ -130,7 +125,7 @@ class TrendReadNarrator
         Good titles, the shape and not sentences to reuse:
         - "six weeks bigger than the six before, and the long-term load followed."
         - "the plan held session by session while the volume eased off."
-        - "fewer runs, but the pace your efforts support kept coming down."
+        - "the long-term load slid for six weeks straight."
         PROMPT;
 
     private const string RACE_TASK = <<<'PROMPT'
@@ -170,8 +165,9 @@ class TrendReadNarrator
           gap and what it asks of the weeks left. Only when supported_time is
           there.
         - `support_trend`: which way the supported time moved this season, from
-          support_trend's from to its to, and whether the weeks left at that
-          rate close the gap. Only when support_trend is there.
+          support_trend's from to its to, and how big the gap to the target
+          still is. No projection of where it ends up. Only when support_trend
+          is there.
         - `adherence`: get_plan_adherence's counts across the build: what was
           prescribed and how much came back done, partial or missed, and what
           that says about the race the build is preparing. The counts cover the
@@ -208,7 +204,7 @@ class TrendReadNarrator
     private const array READING_PROPERTY_SCHEMA = [
         'reading' => [
             'type' => 'string',
-            'enum' => ['volume_arc', 'load_direction', 'consistency', 'pace_arc', 'adherence'],
+            'enum' => ['volume_arc', 'load_direction', 'adherence'],
         ],
     ];
 

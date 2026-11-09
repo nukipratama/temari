@@ -126,6 +126,14 @@ it('persona prompt examples follow the casing rule', function (): void {
         ->and(temariPrompt())->not->toContain('"you\'re wiped. take today off."');
 });
 
+it('opens the headline from the data and invites weather only when a tool returned it', function (): void {
+    expect(temariPrompt())
+        ->toContain('Open the headline from whatever is most notable in the data you fetched')
+        ->toContain('the weather only when a tool gave it')
+        ->and(temariPrompt())->not->toContain("this run's data")
+        ->and(temariPrompt())->not->toContain('one atmospheric detail');
+});
+
 it('mandates English output regardless of tool results, prior narration, or Indonesian context cues', function (): void {
     // An explicit language mandate sits near the top of the prompt, before any
     // other guidance (including the cultural context section, which could

@@ -19,6 +19,12 @@ it('tells the model to open differently from all of recent_openers', function ()
         ->toContain('open differently from all of them');
 });
 
+it('asks for a different headline shape, not only different words', function (): void {
+    expect(preg_replace('/\s+/', ' ', NarratorContinuity::RULE))
+        ->toContain('Vary the shape of the headline, not just its words')
+        ->toContain('use a different one');
+});
+
 it('bundles prev_narrative, prev_opener and recent_openers into one context slice', function (): void {
     expect(NarratorContinuity::fields(['The run yesterday was very easy.']))
         ->toBe([

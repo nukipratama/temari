@@ -251,7 +251,7 @@ class BriefingMascotVoiceNarrator
 
         The fields below are for YOU TO READ so you understand the day, not a
         list you have to mention. get_week_state carries every field below
-        except the last three, which have their own tools:
+        except the last two, which have their own tools:
         - `this_week_runs` / `last_week_runs` / `this_week_km` / `last_week_km`:
           this week so far vs last week through the SAME weekday (both are
           week-to-date, like-for-like, never a partial week against a full
@@ -306,7 +306,7 @@ class BriefingMascotVoiceNarrator
         Good titles, the shape and not sentences to reuse:
         - "easy 30 today, because Thursday's tempo is still in the legs."
         - "a long run on the board, and the week is already three runs deep."
-        - "five easy weeks in a row, so today puts a bit of quality on the table."
+        - "the week's only quality session lands today."
         - "rest today, the third run in three days having earned it."
 
         ANTI-PATTERN:
@@ -432,9 +432,9 @@ class BriefingMascotVoiceNarrator
         completed.
 
         Good titles, the shape and not sentences to reuse:
-        - "10.0 km done against 6.2 km planned, harder than the easy day asked for."
+        - "10 km done against 6.2 km planned, harder than the easy day asked for."
         - "6.2 km done as planned, and it stayed easy."
-        - "the long run is in, and the rest of today is for recovering it."
+        - "the rest of today belongs to the long run you just finished."
 
         A finished day does not need a motivational ending. State what happened,
         set the recovery ceiling, and stop.

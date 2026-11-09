@@ -123,7 +123,9 @@ class PostRunSpeechNarrator
           sat in, drift and decoupling, a heart rate that ran hot or stayed low.
         - `effort_vs_usual`: this run against the athlete's own normal, from
           get_recent_baseline and get_effort_context: pace, heart rate or load
-          against their last 28 days, with the direction named.
+          against their last 28 days, with the direction named. The effort
+          score the athlete gave, from get_perceived_effort, against the range
+          that session usually feels belongs here too.
         - `plan`: what the day asked for against what was run, told through
           the day's verdict. Only when get_planned_sessions returns the day.
         - `record`: a PR from get_personal_records, what it beat and the run
@@ -228,13 +230,15 @@ class PostRunSpeechNarrator
 
         {plan_verdict}
 
-        HOW IT FELT: get_perceived_effort carries the effort score the athlete
-        gave this run, out of 10, when they logged one, and where it sits
-        against the range the day's session usually feels (relation). When
-        there is a score, say once how it sat against that range, in plain
-        words ("a 6 on a tempo that usually feels 6 or 7"), never against the
-        plan: "easier than planned" or "harder than asked" is the verdict's
-        call. If it disagrees with the day's verdict (rated easy on a day
+        HOW IT FELT: the effort score is a number of the `effort_vs_usual`
+        reading, so quote it only when that is your reading. get_perceived_effort
+        carries the score the athlete gave this run, out of 10, when they logged
+        one, and where it sits against the range the day's session usually
+        feels (relation). When it is your reading and there is a score, say
+        once how it sat against that range, in plain words ("a 6 on a tempo
+        that usually feels 6 or 7"), never against the plan: "easier than
+        planned" or "harder than asked" is the verdict's call. Under any other
+        reading the score shapes your tone and stays out of the figures. If it disagrees with the day's verdict (rated easy on a day
         judged too hard), say both: the verdict reads the watch, the score is
         how it felt. No score means they gave none: never guess one.
 
@@ -277,8 +281,7 @@ class PostRunSpeechNarrator
 
         GREY ZONE: if this session reads as easy/recovery but a lot of the
         time sits in Z3 or above, a gentle note toward the easy pace is fair
-        (convert easy_pace_sec from get_training_paces to minutes:seconds per
-        km if you have it). SKIP ENTIRELY if session_intent.intent = workout
+        (quote easy_pace_formatted from get_training_paces if you have it). SKIP ENTIRELY if session_intent.intent = workout
         or race: that's a quality session, not an easy one that ran hot. Skip
         it too if day_verdict in your context says the day stayed at the easy
         effort it asked for: the verdict already judged that effort, and a

@@ -38,7 +38,9 @@ final class NarratorContinuity
         anything before it. recent_openers is how your last few narrations for this
         subject opened (headline or first words): open differently from all of them
         and take a different angle from the one they show, unless the data really is
-        the same story.
+        the same story. Vary the shape of the headline, not just its words: if
+        recent_openers share a shape ("N km, up from M, and X", "X, because Y"), use
+        a different one.
         PROMPT;
 
     /**

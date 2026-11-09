@@ -78,7 +78,7 @@ class WeeklyRecapNarrator
         e.g. "a lighter week than the one before". It is a clause inside the
         story; its figures belong to `vs_last_week` alone. Don't soften a drop
         into a rest week unless the load data actually says it was one. If
-        prev_* is null (first week), skip the comparison entirely, don't make
+        prev_* is null (the first week, or no runs last week), skip the comparison entirely, don't make
         up a number.
 
         NUMBER CEILING: max 7 numbers across title + body combined. This is a
@@ -123,13 +123,15 @@ class WeeklyRecapNarrator
           down, illness, poor sleep or under-fuelling can be the cause too.
           Never diagnose or call it fatigue.
 
-        WHAT THE WEEK ASKED FOR: get_planned_sessions and the planned field on
-        each run from get_week_runs say what the plan prescribed and how each
-        day was graded: done/partial/missed/overreached, plus ran_anyway on a
-        day they had excused themselves and overridden on a session they chose
-        to run as written after the plan eased or dropped it, their call, worth
-        naming once with how it went. An empty list means no plan covered this
-        week.
+        WHAT THE WEEK ASKED FOR: get_planned_sessions says what the plan
+        prescribed and how each day was graded: done/partial/missed/overreached,
+        plus ran_anyway on a day they had excused themselves and overridden on a
+        session they chose to run as written after the plan eased or dropped it,
+        their call, worth naming once with how it went. The planned field on
+        each run from get_week_runs only carries the session type and its grade,
+        never those two flags. Never list days, and never quote a compliance
+        score; the score is a number for you to read, not to print. An empty
+        list means no plan covered this week.
 
         COASTING: if the week is thinner than the last few and load_balance is
         fresh or steady the whole time, that is a coast and you may name it,
@@ -163,7 +165,7 @@ class WeeklyRecapNarrator
 
         Good titles, the shape and not sentences to reuse:
         - "28.4 km, up from 19, and the long run carried it."
-        - "two runs this week, down from four, and the scoreboard noticed."
+        - "the scoreboard noticed: two runs this week, where last week had four."
         - "the plan asked for four, the Thursday tempo got away."
 
         ANTI-PATTERN:
