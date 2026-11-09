@@ -124,7 +124,9 @@ function ClaimLine({
     return (
         <div className="flex flex-col gap-1.5">
             <p className="narration">{renderBold(claim.text)}</p>
-            {(claim.value ?? claim.delta ?? (drawn && label !== null)) && (
+            {(Boolean(claim.value) ||
+                Boolean(claim.delta) ||
+                (drawn && label !== null)) && (
                 <div className="flex flex-wrap items-center gap-1.5">
                     {claim.value && <Chip tone="neutral">{claim.value}</Chip>}
                     {claim.delta && <Chip tone="horizon">{claim.delta}</Chip>}
@@ -162,11 +164,19 @@ function ClaimList({
     drawn: ReadonlySet<string>;
     className?: string;
 }>) {
+    const seen = new Map<string, number>();
+    const keyed = claims.map((claim) => {
+        const occurrence = seen.get(claim.anchor) ?? 0;
+        seen.set(claim.anchor, occurrence + 1);
+
+        return { claim, key: `${claim.anchor}:${occurrence}` };
+    });
+
     return (
         <div className={cn('flex flex-col gap-2.5', className)}>
-            {claims.map((claim) => (
+            {keyed.map(({ claim, key }) => (
                 <ClaimLine
-                    key={claim.anchor}
+                    key={key}
                     claim={claim}
                     drawn={drawn.has(claim.anchor)}
                 />

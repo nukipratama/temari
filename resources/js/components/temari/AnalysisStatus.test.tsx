@@ -75,11 +75,29 @@ describe('AnalysisStatus', () => {
             />,
         );
         const headline = screen.getByText('a quiet week');
-        expect(headline.tagName).toBe('P');
+        expect(headline.tagName).toBe('H3');
         expect(headline).toHaveClass('font-serif', 'italic');
         expect(headline.parentElement?.textContent).toBe(
             'a quiet weekFour easy runs held the line.',
         );
+    });
+
+    it('renders the headline as a level-3 heading with its bold spans in strong', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    status: 'done',
+                    title: 'a **quiet** week',
+                    content: 'Four easy runs held the line.',
+                })}
+            />,
+        );
+        const heading = screen.getByRole('heading', {
+            level: 3,
+            name: 'a quiet week',
+        });
+        expect(heading.textContent).toBe('a quiet week');
+        expect(screen.getByText('quiet').tagName).toBe('STRONG');
     });
 
     it('renders only the body when the payload has no title', () => {

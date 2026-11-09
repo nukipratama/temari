@@ -125,6 +125,65 @@ describe('RunLenses', () => {
         expect(screen.getByText('-2% vs 28d avg')).toBeInTheDocument();
     });
 
+    it('still draws the anchor button when the claim has empty-string value and delta', () => {
+        const props = {
+            ...defaultProps,
+            insight: claimsAnalysis([
+                {
+                    anchor: 'split:3',
+                    text: 'Km 3 was the fastest.',
+                    value: '',
+                    delta: '',
+                },
+            ]),
+        };
+        render(
+            <RunLenses
+                {...props}
+                isChainHead
+                drawnAnchors={new Set(['split:3'])}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /show .* on this page/i }),
+        ).toBeInTheDocument();
+    });
+
+    it('draws no chip row for a claim whose value and delta are empty strings and has no anchor on the page', () => {
+        const props = {
+            ...defaultProps,
+            insight: claimsAnalysis([
+                {
+                    anchor: 'split:3',
+                    text: 'Km 3 was the fastest.',
+                    value: '',
+                    delta: '',
+                },
+            ]),
+        };
+        render(<RunLenses {...props} isChainHead />);
+
+        const claim = screen
+            .getByText('Km 3 was the fastest.')
+            .closest('.narration');
+        expect(claim?.parentElement?.children).toHaveLength(1);
+    });
+
+    it('renders two claims that share an anchor', () => {
+        const props = {
+            ...defaultProps,
+            insight: claimsAnalysis([
+                { anchor: 'split:3', text: 'First on km 3.' },
+                { anchor: 'split:3', text: 'Second on km 3.' },
+            ]),
+        };
+        render(<RunLenses {...props} isChainHead />);
+
+        expect(screen.getByText('First on km 3.')).toBeInTheDocument();
+        expect(screen.getByText('Second on km 3.')).toBeInTheDocument();
+    });
+
     it('drops parsed claims that are not well-formed objects', () => {
         render(
             <RunLenses
