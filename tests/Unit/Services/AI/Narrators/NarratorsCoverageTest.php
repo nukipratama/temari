@@ -26,6 +26,7 @@ use App\Services\AI\AnalysisType;
 use App\Services\AI\TemariPersona;
 use App\Services\AI\Agent\Tools\CardIdentityTool;
 use App\Services\AI\Agent\Tools\LifetimeStatsTool;
+use App\Services\AI\Agent\Tools\MonthRecordsTool;
 use App\Services\AI\Agent\Tools\MonthRunsTool;
 use App\Services\AI\Agent\Tools\MonthTotalsTool;
 use App\Services\AI\Agent\Tools\TrainingPacesTool;
@@ -1510,7 +1511,7 @@ it('MonthTotalsTool counts PRs and buckets distance by week within the month', f
             'distance' => $meters,
         ]);
     }
-    PersonalRecord::factory()->for($user)->create([
+    PersonalRecord::factory()->forActivity($activity)->create([
         'category' => '5km', 'set_at' => Carbon::parse('2026-05-19T06:30'),
     ]);
 
@@ -1519,6 +1520,19 @@ it('MonthTotalsTool counts PRs and buckets distance by week within the month', f
     expect($context['pr_count'])->toBe(1)
         ->and(data_get($context, 'weekly_distance_km.0'))->toBe(6.0)
         ->and(data_get($context, 'weekly_distance_km.2'))->toBe(10.0);
+});
+
+it('MonthTotalsTool counts only the PRs get_month_records lists', function (): void {
+    $user = User::factory()->create();
+    foreach (['analyzed' => Activity::factory()->for($user)->analyzed(), 'stub' => Activity::factory()->for($user)->stub()] as $factory) {
+        $activity = $factory->create();
+        ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::parse('2026-05-12T06:00')]);
+        PersonalRecord::factory()->forActivity($activity)->create(['set_at' => Carbon::parse('2026-05-12T06:30')]);
+    }
+
+    expect(new MonthTotalsTool($user, '2026-05')->handle([])['pr_count'])
+        ->toBe(1)
+        ->toBe(count(arrayOf(new MonthRecordsTool($user, '2026-05')->handle([])['personal_records'])));
 });
 
 it('MonthTotalsTool reads the long-term load arc from the month snapshots', function (): void {

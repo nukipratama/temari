@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\AI\Agent\Tools;
 
 use App\Models\ActivityDetail;
-use App\Models\PersonalRecord;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
 use App\Services\Run\Metrics\DistanceFormatter;
@@ -68,10 +67,7 @@ final class MonthTotalsTool extends NoArgumentTool
             'pace_sec_per_km' => $pace,
             'pace_formatted' => $pace === null ? null : PaceFormatter::format($pace),
             'longest_run_km' => DistanceFormatter::km((float) $longestDistance, DistanceFormatter::EXACT),
-            'pr_count' => PersonalRecord::query()
-                ->where('user_id', $this->user->id)
-                ->whereBetween('set_at', [$start, $end])
-                ->count(),
+            'pr_count' => PeriodRecordsTool::recordsBetween($this->user, $start, $end)->count(),
             'weekly_distance_km' => self::weeklyDistanceKm($details, $start),
             // Half-open, so the exclusive bound is the next month's start rather
             // than this month's inclusive end -- passing $end would drop a run

@@ -6,6 +6,7 @@ namespace App\Services\AI\Agent\Tools;
 
 use App\Models\PersonalRecord;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 /**
@@ -35,9 +36,7 @@ abstract class PeriodRecordsTool extends NoArgumentTool
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
-        $records = PersonalRecord::query()
-            ->where('user_id', $this->user->id)
-            ->whereIn('activity_id', PeriodRunsTool::detailsBetween($this->user, $this->from, $this->to)->select('activity_details.activity_id'))
+        $records = self::recordsBetween($this->user, $this->from, $this->to)
             ->orderBy('set_at')
             ->get(['category', 'value_sec', 'set_at'])
             ->map(fn (PersonalRecord $record): array => [
@@ -48,5 +47,13 @@ abstract class PeriodRecordsTool extends NoArgumentTool
             ->all();
 
         return ['personal_records' => $records];
+    }
+
+    /** @return Builder<PersonalRecord> */
+    public static function recordsBetween(User $user, Carbon $from, Carbon $to): Builder
+    {
+        return PersonalRecord::query()
+            ->where('user_id', $user->id)
+            ->whereIn('activity_id', PeriodRunsTool::detailsBetween($user, $from, $to)->select('activity_details.activity_id'));
     }
 }
