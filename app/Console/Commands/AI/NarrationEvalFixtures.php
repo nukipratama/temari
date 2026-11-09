@@ -135,7 +135,7 @@ final readonly class NarrationEvalFixtures
                 $evidence = self::evidenceOf($this->briefing->context($demo, $day), $this->briefing->toolbox($demo, $day));
 
                 return [
-                    'generate' => fn (): string => $this->briefing->generate($demo, $day),
+                    'generate' => fn (): string => NarrationContent::fromStored($this->briefing->generate($demo, $day))?->plainText() ?? '',
                     'evidence' => $evidence,
                     'direction' => self::merge($direction, self::loadDirection($evidence)),
                 ];

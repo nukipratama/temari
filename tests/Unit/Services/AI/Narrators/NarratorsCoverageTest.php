@@ -117,6 +117,11 @@ function speechAnswer(string $title = 'a quiet one', string $body = 'A quiet mor
     return json_encode(['reading' => $reading, 'title' => $title, 'body' => $body, 'claims' => $claims], JSON_THROW_ON_ERROR);
 }
 
+function briefingAnswer(string $title = 'a hook for today', string $body = 'A quiet day.', string $sessionType = 'rest', string $reading = 'plan_reason'): string
+{
+    return json_encode(['reading' => $reading, 'title' => $title, 'body' => $body, 'session_type' => $sessionType], JSON_THROW_ON_ERROR);
+}
+
 /** @return list<array{anchor: string, text: string, value: string|null, delta: string|null}> */
 function storedClaims(string $stored): array
 {
@@ -549,6 +554,75 @@ it('BriefingMascotVoiceNarrator prompt tells the model to fetch its own numbers 
         ->and($prompt)->toContain('NEVER make up');
 });
 
+it('BriefingMascotVoiceNarrator offers exactly the readings its prompts describe and commits to one first', function (string $constant, string $schemaConstant, string $count): void {
+    $schema = new ReflectionClass(BriefingMascotVoiceNarrator::class)->getConstant($schemaConstant);
+    $prompt = narratorConstant(BriefingMascotVoiceNarrator::class, $constant);
+
+    foreach (arrayOf(data_get($schema, 'reading.enum')) as $reading) {
+        expect($reading)->toBeString();
+        assert(is_string($reading));
+        expect($prompt)->toContain("`{$reading}`:");
+    }
+
+    expect($prompt)->toContain('COMMIT FIRST')
+        ->and($prompt)->toContain("The {$count}, and `reading` takes exactly one of these values");
+})->with([
+    'pre-run' => ['SYSTEM_PROMPT', 'READING_PROPERTY_SCHEMA', 'seven'],
+    'post-run' => ['POST_RUN_SYSTEM_PROMPT', 'POST_RUN_READING_PROPERTY_SCHEMA', 'six'],
+]);
+
+it('BriefingMascotVoiceNarrator prompts ask for a headline and a 120-180 word story in 1-2 connected paragraphs, at most 5 numbers', function (string $constant): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(BriefingMascotVoiceNarrator::class, $constant));
+
+    expect($prompt)
+        ->toContain('body (1-2 paragraphs, 120-180 words in total')
+        ->toContain('1-2 paragraphs separated by one blank line')
+        ->toContain('at least 3 connected sentences')
+        ->toContain('one beat of the same reading')
+        ->toContain('never one topic per paragraph like a checklist')
+        ->toContain('max 5 numbers across title + body combined')
+        ->toContain('WHERE THE LENGTH COMES FROM')
+        ->toContain('NO PADDING')
+        ->toContain('never to filler')
+        ->and($prompt)->not->toContain('REQUIRED STRUCTURE')
+        ->and($prompt)->not->toContain('PARAGRAPH 3')
+        ->and($prompt)->not->toContain('WHAT TO WATCH:')
+        ->and($prompt)->not->toContain('Max 150 words')
+        ->and($prompt)->not->toContain('mascot_voice');
+})->with(['pre-run' => ['SYSTEM_PROMPT'], 'post-run' => ['POST_RUN_SYSTEM_PROMPT']]);
+
+it('BriefingMascotVoiceNarrator prompt asks for a title with a hook for today, never the bare session label', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(BriefingMascotVoiceNarrator::class));
+
+    expect($prompt)
+        ->toContain('names today\'s session AND the hook that is specific to today')
+        ->toContain('Never the bare session label')
+        ->toContain('The title never carries the [words](session:today) link')
+        ->and($prompt)->not->toContain('This is the only part allowed to read dry');
+});
+
+it('BriefingMascotVoiceNarrator prompt keeps the single session link, the time-word ban and the intensity ceiling', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorPrompt(BriefingMascotVoiceNarrator::class));
+
+    expect($prompt)
+        ->toContain('At most ONE of these in the whole block')
+        ->toContain('This is the only link form allowed')
+        ->toContain('THE BAN IS ON THE WORDS, IN ANY POSITION')
+        ->toContain('INTENSITY CEILING (REQUIRED, NEVER BREAK)')
+        ->toContain('Start from what was prescribed')
+        ->toContain('NEVER compare');
+});
+
+it('BriefingMascotVoiceNarrator post-run prompt asks for a title about the run and the rest of the day, with no second run', function (): void {
+    $prompt = preg_replace('/\s+/', ' ', narratorConstant(BriefingMascotVoiceNarrator::class, 'POST_RUN_SYSTEM_PROMPT'));
+
+    expect($prompt)
+        ->toContain('the headline about the run that just landed and what it means for the rest of today and the week')
+        ->toContain('Do not offer another run today')
+        ->toContain('The `session_type` output field MUST be `rest`')
+        ->toContain('- "10.0 km done against 6.2 km planned, harder than the easy day asked for."');
+});
+
 // ── WeeklyRecapNarrator ───────────────────────────────────────────────
 
 it('WeeklyRecapNarrator stores its headline and story as JSON content, not the reading', function (): void {
@@ -893,7 +967,7 @@ it('hands the post-run story and the post-run brief the same plan verdict rule',
     [$speechCaller, $speechClient] = capturingCaller(speechAnswer());
     postRunNarrator($speechCaller)->generate($a, $d, 'easy');
 
-    [$briefCaller, $briefClient] = capturingCaller(json_encode(['mascot_voice' => '5 km logged, no plan for today.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR));
+    [$briefCaller, $briefClient] = capturingCaller(briefingAnswer('5 km logged, no plan for today.', 'Recovery is the rest of the day.'));
     bootMascotNarratorWithCaller($briefCaller)->generate($a->user, Carbon::today());
 
     sentSystemPromptCarriesPlanVerdictRule($speechClient);
@@ -912,12 +986,27 @@ it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent'
         'intent_evidence' => ['pace_sec' => 449, 'ceiling_pace_sec' => 408, 'basis' => 'pace'],
     ]);
     $client = new ClientFake([
-        fakeAzureResponse(json_encode(['mascot_voice' => '6.2 km done as planned, intent hit.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR)),
-        fakeAzureResponse(json_encode(['mascot_voice' => '6.2 km done as planned, and it stayed easy.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR)),
+        fakeAzureResponse(briefingAnswer('6.2 km done as planned, intent hit.', 'Recovery is the rest of the day.', reading: 'just_ran')),
+        fakeAzureResponse(briefingAnswer('6.2 km done as planned, and it stayed easy.', 'Recovery is the rest of the day.', reading: 'just_ran')),
     ]);
 
-    expect(bootMascotNarratorWithCaller(fakeStructuredCaller($client))->generate($user, Carbon::today()))
+    expect(nonNull(NarrationContent::fromStored(bootMascotNarratorWithCaller(fakeStructuredCaller($client))->generate($user, Carbon::today())))->title)
         ->toBe('6.2 km done as planned, and it stayed easy.');
+});
+
+it('BriefingMascotVoiceNarrator re-asks a post-run block that labels the intent only in its body', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today(), 'distance' => 6_200]);
+    $client = new ClientFake([
+        fakeAzureResponse(briefingAnswer('6.2 km done, and it stayed easy.', 'The day came to intent hit, so recovery is the rest of it.', reading: 'just_ran')),
+        fakeAzureResponse(briefingAnswer('6.2 km done, and it stayed easy.', 'Recovery is the rest of the day.', reading: 'just_ran')),
+    ]);
+
+    $stored = bootMascotNarratorWithCaller(fakeStructuredCaller($client))->generate($user, Carbon::today());
+
+    expect(nonNull(NarrationContent::fromStored($stored))->body)->toBe('Recovery is the rest of the day.');
+    $client->assertSent(Responses::class, fn (string $method, array $params): bool => str_contains((string) end($params['input'])['content'], 'Rewrite the title or body'));
 });
 
 it('BriefingMascotVoiceNarrator post-run prompt shows outcomes in words, not verdict labels', function (): void {
@@ -1610,12 +1699,50 @@ it('BriefingMascotVoiceNarrator returns the mascot voice on valid JSON', functio
     $user = User::factory()->create();
     Activity::factory()->for($user)->analyzed()->create();
 
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'Your km ticked up slightly. Good.',
-        'session_type' => 'rest',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer('a hook for today', 'Your km ticked up slightly. Good.'));
 
-    expect($narrator->generate($user, Carbon::today()))->toBe('Your km ticked up slightly. Good.');
+    expect($narrator->generate($user, Carbon::today()))
+        ->toBe(json_encode(['title' => 'a hook for today', 'body' => 'Your km ticked up slightly. Good.'], JSON_THROW_ON_ERROR));
+});
+
+it('BriefingMascotVoiceNarrator stores a capitalised headline in lowercase and leaves the body alone', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+
+    $stored = bootMascotNarrator(briefingAnswer('Easy 30 today, because Thursday was a tempo.', 'Thursday was a tempo. Keep it loose.'))->generate($user, Carbon::today());
+
+    expect(NarrationContent::fromStored($stored))->toEqual(new NarrationContent('easy 30 today, because Thursday was a tempo.', 'Thursday was a tempo. Keep it loose.'));
+});
+
+it('BriefingMascotVoiceNarrator asks for reading, title, body and session type, the reading picked from the day\'s seven angles', function (): void {
+    $user = User::factory()->create();
+    [$caller, $client] = capturingCaller(briefingAnswer());
+
+    bootMascotNarratorWithCaller($caller)->generate($user, Carbon::today());
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = data_get($params, 'text.format.schema');
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body', 'session_type']
+            && data_get($schema, 'properties.reading.enum') === ['plan_reason', 'week_so_far', 'last_run', 'load', 'readiness', 'streak', 'pattern']
+            && ! array_key_exists('mascot_voice', arrayOf(data_get($schema, 'properties')));
+    });
+});
+
+it('BriefingMascotVoiceNarrator asks the post-run block for a subset of those readings plus just_ran', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    ActivityDetail::factory()->for($activity)->create(['start_date_local' => Carbon::today(), 'distance' => 5_000]);
+    [$caller, $client] = capturingCaller(briefingAnswer('5 km done, no plan for today.', 'Recovery is the rest of the day.', reading: 'just_ran'));
+
+    bootMascotNarratorWithCaller($caller)->generate($user, Carbon::today());
+
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $schema = data_get($params, 'text.format.schema');
+
+        return data_get($schema, 'required') === ['reading', 'title', 'body', 'session_type']
+            && data_get($schema, 'properties.reading.enum') === ['just_ran', 'plan_reason', 'week_so_far', 'load', 'readiness', 'streak'];
+    });
 });
 
 it('BriefingMascotVoiceNarrator keeps a citation the plan actually backs', function (): void {
@@ -1623,13 +1750,20 @@ it('BriefingMascotVoiceNarrator keeps a citation the plan actually backs', funct
     Activity::factory()->for($user)->analyzed()->create();
     PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
 
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'so I am keeping this to [an easy run](session:today) today.',
-        'session_type' => 'rest',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer(body: 'So I am keeping this to [an easy run](session:today) today.'));
 
-    expect($narrator->generate($user, Carbon::today()))
-        ->toBe('so I am keeping this to [an easy run](session:today) today.');
+    expect(nonNull(NarrationContent::fromStored($narrator->generate($user, Carbon::today())))->body)
+        ->toBe('So I am keeping this to [an easy run](session:today) today.');
+});
+
+it('BriefingMascotVoiceNarrator unwraps a citation the model put in the headline', function (): void {
+    $user = User::factory()->create();
+    Activity::factory()->for($user)->analyzed()->create();
+    PlannedSession::factory()->for($user)->create(['date' => Carbon::today()->toDateString()]);
+
+    $stored = bootMascotNarrator(briefingAnswer('[an easy run](session:today) with a hook.', 'Keep it loose.'))->generate($user, Carbon::today());
+
+    expect(nonNull(NarrationContent::fromStored($stored))->title)->toBe('an easy run with a hook.');
 });
 
 it('BriefingMascotVoiceNarrator switches to the post-run contract after detailed ingest', function (): void {
@@ -1646,10 +1780,7 @@ it('BriefingMascotVoiceNarrator switches to the post-run contract after detailed
         'compliance_score' => 161,
         'intent_verdict' => 'too_hard',
     ]);
-    [$caller, $client] = capturingCaller(json_encode([
-        'mascot_voice' => '10.0 km done against 6.2 km planned.',
-        'session_type' => 'rest',
-    ], JSON_THROW_ON_ERROR));
+    [$caller, $client] = capturingCaller(briefingAnswer('10.0 km done against 6.2 km planned.', 'Recovery is the rest of the day.', reading: 'just_ran'));
 
     bootMascotNarratorWithCaller($caller)->generate($user, Carbon::today());
 
@@ -1677,10 +1808,7 @@ it('BriefingMascotVoiceNarrator uses rule-based recovery if the model recommends
         'distance_score' => 63,
         'intent_verdict' => 'hit',
     ]);
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'go run again.',
-        'session_type' => 'easy_only',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer('go run again.', 'Go run again.', 'easy_only', 'just_ran'));
 
     $copy = $narrator->generate($user, Carbon::today());
 
@@ -1698,18 +1826,15 @@ it('BriefingMascotVoiceNarrator unwraps a citation on a day no plan covers', fun
     $user = User::factory()->create();
     Activity::factory()->for($user)->analyzed()->create();
 
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'so I am keeping this to [an easy run](session:today) today.',
-        'session_type' => 'rest',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer(body: 'So I am keeping this to [an easy run](session:today) today.'));
 
-    expect($narrator->generate($user, Carbon::today()))
-        ->toBe('so I am keeping this to an easy run today.');
+    expect(nonNull(NarrationContent::fromStored($narrator->generate($user, Carbon::today())))->body)
+        ->toBe('So I am keeping this to an easy run today.');
 });
 
-it('BriefingMascotVoiceNarrator throws on missing mascot_voice key', function (): void {
+it('BriefingMascotVoiceNarrator throws on a missing body key', function (): void {
     $user = User::factory()->create();
-    $narrator = bootMascotNarrator(json_encode(['session_type' => 'rest'], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(json_encode(['reading' => 'load', 'title' => 'x', 'session_type' => 'rest'], JSON_THROW_ON_ERROR));
     $narrator->generate($user, Carbon::today());
 })->throws(UnavailableException::class, 'missing required fields');
 
@@ -1717,10 +1842,7 @@ it('BriefingMascotVoiceNarrator clamps to a deterministic message when session_t
     $user = User::factory()->create();
     seedDemandingRunYesterday($user);
 
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => "Easy long run, 8-12 km.\n\nThis week closes well on one long session.",
-        'session_type' => 'quality_ok',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer('a long run to close the week.', 'This week closes well on one long session.', 'quality_ok', 'week_so_far'));
 
     $voice = $narrator->generate($user, Carbon::today());
 
@@ -1741,12 +1863,9 @@ it('BriefingMascotVoiceNarrator clamped voices keep a lowercase headline over a 
 it('BriefingMascotVoiceNarrator clamps when session_type is unparseable', function (): void {
     $user = User::factory()->create();
 
-    $narrator = bootMascotNarrator(json_encode([
-        'mascot_voice' => 'Free session today.',
-        'session_type' => 'nonsense',
-    ], JSON_THROW_ON_ERROR));
+    $narrator = bootMascotNarrator(briefingAnswer('a free session today.', 'Free session today.', 'nonsense'));
 
-    expect($narrator->generate($user, Carbon::today()))->not->toBe('Free session today.');
+    expect($narrator->generate($user, Carbon::today()))->not->toContain('Free session today.');
 });
 
 it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Temari note when Done', function (): void {
@@ -1758,7 +1877,7 @@ it('BriefingMascotVoiceNarrator feeds prev_narrative from the prior day Temari n
         'discriminator' => '2026-05-17',
     ]);
 
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
+    $context = bootMascotNarrator('{}')->context($user, Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBe('Yesterday your km were up.');
 });
@@ -1773,7 +1892,7 @@ it('BriefingMascotVoiceNarrator omits prev_narrative when the prior day Temari n
         'status' => AnalysisStatus::Pending,
     ]);
 
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-18'));
+    $context = bootMascotNarrator('{}')->context($user, Carbon::parse('2026-05-18'));
 
     expect($context['prev_narrative'])->toBeNull();
 });
@@ -2139,7 +2258,7 @@ it('narrator prompt examples follow the casing rule: sentence case from two sent
 })->with([
     'post-run story titles stay lowercase, claim texts in sentence case' => [PostRunSpeechNarrator::class, ['- "first run in eleven days, and the legs remembered most of it."', '- "the last two km paid for the first three."', '"Km 5 came in at 5:18', 'You had something left.'], ['"First run in eleven days', '"km 5 came in', 'you had something left']],
     'profile voice' => [ProfileVoiceNarrator::class, ['"Six of your last ten sessions', 'Those two facts are the', '"Eleven weeks in a row with a run in them. That\'s not motivation'], ['"six of your last ten', 'those two facts', 'that\'s not motivation any more']],
-    'briefing' => [BriefingMascotVoiceNarrator::class, ['"easy tempo, 35-45 minutes." / "easy run, 30 minutes."', 'Right: "easy run, 7 km."', '"easy run, 30-40 minutes.', '"A light'], ['"Easy tempo, 35-45 minutes."', 'Right: "Easy run, 7 km."', '"Easy run, 30-40 minutes.', '"a light']],
+    'briefing titles stay lowercase, the posture quote in sentence case' => [BriefingMascotVoiceNarrator::class, ['- "easy 30 today, because Thursday\'s tempo is still in the legs."', '- "a long run on the board, and the week is already three runs deep."', '"A light'], ['"Easy 30 today', '"A long run on the board', '"a light']],
     'weekly recap titles stay lowercase' => [WeeklyRecapNarrator::class, ['- "two runs this week, down from four, and the scoreboard noticed."'], []],
     'monthly recap titles stay lowercase' => [MonthlyRecapNarrator::class, ['- "four weeks, and the distance came down every one of them."'], []],
     'trend read title stays lowercase' => [TrendReadNarrator::class, ['"training load eased back'], []],
@@ -2362,7 +2481,7 @@ it('BriefingMascotVoiceNarrator passes the five newest earlier daily notes, newe
         ]);
     }
 
-    $context = bootMascotNarrator('{"mascot_voice":"x"}')->context($user, Carbon::parse('2026-05-17'));
+    $context = bootMascotNarrator('{}')->context($user, Carbon::parse('2026-05-17'));
 
     expect($context['recent_openers'])->toBe([
         'sixteenth',

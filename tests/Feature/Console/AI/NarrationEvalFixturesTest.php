@@ -6,9 +6,11 @@ use App\Console\Commands\AI\NarrationEvalFixtures;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\User;
+use App\Services\AI\StructuredChatCaller;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use OpenAI\Testing\ClientFake;
 
 uses(RefreshDatabase::class);
 
@@ -100,6 +102,22 @@ it('builds the post run briefing against a run logged today', function (): void 
     DB::rollBack();
 
     expect($ranToday)->toBeTrue();
+});
+
+it('hands the post run briefing to the eval as a plain headline over its body', function (): void {
+    $demo = User::factory()->demo()->create();
+    $client = new ClientFake([fakeAzureResponse(json_encode(['reading' => 'just_ran', 'title' => '8.0 km done as planned.', 'body' => 'Recovery is the rest of the day.', 'session_type' => 'rest'], JSON_THROW_ON_ERROR))]);
+    app()->instance(StructuredChatCaller::class, fakeStructuredCaller($client));
+    $fixtures = collect(app(NarrationEvalFixtures::class)->for($demo, ['briefing_mascot_voice']))->keyBy('name');
+
+    DB::beginTransaction();
+    $case = nonNull($fixtures->get('hit_easy_today'))->build->__invoke();
+    $generate = data_get($case, 'generate');
+    assert($generate instanceof Closure);
+    $text = $generate();
+    DB::rollBack();
+
+    expect($text)->toBe("8.0 km done as planned.\n\nRecovery is the rest of the day.");
 });
 
 it('derives the load direction from the evidence the model reads', function (): void {

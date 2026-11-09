@@ -27,7 +27,11 @@ function evalVoices(int $count = 30): array
 function evalClient(array $voices): ClientFake
 {
     $client = new ClientFake(array_map(
-        fn (string $voice): mixed => fakeAzureResponse(json_encode(['mascot_voice' => $voice, 'session_type' => 'rest'], JSON_THROW_ON_ERROR)),
+        function (string $voice): mixed {
+            [$title, $body] = explode("\n\n", $voice, 2);
+
+            return fakeAzureResponse(json_encode(['reading' => 'just_ran', 'title' => $title, 'body' => $body, 'session_type' => 'rest'], JSON_THROW_ON_ERROR));
+        },
         $voices,
     ));
     app()->instance(StructuredChatCaller::class, fakeStructuredCaller($client));
@@ -179,7 +183,7 @@ it('runs every kind and reports each fixture against the demo history', function
     $json = static fn (array $payload): string => json_encode($payload, JSON_THROW_ON_ERROR);
     $claims = $json(['reading' => 'effort_vs_usual', 'title' => 'a quicker one than usual.', 'body' => 'The pace sat ahead of your normal from the start.', 'claims' => [['anchor' => 'split:1', 'text' => 'km 1 was quicker than your usual.', 'value' => '6:00/km', 'delta' => null]]]);
     $client = new ClientFake([
-        ...array_fill(0, 2, fakeAzureResponse($json(['mascot_voice' => "8 km done.\n\nrest up.\n\neat well.", 'session_type' => 'rest']))),
+        ...array_fill(0, 2, fakeAzureResponse($json(['reading' => 'just_ran', 'title' => '8 km done.', 'body' => "Rest up.\n\nEat well.", 'session_type' => 'rest']))),
         ...array_fill(0, 3, fakeAzureResponse($claims)),
         fakeAzureResponse($json(['evidence_primary' => 'consistent mornings', 'evidence_secondary' => 'steady weeks', 'profile_voice' => 'a steady runner.'])),
     ]);

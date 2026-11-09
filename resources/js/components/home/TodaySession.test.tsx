@@ -11,14 +11,18 @@ import TodaySession from './TodaySession';
 
 vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
-function briefing(content: string, status = 'done'): BriefingResult {
+function briefing(
+    content: string,
+    status = 'done',
+    title: string | null = null,
+): BriefingResult {
     return {
         firstRead: false,
         mascotVoice: {
             id: 4,
             status: status as BriefingResult['mascotVoice']['status'],
             content,
-            title: null,
+            title,
             type: 'briefing_mascot_voice',
             subject_type: 'briefing_user_day',
             subject_id: 1,
@@ -229,6 +233,87 @@ describe('TodaySession', () => {
         expect(screen.getByText('Keep it under 6:00.')).not.toHaveClass(
             'font-serif',
         );
+    });
+
+    it('renders a titled briefing as the serif headline over its story at reading size, breaks kept and lines capped at prose width', () => {
+        const body = [
+            'Thursday is still in the legs, and the week is two runs deep.',
+            'Hold your normal pace today.',
+        ].join('\n\n');
+        const { container } = render(
+            <TodaySession
+                briefing={briefing(
+                    body,
+                    'done',
+                    'easy 30 today, because thursday\u2019s tempo is still in the legs.',
+                )}
+            />,
+        );
+
+        const headline = screen.getByText(
+            'easy 30 today, because thursday\u2019s tempo is still in the legs.',
+        );
+        const story = container.querySelector<HTMLElement>('p.narration');
+        expect(headline).toHaveClass('font-serif', 'italic');
+        expect(story?.textContent).toBe(body);
+        expect(story).not.toHaveClass('narration-dense');
+        expect(story?.closest('.whitespace-pre-line')).not.toBeNull();
+        expect(story?.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
+            headline,
+        );
+        expect(
+            headline.compareDocumentPosition(story as HTMLElement) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it('does not split a titled briefing body into a second headline', () => {
+        const { container } = render(
+            <TodaySession
+                briefing={briefing(
+                    'Keep it easy. Breathing loose enough to talk.\n\nDrop to a walk if HR climbs early.',
+                    'done',
+                    'a hook for today.',
+                )}
+            />,
+        );
+
+        expect(container.querySelectorAll('.font-serif')).toHaveLength(1);
+        expect(container.querySelector('.narration-dense')).toBeNull();
+    });
+
+    it('still draws the session citation inside a titled briefing body', () => {
+        render(
+            <TodaySession
+                briefing={briefing(
+                    'So I am keeping this to [an easy run](session:today) today.',
+                    'done',
+                    'a hook for today.',
+                )}
+                today={day()}
+                drawnAnchors={new Set(['session:today'])}
+            />,
+        );
+
+        expect(
+            screen.getByRole('button', { name: /show .* on this page/i }),
+        ).toHaveTextContent('an easy run');
+    });
+
+    it('keeps an untitled briefing in the compact lead and body rendering', () => {
+        const { container } = render(
+            <TodaySession
+                briefing={briefing('Easy 6k.\n\nKeep it under 6:00.')}
+            />,
+        );
+
+        expect(screen.getByText('Keep it under 6:00.')).toHaveClass(
+            'narration-dense',
+        );
+        expect(container.querySelector('p.narration')).toBeNull();
+        expect(
+            container.querySelector('[class*="[&_p]:max-w-prose"]'),
+        ).toBeNull();
     });
 
     it('leads with the opening line and follows with the rest', () => {
