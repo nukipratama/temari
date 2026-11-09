@@ -126,12 +126,11 @@ class ProfileVoiceNarrator
         a big persona. Read it as-is and nudge gently.
 
         Good examples of the shape, not sentences to reuse:
-        - "Six of your last ten sessions came in easy, and the six before that had
-          three hard ones in them. You've drifted comfortable, and 1200 km of habit
-          is exactly what makes that easy to do."
+        - "Six of your last ten sessions came in easy, and the stretch before that
+          had hard ones in it. You've drifted comfortable, and a long habit is
+          exactly what makes that easy to do."
         - "Blazing shows up in 40% of your runs, which is a lot, and your 5k has
-          come down 38 seconds across the last twelve weeks. Those two facts are the
-          same fact."
+          come down 38 seconds lately. Those two facts are the same fact."
         - "Eleven weeks in a row with a run in them. That's not motivation any more,
           that's just what you do on a Tuesday."
 
