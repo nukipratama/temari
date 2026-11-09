@@ -6,10 +6,13 @@ namespace App\Services\AI\Narrators;
 
 use App\Actions\Run\Plan\ResolveActiveRaceAction;
 use App\Actions\Run\Plan\ResolveSeasonAction;
+use App\Models\AI\Analysis;
+use App\Models\AI\AnalysisVersion;
 use App\Models\RaceGoal;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\AI\Agent\AgentToolbox;
+use App\Services\AI\AnalysisType;
 use App\Services\AI\Agent\Tools\PlanAdherenceTool;
 use App\Services\AI\Agent\Tools\RaceOutlookTool;
 use App\Services\AI\Agent\Tools\TrendRangeTool;
@@ -196,9 +199,9 @@ class TrendReadNarrator
         - "on track, with the long run doing most of the work."
         PROMPT;
 
-    private const string SYSTEM_PROMPT = self::ARC_TASK."\n\n".self::SHARED_RULES;
+    private const string SYSTEM_PROMPT = self::ARC_TASK."\n\n".self::SHARED_RULES."\n\n".NarratorContinuity::RULE;
 
-    private const string RACE_SYSTEM_PROMPT = self::RACE_TASK."\n\n".self::SHARED_RULES;
+    private const string RACE_SYSTEM_PROMPT = self::RACE_TASK."\n\n".self::SHARED_RULES."\n\n".NarratorContinuity::RULE;
 
     /** @var array<string, array<string, mixed>> */
     private const array READING_PROPERTY_SCHEMA = [
@@ -234,7 +237,10 @@ class TrendReadNarrator
         $decoded = $this->caller->call(
             kind: 'trend_read',
             systemPrompt: $race instanceof RaceGoal ? self::RACE_SYSTEM_PROMPT : self::SYSTEM_PROMPT,
-            context: ['closed_weeks_through' => $through->toDateString()],
+            context: [
+                'closed_weeks_through' => $through->toDateString(),
+                ...NarratorContinuity::fields($this->previousReads($user)),
+            ],
             schemaName: 'TemariTrendRead',
             requiredKeys: ['reading', 'title', 'body'],
             options: new ChatCallOptions(
@@ -250,6 +256,32 @@ class TrendReadNarrator
         assert(is_string($decoded['title']) && is_string($decoded['body']));
 
         return new NarrationContent($decoded['title'], $decoded['body'])->toStored();
+    }
+
+    /**
+     * The athlete's earlier trend reads, newest first: the one row's content, which still holds the
+     * last read while a regeneration runs, then the versions it superseded.
+     *
+     * @return list<string>
+     */
+    public function previousReads(User $user): array
+    {
+        $row = Analysis::query()
+            ->forSubject(AnalysisType::TREND_READ_SUBJECT_TYPE, $user->id, AnalysisType::TrendRead, AnalysisType::TREND_READ_RANGES[0])
+            ->first(['id', 'content']);
+
+        if ($row === null) {
+            return [];
+        }
+
+        $versions = AnalysisVersion::query()
+            ->where('analysis_id', $row->id)
+            ->orderByDesc('id')
+            ->limit(NarratorContinuity::WINDOW)
+            ->pluck('content')
+            ->all();
+
+        return array_values(array_filter([$row->content, ...$versions], is_string(...)));
     }
 
     public function toolbox(User $user, ?RaceGoal $race, Carbon $through): AgentToolbox

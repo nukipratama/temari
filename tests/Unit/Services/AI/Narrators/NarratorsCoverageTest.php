@@ -21,6 +21,7 @@ use App\Models\RunCard;
 use App\Models\StoryLine;
 use App\Models\User;
 use App\Models\WeeklySnapshot;
+use App\Models\AI\AnalysisVersion;
 use App\Services\AI\AnalysisStatus;
 use App\Services\AI\AnalysisType;
 use App\Services\AI\TemariPersona;
@@ -932,7 +933,8 @@ it('TrendReadNarrator picks the race read from the data: an active race gets the
             && array_column(arrayOf(data_get($params, 'tools')), 'name') === $tools
             && str_contains($system, trim(narratorConstant(TrendReadNarrator::class, $promptConstant)))
             && data_get($params, 'max_output_tokens') === 2500
-            && $params['input'][1]['content'] === json_encode(['closed_weeks_through' => '2026-08-16'], JSON_THROW_ON_ERROR);
+            && str_contains($system, NarratorContinuity::RULE)
+            && $params['input'][1]['content'] === json_encode(['closed_weeks_through' => '2026-08-16', 'prev_narrative' => null, 'prev_opener' => null, 'recent_openers' => []], JSON_THROW_ON_ERROR);
     });
     Carbon::setTestNow();
 })->with([
@@ -978,6 +980,76 @@ it('TrendReadNarrator reads race adherence across the build its season opened', 
     expect(data_get($adherence, 'from'))->toBe('2026-05-04')
         ->and(data_get($adherence, 'prescribed'))->toBe(1);
     Carbon::setTestNow();
+});
+
+function trendReadRow(User $user, ?string $content, string $discriminator = 'arc'): Analysis
+{
+    return Analysis::factory()->create([
+        'subject_type' => AnalysisType::TREND_READ_SUBJECT_TYPE,
+        'subject_id' => $user->id,
+        'analysis_type' => AnalysisType::TrendRead,
+        'discriminator' => $discriminator,
+        'status' => AnalysisStatus::Processing,
+        'content' => $content,
+    ]);
+}
+
+/** @param list<string> $openers */
+function trendReadVersions(Analysis $row, array $openers): void
+{
+    foreach ($openers as $opener) {
+        AnalysisVersion::query()->create(['analysis_id' => $row->id, 'content' => jsonNarration($opener, 'An older read.')]);
+    }
+}
+
+it('TrendReadNarrator rotates against its own row: the read it still holds, then its versions newest first', function (?string $current, array $versions, array $openers, ?string $prevNarrative): void {
+    /** @var list<string> $versions */
+    $user = User::factory()->create();
+    if ($current !== null || $versions !== []) {
+        trendReadVersions(trendReadRow($user, $current), $versions);
+    }
+    trendReadVersions(trendReadRow(User::factory()->create(), jsonNarration('another athlete', 'Body.')), ['another athlete older']);
+    [$caller, $client] = capturingCaller(trendReadAnswer());
+
+    trendReadNarrator($caller)->generate($user);
+
+    $client->assertSent(Responses::class, function (string $method, array $params) use ($openers, $prevNarrative): bool {
+        $context = json_decode(Arr::string($params['input'][1], 'content'), true);
+
+        return is_array($context)
+            && $context['recent_openers'] === $openers
+            && $context['prev_opener'] === ($openers[0] ?? null)
+            && $context['prev_narrative'] === $prevNarrative;
+    });
+})->with([
+    'no history' => [null, [], [], null],
+    'the current read only' => [jsonNarration('the read it holds', 'Body.'), [], ['the read it holds'], "the read it holds\n\nBody."],
+    'a plain pre-redesign read' => ['the six weeks held.', [], ['the six weeks held.'], 'the six weeks held.'],
+    'the current read, then versions newest first' => [jsonNarration('the read it holds', 'Body.'), ['oldest', 'middle', 'newest'], ['the read it holds', 'newest', 'middle', 'oldest'], "the read it holds\n\nBody."],
+    'versions only, before a first read landed' => [null, ['oldest', 'newest'], ['newest', 'oldest'], "newest\n\nAn older read."],
+    'capped at the window' => [jsonNarration('the read it holds', 'Body.'), ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'], ['the read it holds', 'v6', 'v5', 'v4', 'v3'], "the read it holds\n\nBody."],
+]);
+
+it('TrendReadNarrator ignores a retired 7d trend read and reads its versions in one bounded query', function (): void {
+    $user = User::factory()->create();
+    trendReadVersions(trendReadRow($user, jsonNarration('a 7d read', 'Body.'), '7d'), ['a 7d version']);
+    trendReadVersions(trendReadRow($user, jsonNarration('the arc read', 'Body.')), ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7']);
+    [$caller, $client] = capturingCaller(trendReadAnswer());
+
+    DB::enableQueryLog();
+    trendReadNarrator($caller)->generate($user);
+    $versionQueries = array_values(array_filter(
+        array_column(DB::getQueryLog(), 'query'),
+        fn (string $query): bool => str_contains($query, 'analysis_versions'),
+    ));
+
+    expect($versionQueries)->toHaveCount(1)
+        ->and($versionQueries[0])->toContain('limit 5');
+    $client->assertSent(Responses::class, function (string $method, array $params): bool {
+        $context = json_decode(Arr::string($params['input'][1], 'content'), true);
+
+        return is_array($context) && $context['recent_openers'] === ['the arc read', 'v7', 'v6', 'v5', 'v4'];
+    });
 });
 
 /**
