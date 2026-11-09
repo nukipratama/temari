@@ -15,7 +15,7 @@ Briefing and analysis narration is LLM-backed via Azure OpenAI through openai-ph
 - Before fixing narration text, confirm which producer wrote it: the LLM narrator or
   `RuleBasedNarrationFiller`.
 - Put a new narrator instruction inside the prompt's existing structure block (COMMIT FIRST / SHAPE /
-  NO PADDING), never as a new top-level section, where the model ignores it.
+  NO PADDING, or FLOW in the profile voice), never as a new top-level section, where the model ignores it.
 - Send narrators no signed numbers: pass a magnitude plus a relation word.
 - Verify narrator/prompt changes with a capped local call that the owner runs, since no checkout an
   agent works in holds Azure keys: write the `tinker --execute` command calling `generate()` inside a
