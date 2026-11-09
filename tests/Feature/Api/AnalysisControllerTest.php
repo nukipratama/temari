@@ -55,6 +55,47 @@ it('rejects unknown analysis types with 422', function (): void {
         ->assertJson(['error' => 'unknown_analysis_type']);
 });
 
+it('refuses a run insight trigger on an old run without dispatching or touching its row', function (): void {
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    $legacy = Analysis::factory()->failed()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
+    $before = $legacy->refresh()->only(['status', 'attempts', 'updated_at']);
+
+    $this->actingAs($user)
+        ->postJson("/api/analyses/run_insight/{$activity->id}/trigger")
+        ->assertStatus(422)
+        ->assertJson(['error' => 'unknown_analysis_type']);
+
+    Bus::assertNothingDispatched();
+    expect($legacy->refresh()->only(['status', 'attempts', 'updated_at']))->toEqual($before)
+        ->and(Analysis::query()->where('subject_id', $activity->id)->count())->toBe(1);
+});
+
+it('still reads a stored run insight row for an old run', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    ActivityDetail::factory()->for($activity)->create();
+    Analysis::factory()->done('[{"anchor":"split:1","text":"Km 1.","value":null,"delta":null}]')->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->getJson("/api/analyses/run_insight/{$activity->id}")
+        ->assertOk()
+        ->assertJson(['status' => 'done', 'type' => 'run_insight']);
+});
+
 it('triggers a briefing suggestion analysis for the authenticated user', function (): void {
     $user = User::factory()->create();
 
@@ -576,7 +617,7 @@ it('recomputes the stream summary when a zone-dependent run block is re-triggere
     app()->instance(SummaryRecomputer::class, $recomputer);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/run_insight/{$activity->id}/trigger")
+        ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
 });
 
@@ -590,7 +631,7 @@ it('skips the recompute when the user has no custom profile, since the stored su
     app()->instance(SummaryRecomputer::class, $recomputer);
 
     $this->actingAs($user)
-        ->postJson("/api/analyses/run_insight/{$activity->id}/trigger")
+        ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
         ->assertSuccessful();
 });
 
@@ -618,21 +659,6 @@ it('skips the recompute for a zone-dependent recap whose subject is not a run', 
         ->assertOk();
 
     Carbon::setTestNow();
-});
-
-it('skips the recompute for a block whose narration does not depend on zones', function (): void {
-    $user = User::factory()->create();
-    RunnerProfile::factory()->for($user)->create();
-    $activity = Activity::factory()->for($user)->analyzed()->create();
-    ActivityDetail::factory()->for($activity)->create();
-
-    $recomputer = Mockery::mock(SummaryRecomputer::class);
-    $recomputer->shouldNotReceive('recomputeFromStoredStreams');
-    app()->instance(SummaryRecomputer::class, $recomputer);
-
-    $this->actingAs($user)
-        ->postJson("/api/analyses/post_run_speech/{$activity->id}/trigger")
-        ->assertSuccessful();
 });
 
 // ── trigger → defensive guard ───────────────────────────────────────────────

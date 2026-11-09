@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\User;
 use App\Services\AI\AnalysisOrigin;
@@ -43,6 +44,27 @@ it('re-arms every failed block for the athlete and re-dispatches without invalid
 
     expect($underBudget->refresh()->attempts)->toBe(0)
         ->and($deadLettered->refresh()->attempts)->toBe(0);
+});
+
+it('never re-arms a failed run insight block, on either recovery', function (): void {
+    $user = User::factory()->create();
+    $activity = Activity::factory()->for($user)->create();
+    $insight = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Failed,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+    ]);
+
+    $service = $this->mock(AnalysisService::class);
+    $service->shouldNotReceive('request');
+    $service->shouldNotReceive('requestRuleBased');
+
+    expect(app(ReArmNarrationAction::class)->retryFailed($user->id))->toBe(0)
+        ->and(app(ReArmNarrationAction::class)->reArmDeadLettered($user->id))->toBe(0)
+        ->and($insight->refresh()->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 });
 
 it('re-arms only the dead-lettered blocks', function (): void {

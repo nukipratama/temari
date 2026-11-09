@@ -120,7 +120,7 @@ it('refuses every authenticated route that is handed another user\'s resource id
     // Parameters that name no owner: the controller keys its lookup on the
     // signed-in user, so there is no foreign id an attacker could substitute.
     $unownedParameters = [
-        'type' => 'run_insight',
+        'type' => 'post_run_speech',
         'month' => '2026-05',
         'date' => '2026-05-04',
     ];

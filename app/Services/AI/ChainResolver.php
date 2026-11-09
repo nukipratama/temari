@@ -30,8 +30,7 @@ class ChainResolver
         return match ($type) {
             AnalysisType::WeeklyRecap => $subjectId === $this->weeklyChainHeadId($user),
             AnalysisType::MonthlyRecap => $discriminator !== null && $discriminator === $this->monthlyChainHeadMonth($user),
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight => $subjectId === Activity::latestIdForUser($user->id),
+            AnalysisType::PostRunSpeech => $subjectId === Activity::latestIdForUser($user->id),
             default => false,
         };
     }
@@ -49,8 +48,7 @@ class ChainResolver
         return match ($type) {
             AnalysisType::WeeklyRecap => $this->earliestUnfilledWeeklyLink($user),
             AnalysisType::MonthlyRecap => $this->earliestUnfilledMonthlyLink($user),
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight => $this->earliestUnfilledActivityLink($user, $type),
+            AnalysisType::PostRunSpeech => $this->earliestUnfilledActivityLink($user, $type),
             default => null,
         };
     }

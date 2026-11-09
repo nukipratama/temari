@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Jobs\Strava\SyncActivitiesJob;
+use App\Models\Activity;
 use App\Models\AI\Analysis;
 use App\Models\Analytics\DevtoolsAction;
 use App\Models\User;
@@ -235,6 +236,23 @@ describe('replay', function (): void {
         $this->post(athletePath($user, '/replay'), ['analysis_id' => $block->id])
             ->assertRedirect()
             ->assertSessionHas('info', fn (string $message): bool => str_contains($message, 'refused'));
+
+        expect(DevtoolsAction::query()->count())->toBe(0);
+    });
+
+    it('404s on a run insight block, which is no longer narrated', function (): void {
+        $user = narrationAthlete();
+        $activity = Activity::factory()->for($user)->create();
+        $block = narrationBlock($user, AnalysisType::RunInsight, [
+            'subject_type' => Activity::class,
+            'subject_id' => $activity->id,
+            'discriminator' => null,
+            'status' => AnalysisStatus::Done,
+            'content' => '[]',
+        ]);
+        $this->mock(AnalysisService::class)->shouldNotReceive('request');
+
+        $this->post(athletePath($user, '/replay'), ['analysis_id' => $block->id])->assertNotFound();
 
         expect(DevtoolsAction::query()->count())->toBe(0);
     });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\AI\RecentlyActiveUsers;
 use App\Enums\IngestState;
+use App\Jobs\AI\AnalyzeActivityJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\AI\Analysis;
@@ -24,6 +25,7 @@ use App\Services\AI\RecapHydrationReadiness;
 use App\Services\AI\SelfHealer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Mockery\MockInterface;
 
@@ -431,6 +433,25 @@ it('fills a stalled per-activity link older than the backfill depth cap rule-bas
         ->and($captured[0]['subjectId'])->toBe($tooOld->id)
         ->and($captured[0]['ruleBased'])->toBeTrue();
 });
+
+it('resumes or fills a stalled run through its speech alone, minting no run insight row', function (string $startDate, bool $dispatched): void {
+    config()->set('ai.backfill_max_age_days', 365);
+    config()->set('azure_openai.uri', 'https://x.openai.azure.com/x');
+    config()->set('azure_openai.api_key', 'fake');
+    Bus::fake();
+    $user = User::factory()->create(['last_seen_at' => Carbon::now()]);
+    $run = pendingActivityChainLink($user, $startDate);
+
+    expect(selfHealer(app(AnalysisService::class))->run())->toBe(1)
+        ->and(Analysis::query()->where('subject_type', Activity::class)->where('subject_id', $run->id)->pluck('analysis_type')->all())
+        ->toBe([AnalysisType::PostRunSpeech]);
+    $dispatched
+        ? Bus::assertDispatched(fn (AnalyzeActivityJob $job): bool => $job->subjectId === $run->id)
+        : Bus::assertNotDispatched(AnalyzeActivityJob::class);
+})->with([
+    'a recent run resumes through the LLM' => ['2026-06-01 06:00:00', true],
+    'a run past the depth cap is filled rule-based' => ['2025-01-01 06:00:00', false],
+]);
 
 it('re-kicks the earliest stalled CardFlavor per user with invalidate:false', function (): void {
     $user = User::factory()->create();
@@ -1000,6 +1021,26 @@ it('re-arms every active athlete block that failed since an hour before the paus
         ->and(nonNull($done->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
         ->and(nonNull($demo->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS)
         ->and(nonNull($away->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
+});
+
+it('leaves a run insight row that failed during the pause as it is', function (): void {
+    $user = User::factory()->create(['last_seen_at' => Carbon::now()]);
+    $activity = Activity::factory()->for($user)->analyzed()->create();
+    $insight = Analysis::factory()->create([
+        'subject_type' => Activity::class,
+        'subject_id' => $activity->id,
+        'analysis_type' => AnalysisType::RunInsight,
+        'discriminator' => null,
+        'status' => AnalysisStatus::Failed,
+        'attempts' => Analysis::MAX_SELF_HEAL_ATTEMPTS,
+        'updated_at' => Carbon::parse('2026-06-17 09:00:00'),
+    ]);
+
+    $captured = [];
+
+    expect(selfHealer(captureResumeRequests($captured))->retryFailedDuringPause(Carbon::parse('2026-06-17 08:00:00')))->toBe(0)
+        ->and($captured)->toBe([])
+        ->and(nonNull($insight->fresh())->attempts)->toBe(Analysis::MAX_SELF_HEAL_ATTEMPTS);
 });
 
 it('resumes both a briefing and a profile-voice row for a long-connected athlete despite a stuck old backlog entry', function (): void {

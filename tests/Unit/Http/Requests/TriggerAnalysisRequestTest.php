@@ -74,8 +74,8 @@ it('folds the route segments into the validation payload', function (): void {
     ]);
 });
 
-it('accepts every known analysis type against its enum rule', function (): void {
-    foreach (AnalysisType::cases() as $case) {
+it('accepts every narrated analysis type against its enum rule', function (): void {
+    foreach (array_filter(AnalysisType::cases(), fn (AnalysisType $case): bool => $case !== AnalysisType::RunInsight) as $case) {
         $validator = Validator::make(
             ['type' => $case->value, 'subjectId' => 1],
             ['type' => new TriggerAnalysisRequest()->rules()['type']],
@@ -155,10 +155,14 @@ it('rejects any discriminator on the types whose job ignores it', function (stri
         ->and(triggerAnalysisPasses($type, '2026-05-18'))->toBeFalse();
 })->with([
     'post_run_speech',
-    'run_insight',
     'weekly_recap',
     'card_flavor',
 ]);
+
+it('rejects the retired run insight as a type to trigger', function (): void {
+    expect(triggerAnalysisPasses('run_insight', null))->toBeFalse()
+        ->and(triggerAnalysisPasses('post_run_speech', null))->toBeTrue();
+});
 
 it('requires the discriminator on the types keyed by one', function (string $type): void {
     expect(triggerAnalysisPasses($type, null))->toBeFalse();

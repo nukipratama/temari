@@ -291,7 +291,7 @@ class AnalysisRowState
     public function isEarlyPassRow(Analysis $row): bool
     {
         return match ($row->analysis_type) {
-            AnalysisType::PostRunSpeech, AnalysisType::RunInsight => $this->earlyPassForActivity(
+            AnalysisType::PostRunSpeech => $this->earlyPassForActivity(
                 Activity::query()->with('detail')->find($row->subject_id),
             ),
             AnalysisType::CardFlavor => $this->earlyPassForActivity(

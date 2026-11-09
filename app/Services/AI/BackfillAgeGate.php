@@ -81,8 +81,7 @@ class BackfillAgeGate
     {
         return match ($type) {
             AnalysisType::CardFlavor => $this->runDateForCard($subjectId),
-            AnalysisType::PostRunSpeech,
-            AnalysisType::RunInsight => $this->runDate($subjectId),
+            AnalysisType::PostRunSpeech => $this->runDate($subjectId),
             default => null,
         };
     }
