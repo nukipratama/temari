@@ -20,7 +20,7 @@ function narrationPayload(content: string): AnalysisPayload {
         is_zone_dependent: true,
         subject_type: 'trend_read_user_range',
         subject_id: 1,
-        discriminator: '7d',
+        discriminator: 'arc',
     };
 }
 
@@ -115,7 +115,7 @@ describe('Trends', () => {
             .map((h) => h.textContent);
 
         expect(headings).toEqual([
-            "Temari's read · last 7 days",
+            "Temari's read",
             'vs last week',
             'long-term load',
             'vs race day',
@@ -187,7 +187,7 @@ describe('Trends', () => {
                     type: 'trend_read',
                     subject_type: 'trend_read_user_range',
                     subject_id: 1,
-                    discriminator: '7d',
+                    discriminator: 'arc',
                 }}
             />,
         );
