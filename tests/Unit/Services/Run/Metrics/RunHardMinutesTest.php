@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
-use App\Models\PlanAdaptation;
 use App\Models\User;
 use App\Services\Run\Metrics\RunHardMinutes;
 use App\Services\Run\Metrics\TrainingPaceCalculator;
@@ -32,7 +30,7 @@ function runHardMinutesWithCeiling(?int $marathonSecPerKm, ?Carbon &$estimatedAs
         $marathonSecPerKm === null ? null : ['easy' => 400, 'marathon' => $marathonSecPerKm, 'threshold' => 292, 'interval' => 268],
     );
 
-    return new RunHardMinutes($vdot, $paces, new ResolveWeekAdaptationAction());
+    return new RunHardMinutes($vdot, $paces);
 }
 
 /**
@@ -46,10 +44,9 @@ function hotEasyRun(User $user, string $startedAt, array $streamSummary): Activi
     ]);
 }
 
-it('counts the run against the easy ceiling and the cap its week locked', function (): void {
+it('counts the run against the easy ceiling', function (): void {
     Carbon::setTestNow('2026-11-07 12:00:00');
     $user = User::factory()->create();
-    PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-11-02', 'hard_cap_minutes' => 60]);
     $detail = hotEasyRun($user, '2026-11-05 06:00:00', [
         'time_in_zone_min' => ['Z2' => 10, 'Z3' => 31.5],
         'high_hr_sec_by_gap_pace' => [300 => 120, 420 => 1770],
@@ -59,7 +56,6 @@ it('counts the run against the easy ceiling and the cap its week locked', functi
     expect(runHardMinutesWithCeiling(330)->for($user, $detail))->toBe([
         'minutes' => 2.0,
         'hr_only_minutes' => 31.5,
-        'cap_minutes' => 60,
         'easy_ceiling_sec_per_km' => 330,
         'per_km' => [['km' => 1, 'easy_sec' => 100, 'high_hr_easy_pace_sec' => 200, 'hard_sec' => 120]],
     ]);
@@ -74,7 +70,6 @@ it('reads a past week\'s run with the fitness of that week\'s end, not today\'s'
     $reading = nonNull(runHardMinutesWithCeiling(330, $estimatedAsOf)->for($user, $detail));
 
     expect($estimatedAsOf?->toDateString())->toBe('2026-10-25')
-        ->and($reading['cap_minutes'])->toBeNull()
         ->and($reading['per_km'])->toBeNull()
         ->and($reading['minutes'])->toBe(12.0);
 });

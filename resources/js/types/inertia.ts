@@ -292,11 +292,10 @@ export interface HardSecondsKm {
     hard_sec: number;
 }
 
-/** What a run spent from its week's hard-minute budget, and which minutes counted. */
+/** The hard minutes a run spent, and which minutes counted. */
 export interface RunHardMinutes {
     minutes: number;
     hr_only_minutes: number;
-    cap_minutes: number | null;
     easy_ceiling_sec_per_km: number | null;
     /** Null until the run's splits carry their per-km high-heart-rate histogram. */
     per_km: HardSecondsKm[] | null;

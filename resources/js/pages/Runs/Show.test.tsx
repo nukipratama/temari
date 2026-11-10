@@ -519,7 +519,7 @@ describe('Runs/Show', () => {
         ).toBeInTheDocument();
     });
 
-    it('heads the splits with what the run spent from the week and the heat behind its high heart rate', async () => {
+    it('heads the splits with what the run spent and the heat behind its high heart rate', async () => {
         renderShow({
             detail: {
                 ...detail,
@@ -529,7 +529,6 @@ describe('Runs/Show', () => {
             hardMinutes: {
                 minutes: 0,
                 hr_only_minutes: 31.5,
-                cap_minutes: 60,
                 easy_ceiling_sec_per_km: 405,
                 per_km: [
                     {
@@ -548,9 +547,7 @@ describe('Runs/Show', () => {
             },
         });
 
-        expect(
-            screen.getByText('0 hard min · of 60 this week'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('0 hard min')).toBeInTheDocument();
         expect(
             await screen.findByText(
                 'by HR alone 31.5 · 33° feels-like · dew point 24° · counted as easy',
