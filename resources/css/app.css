@@ -959,7 +959,7 @@ body:has(#app > *) #boot-shell {
     }
     /* Narrator prose — the reading register for LLM and rule-based output. */
     .narration {
-        @apply font-sans text-quote-sm leading-relaxed text-foreground;
+        @apply font-sans text-[0.875rem] leading-[1.45] text-foreground;
     }
     /* Narrator prose, compact tier — list rows, calendar cells, recap cards. */
     .narration-dense {
