@@ -76,16 +76,13 @@ it('reads each Strava range as exclusive of its min, so a zone max stays in that
 
     $zones = zoneFetcher()->fetch(stravaZonesConnection(), 55);
 
-    expect($zones)->not->toBeNull();
-    assert($zones !== null);
     expect($zones)->toBe([
         'Z1' => ['lo' => 55, 'hi' => 138],
         'Z2' => ['lo' => 138, 'hi' => 154],
         'Z3' => ['lo' => 154, 'hi' => 168],
         'Z4' => ['lo' => 168, 'hi' => 176],
         'Z5' => ['lo' => 176, 'hi' => 999],
-    ])
-        ->and(153 < $zones['Z3']['lo'])->toBeTrue();
+    ]);
 });
 
 it('lifts a rest-anchored Z1 floor up to the resting HR', function (): void {
