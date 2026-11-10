@@ -4,27 +4,24 @@ declare(strict_types=1);
 
 namespace App\Services\Run\Metrics;
 
-use App\Actions\Run\Plan\ResolveWeekAdaptationAction;
 use App\Models\ActivityDetail;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
 /**
- * What one run spent from its week's hard-minute budget, read with the same
- * easy ceiling (marathon pace) the budget counts with, and which of its minutes
- * counted.
+ * The hard minutes one run spent, read with the same easy ceiling (marathon
+ * pace) the week's budget counts with, and which of its minutes counted.
  */
 final readonly class RunHardMinutes
 {
     public function __construct(
         private VdotEstimator $vdotEstimator,
         private TrainingPaceCalculator $paceCalculator,
-        private ResolveWeekAdaptationAction $weekAdaptation,
     ) {
     }
 
     /**
-     * @return array{minutes: float, hr_only_minutes: float, cap_minutes: int|null, easy_ceiling_sec_per_km: int|null, per_km: list<array{km: int, easy_sec: int, high_hr_easy_pace_sec: int, hard_sec: int}>|null}|null
+     * @return array{minutes: float, hr_only_minutes: float, easy_ceiling_sec_per_km: int|null, per_km: list<array{km: int, easy_sec: int, high_hr_easy_pace_sec: int, hard_sec: int}>|null}|null
      */
     public function for(User $user, ActivityDetail $detail): ?array
     {
@@ -41,7 +38,6 @@ final readonly class RunHardMinutes
         return [
             'minutes' => $summary->hardMinutes($easyCeiling) ?? $hrOnlyMinutes,
             'hr_only_minutes' => $hrOnlyMinutes,
-            'cap_minutes' => ($this->weekAdaptation)($user->id, $weekStart->toDateString())?->hard_cap_minutes,
             'easy_ceiling_sec_per_km' => $easyCeiling,
             'per_km' => $summary->hardSecondsByKm($easyCeiling),
         ];

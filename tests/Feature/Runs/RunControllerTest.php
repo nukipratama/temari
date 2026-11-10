@@ -485,7 +485,7 @@ it('ships the stored effort score on any run, with or without heart rate', funct
     Carbon::setTestNow();
 });
 
-it('ships what the run spent from its week\'s hard-minute budget', function (): void {
+it('ships the hard minutes the run spent', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->analyzed()->create();
     ActivityDetail::factory()->for($activity)->create([
@@ -500,7 +500,7 @@ it('ships what the run spent from its week\'s hard-minute budget', function (): 
         ->assertSuccessful()
         ->assertInertia(fn (Assert $page) => $page
             ->where('hardMinutes.hr_only_minutes', 31.5)
-            ->where('hardMinutes.cap_minutes', null)
+            ->missing('hardMinutes.cap_minutes')
             ->where('hardMinutes.per_km.0.km', 1)
             ->missing('detail.stream_summary.per_km.0.high_hr_sec_by_gap_pace'));
 });

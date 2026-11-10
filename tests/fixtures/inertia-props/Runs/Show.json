@@ -136,7 +136,6 @@
     "detail.weather_wind_speed_kmh",
     "detail.workout_type",
     "hardMinutes",
-    "hardMinutes.cap_minutes",
     "hardMinutes.easy_ceiling_sec_per_km",
     "hardMinutes.hr_only_minutes",
     "hardMinutes.minutes",

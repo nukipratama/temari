@@ -204,8 +204,6 @@ export default function SplitsChart({
                         )}
                     >
                         {formatHardMinutes(hardMinutes.minutes)} hard min
-                        {hardMinutes.cap_minutes != null &&
-                            ` · of ${hardMinutes.cap_minutes} this week`}
                     </span>
                 )}
             </div>

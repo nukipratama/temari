@@ -129,7 +129,6 @@ describe('SplitsChart', () => {
                 hardMinutes={{
                     minutes: 12.4,
                     hr_only_minutes: 12.4,
-                    cap_minutes: null,
                     easy_ceiling_sec_per_km: 330,
                     per_km: [
                         {
@@ -167,16 +166,13 @@ describe('SplitsChart', () => {
                 hardMinutes={{
                     minutes: 0,
                     hr_only_minutes: 0,
-                    cap_minutes: 60,
                     easy_ceiling_sec_per_km: 330,
                     per_km: null,
                 }}
             />,
         );
 
-        expect(screen.getByText('0 hard min · of 60 this week')).toHaveClass(
-            'text-foreground',
-        );
+        expect(screen.getByText('0 hard min')).toHaveClass('text-foreground');
         expect(screen.getByText('Pace')).toBeInTheDocument();
     });
 });

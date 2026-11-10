@@ -276,11 +276,11 @@ remainder is appended as a dashed, unranked bar. Bar heights reuse
 than a raw min→max stretch, so a run whose kms are seconds apart still reads as
 consistent instead of as a dramatic swing.
 
-The chart's header states what the run spent from its week's hard-minute budget
-("11.8 hard min · of 60 this week"), from the `hardMinutes` prop that
+The chart's header states the hard minutes the run spent ("11.8 hard min"),
+from the `hardMinutes` prop that
 `RunHardMinutes` in [RunHardMinutes.php](../../app/Services/Run/Metrics/RunHardMinutes.php)
 builds with the budget's own easy ceiling (marathon pace, as of the end of the
-run's week or today) and the cap the week locked. Each bar is then stacked from
+run's week or today). The week's balance lives on the Plan page's wallet. Each bar is then stacked from
 the ground up as easy (leaf), high HR at easy pace (leaf with a stone hatch) and
 hard (ember), from the per-km `high_hr_sec_by_gap_pace` histogram that
 `StreamAnalysis::highHeartRateByKm` writes onto each `per_km` row. Runs analysed

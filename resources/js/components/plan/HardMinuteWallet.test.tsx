@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import HardMinuteWallet from './HardMinuteWallet';
 
 describe('HardMinuteWallet', () => {
-    it('reads spent and booked minutes against the locked cap, as minutes and share', () => {
+    it('leads with the minutes left, then what is spent and booked under the cap', () => {
         render(
             <HardMinuteWallet
                 budget={{
@@ -16,12 +16,11 @@ describe('HardMinuteWallet', () => {
             />,
         );
 
-        expect(
-            screen.getByText('44 / 60 hard min · 22% hard, cap 30%'),
-        ).toBeInTheDocument();
+        expect(screen.getByText('16 left')).toHaveClass('text-stat-sm');
         expect(screen.getByText('29 spent')).toBeInTheDocument();
         expect(screen.getByText('15 booked')).toBeInTheDocument();
-        expect(screen.getByText('16 left')).toBeInTheDocument();
+        expect(screen.getByText('cap 60')).toBeInTheDocument();
+        expect(screen.queryByText(/ of 60|% hard/)).not.toBeInTheDocument();
         expect(
             screen.getByRole('img', {
                 name: '29 hard minutes spent, 15 booked, 16 left of a 60-minute cap',
@@ -41,10 +40,8 @@ describe('HardMinuteWallet', () => {
             />,
         );
 
-        expect(
-            screen.getByText('66 / 60 hard min · 33% hard, cap 30%'),
-        ).toBeInTheDocument();
-        expect(screen.getByText('6 over')).toBeInTheDocument();
+        expect(screen.getByText('6 over')).toHaveClass('text-stat-sm');
+        expect(screen.getByText('66 spent')).toBeInTheDocument();
         expect(screen.queryByText(/booked/)).not.toBeInTheDocument();
     });
 });

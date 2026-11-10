@@ -8,7 +8,6 @@ import HardMinuteHeatLine from './HardMinuteHeatLine';
 const hotEasyRun: RunHardMinutes = {
     minutes: 0,
     hr_only_minutes: 31.5,
-    cap_minutes: 60,
     easy_ceiling_sec_per_km: 405,
     per_km: null,
 };

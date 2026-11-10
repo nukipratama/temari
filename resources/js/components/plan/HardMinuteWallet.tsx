@@ -4,8 +4,6 @@ import type { HardBudget } from '@/lib/plan';
 
 import { cn } from '@/lib/cn';
 
-const CAP_SHARE_PCT = 30;
-
 function LegendItem({
     dot,
     children,
@@ -23,9 +21,8 @@ function LegendItem({
 
 /**
  * The current week's hard minutes against the cap locked at its first
- * regeneration: what has been run, what the days ahead have booked, and what
- * is left or over. The share counts spent and booked minutes against the
- * week's minutes, so a full cap reads as 30%.
+ * regeneration, leading with what is left or over, then what has been run
+ * and what the days ahead have booked.
  */
 export default function HardMinuteWallet({
     budget,
@@ -38,18 +35,22 @@ export default function HardMinuteWallet({
     } = budget;
     const used = spent + booked;
     const scale = Math.max(cap, used, 1);
-    const share = cap > 0 ? Math.round((used / cap) * CAP_SHARE_PCT) : 0;
     const width = (minutes: number) => `${(minutes / scale) * 100}%`;
     const balance = left >= 0 ? `${left} left` : `${-left} over`;
 
     return (
         <div>
-            <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                <span className="text-label-micro text-text-3">
-                    hard min this week
-                </span>
-                <span className="font-mono text-xs text-foreground">
-                    {`${used} / ${cap} hard min · ${share}% hard, cap ${CAP_SHARE_PCT}%`}
+            <p className="text-label-micro text-text-3">hard min this week</p>
+            <p className="mt-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                <span className="text-stat-sm">{balance}</span>
+                <span className="flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-xs text-text-2">
+                    <LegendItem dot="bg-ember">{spent} spent</LegendItem>
+                    {booked > 0 && (
+                        <LegendItem dot="bg-ember/18">
+                            {booked} booked
+                        </LegendItem>
+                    )}
+                    <span>cap {cap}</span>
                 </span>
             </p>
             <div
@@ -72,22 +73,6 @@ export default function HardMinuteWallet({
                     />
                 )}
             </div>
-            <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-label-micro text-text-2">
-                <LegendItem dot="bg-ember">{spent} spent</LegendItem>
-                {booked > 0 && (
-                    <LegendItem dot="bg-ember/18">{booked} booked</LegendItem>
-                )}
-                <LegendItem
-                    dot={
-                        left >= 0
-                            ? 'bg-muted ring-1 ring-border-strong'
-                            : 'bg-foreground'
-                    }
-                >
-                    {balance}
-                </LegendItem>
-                <span className="text-text-3">cap locked for the week</span>
-            </p>
         </div>
     );
 }
