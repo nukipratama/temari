@@ -429,7 +429,8 @@ describe('RunLenses merged story', () => {
             'Km 3 was the last one at the opening pace.',
         );
 
-        expect(body?.textContent).toBe(MERGED_BODY);
+        expect(body?.textContent).toBe(MERGED_BODY.replaceAll('\n\n', ''));
+        expect(body?.querySelectorAll('[data-paragraph-gap]')).toHaveLength(1);
         expect(body?.closest('.whitespace-pre-line')).not.toBeNull();
         expect(body?.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
             headline,

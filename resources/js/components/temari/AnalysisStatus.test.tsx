@@ -202,16 +202,31 @@ describe('AnalysisStatus', () => {
             ).toBeInTheDocument();
         });
 
-        it('draws the toggle as a centred pill beside a separate reread button', () => {
+        it('draws the toggle as a leaf-ink link leading the meta row, apart from reread', () => {
             stubNarrationLayout(200);
-            renderStory('One beat.\n\nTwo beats.');
+            render(
+                <AnalysisStatus
+                    collapsible
+                    analysis={payload({
+                        id: 7,
+                        status: 'done',
+                        title: 'a quiet week',
+                        content: 'One beat.\n\nTwo beats.',
+                    })}
+                    renderContent={(text) => <p>{text}</p>}
+                />,
+            );
 
+            const toggle = screen.getByRole('button', { name: 'read more' });
+            const flag = screen.getByRole('button', { name: 'flag this read' });
+            expect(toggle).toHaveClass('text-leaf-ink');
+            expect(toggle).not.toHaveClass('rounded-full');
+            expect(toggle.parentElement).toBe(
+                flag.parentElement?.parentElement,
+            );
             expect(
-                screen.getByRole('button', { name: /reread/ }),
-            ).toBeInTheDocument();
-            expect(
-                screen.getByRole('button', { name: 'read more' }),
-            ).toHaveClass('rounded-full', 'self-center');
+                screen.getByRole('button', { name: /reread/ }).parentElement,
+            ).not.toBe(toggle.parentElement);
         });
 
         it('draws no toggle and no clamp when the body fits in four lines', () => {
@@ -819,6 +834,23 @@ describe('AnalysisStatus', () => {
         vi.useRealTimers();
     });
 
+    it('right-aligns the meta line when no read-more toggle leads it', () => {
+        render(
+            <AnalysisStatus
+                analysis={payload({
+                    id: 7,
+                    status: 'done',
+                    content: 'Halo',
+                    generated_at: new Date().toISOString(),
+                })}
+            />,
+        );
+
+        expect(screen.getByText(/generated/).parentElement).toHaveClass(
+            'ml-auto',
+        );
+    });
+
     it('right-aligns the flag on its own when the block has no timestamp', () => {
         render(
             <AnalysisStatus
@@ -832,9 +864,9 @@ describe('AnalysisStatus', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: 'flag this read' }).parentElement
-                ?.className,
-        ).toContain('justify-end');
+            screen.getByRole('button', { name: 'flag this read' })
+                .parentElement,
+        ).toHaveClass('ml-auto');
     });
 
     it('draws reread as the filled pill below the block', () => {

@@ -348,55 +348,52 @@ export default function AnalysisStatus({
                         </div>
                     </div>
                 </div>
-                {clamp !== null && (
-                    <button
-                        type="button"
-                        onClick={() => setExpanded((open) => !open)}
-                        aria-expanded={expanded}
-                        aria-controls={storyId}
-                        className={cn(
-                            TRIGGER_CLASS,
-                            TRIGGER_TONE,
-                            'mt-1 self-center',
-                        )}
-                    >
-                        <span>{expanded ? 'show less' : 'read more'}</span>
-                        <Icon
-                            icon={ChevronDown}
-                            className={cn(
-                                'size-3 transition-transform duration-200 motion-reduce:transition-none',
-                                expanded && 'rotate-180',
-                            )}
-                            aria-hidden
-                        />
-                    </button>
-                )}
                 {analysis.is_stale === true ? (
                     <StalePlanBadge />
                 ) : (
                     staleZones && <StaleZonesBadge />
                 )}
-                {(generatedAt !== null || analysis.id !== null) && (
-                    <div
-                        className={cn(
-                            'flex items-center gap-1.5',
-                            generatedAt === null && 'justify-end',
+                {(clamp !== null ||
+                    generatedAt !== null ||
+                    analysis.id !== null) && (
+                    <div className="flex items-center gap-3">
+                        {clamp !== null && (
+                            <button
+                                type="button"
+                                onClick={() => setExpanded((open) => !open)}
+                                aria-expanded={expanded}
+                                aria-controls={storyId}
+                                className="focus-ring pressable -my-1 inline-flex min-h-6 items-center gap-1 rounded-xs py-1 text-[0.8125rem] font-semibold text-leaf-ink"
+                            >
+                                <span>
+                                    {expanded ? 'show less' : 'read more'}
+                                </span>
+                                <Icon
+                                    icon={ChevronDown}
+                                    className={cn(
+                                        'size-3.5 stroke-[2.25] transition-transform duration-200 motion-reduce:transition-none',
+                                        expanded && 'rotate-180',
+                                    )}
+                                    aria-hidden
+                                />
+                            </button>
                         )}
-                    >
-                        {generatedAt !== null && (
-                            <span className="text-xs text-text-3">
-                                generated {formatRelativeId(generatedAt)}
-                            </span>
-                        )}
-                        {analysis.id !== null && (
-                            <FlagWrong
-                                subjectType="narration"
-                                subjectId={analysis.id}
-                                label="flag this read"
-                                flagged={analysis.flagged === true}
-                                compact
-                            />
-                        )}
+                        <div className="ml-auto flex items-center gap-1.5">
+                            {generatedAt !== null && (
+                                <span className="text-xs text-text-3">
+                                    generated {formatRelativeId(generatedAt)}
+                                </span>
+                            )}
+                            {analysis.id !== null && (
+                                <FlagWrong
+                                    subjectType="narration"
+                                    subjectId={analysis.id}
+                                    label="flag this read"
+                                    flagged={analysis.flagged === true}
+                                    compact
+                                />
+                            )}
+                        </div>
                     </div>
                 )}
                 {canRegenerate && (

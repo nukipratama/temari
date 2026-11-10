@@ -68,8 +68,9 @@ describe('NarrationCard', () => {
         expect(story).toHaveClass('narration');
         expect(story).not.toHaveClass('narration-dense');
         expect(story.textContent).toBe(
-            'The supported time came down.\n\nThe long run carried it.',
+            'The supported time came down.The long run carried it.',
         );
+        expect(story.querySelectorAll('[data-paragraph-gap]')).toHaveLength(1);
         expect(screen.getByText('long run').tagName).toBe('STRONG');
         expect(container.querySelector('section')).toHaveClass(
             '[&_p]:max-w-prose',

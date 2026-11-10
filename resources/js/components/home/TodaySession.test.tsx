@@ -255,7 +255,10 @@ describe('TodaySession', () => {
         );
         const story = container.querySelector<HTMLElement>('p.narration');
         expect(headline).toHaveClass('font-serif', 'italic');
-        expect(story?.textContent).toBe(body);
+        expect(story?.textContent).toBe(body.replaceAll('\n\n', ''));
+        expect(story?.querySelectorAll('[data-paragraph-gap]')).toHaveLength(
+            body.split('\n\n').length - 1,
+        );
         expect(story).not.toHaveClass('narration-dense');
         expect(story?.closest('.whitespace-pre-line')).not.toBeNull();
         expect(story?.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(

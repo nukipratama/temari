@@ -378,9 +378,8 @@ describe('CalendarGrid', () => {
         const story = screen.getByText(/The long run held\./);
         expect(story).toHaveClass('narration');
         expect(story).not.toHaveClass('narration-dense');
-        expect(story.textContent).toBe(
-            'The long run held.\n\nThe tempo got away.',
-        );
+        expect(story.textContent).toBe('The long run held.The tempo got away.');
+        expect(story.querySelectorAll('[data-paragraph-gap]')).toHaveLength(1);
         expect(story.closest('.whitespace-pre-line')).not.toBeNull();
         expect(story.closest('[class*="[&_p]:max-w-prose"]')).toContainElement(
             headline,

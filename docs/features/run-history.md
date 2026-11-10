@@ -216,7 +216,7 @@ separate, all-time stat, not the viewed month's). `RecapCard`'s `fallback`
 prop is omitted here: there is no rule-based fallback for monthly recaps.
 
 **Per-week narration inside the grid** is the tap-to-expand week column, and
-pressing it reveals its recap through `AnalysisStatus` (`collapsible`: a story taller than four lines fades out behind a `read more` / `show less` pill that starts closed on every open, see [[recaps]]), the shared
+pressing it reveals its recap through `AnalysisStatus` (`collapsible`: a story taller than four lines fades out behind a `read more` / `show less` toggle that starts closed on every open, see [[recaps]]), the shared
 `WeeklyStatLine`, and — the one Card surface this screen keeps — a badge for the week's **rarest** earned card, tinted by rarity. A week
 with no snapshot leaves the column disabled. The badge lives here and nowhere
 else on the screen; it is not a day-cell affordance.

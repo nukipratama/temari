@@ -427,7 +427,7 @@ built with `@apply` so they compose with token utilities. Prefer these over re-t
 | `.text-stat` | `font-mono text-stat font-bold tabular-nums text-foreground` | The big tabular KPI / PR number |
 | `.text-stat-sm` | `font-mono text-2xl font-bold tabular-nums text-foreground` | Smaller stat figure (compact tiles) |
 | `.text-meta` | `font-mono text-[11px] tracking-[0.04em] text-text-3` | Date / timestamp / footnote (non-uppercase metadata) |
-| `.narration` | `font-sans text-quote-sm leading-relaxed text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
+| `.narration` | `font-sans text-[14px] leading-[1.45] text-foreground` | Narrator prose — the reading register for LLM and rule-based output |
 | `.narration-dense` | `font-sans text-[12px] leading-[1.45] text-foreground` | Narrator prose, compact tier (list rows, calendar cells, recap cards) |
 
 A section label is [Eyebrow](../resources/js/components/ui/Eyebrow.tsx) over the three

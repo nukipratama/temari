@@ -68,4 +68,18 @@ describe('renderBold', () => {
         render(<div>{renderBold('price **cheap')}</div>);
         expect(screen.getByText('price **cheap')).toBeInTheDocument();
     });
+
+    it('turns a blank line into a short paragraph gap instead of an empty line', () => {
+        const { container } = render(
+            <p>
+                {renderBold('first **para**.\n\n\nsecond para.\nsame para.')}
+            </p>,
+        );
+        const gaps = container.querySelectorAll('[data-paragraph-gap]');
+        expect(gaps).toHaveLength(1);
+        expect(gaps[0]).toHaveClass('block', 'h-[0.6em]');
+        expect(container.textContent).toBe(
+            'first para.second para.\nsame para.',
+        );
+    });
 });

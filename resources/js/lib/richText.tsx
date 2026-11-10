@@ -47,7 +47,28 @@ export function renderBold(text: string): ReactNode {
                     {segment}
                 </strong>
             ) : (
-                <Fragment key={id}>{segment}</Fragment>
+                <Fragment key={id}>{withParagraphGaps(segment)}</Fragment>
             ),
         );
+}
+
+const PARAGRAPH_BREAK = /\n[^\S\n]*\n\s*/;
+
+/** Draws a blank line as a short gap, not a full empty line under `whitespace-pre-line`. */
+function withParagraphGaps(text: string): ReactNode {
+    return text
+        .split(PARAGRAPH_BREAK)
+        .map((paragraph, i) => ({ paragraph, id: i }))
+        .map(({ paragraph, id }) => (
+            <Fragment key={id}>
+                {id > 0 && (
+                    <span
+                        data-paragraph-gap
+                        className="block h-[0.6em]"
+                        aria-hidden
+                    />
+                )}
+                {paragraph}
+            </Fragment>
+        ));
 }
