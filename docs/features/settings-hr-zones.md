@@ -53,7 +53,7 @@ Submit posts `router.patch('/settings/zones', …)` with `max_hr`, `resting_hr` 
 - `resetToDefault()` deletes the profile row, falling back to config defaults.
 - `resyncFromStrava()` runs `SyncZonesJob::dispatchSync(..., force: true)` inline (not queued), scope-gated on `profile:read_all`.
 
-Every Strava zone write, from `SyncZonesJob` or `strava:sync-zones`, goes through [RunnerProfile::applyStravaZones](../../app/Models/RunnerProfile.php). It re-reads the user and profile under row locks after the Strava fetch, so a manual save or an account deletion that lands during the fetch wins unless the sync is a forced resync. It requests plan recalibration only when the stored zones actually change.
+Every Strava zone write, from `SyncZonesJob` or `strava:sync-zones`, goes through [RunnerProfile::applyStravaZones](../../app/Models/RunnerProfile.php). It re-reads the user and profile under row locks after the Strava fetch, so a manual save or an account deletion that lands during the fetch wins unless the sync is a forced resync. It requests plan recalibration only when the stored zones actually change. [ZoneFetcher](../../app/Services/Strava/ZoneFetcher.php) stores each Strava range one bpm up, because Strava's `{min, max}` excludes `min` and includes `max` (`{153, 167}` is shown as 154–167), while the app's bands include `lo` and exclude `hi`.
 
 ## Estimated zones
 

@@ -50,12 +50,42 @@ it('parses the athlete zones response into the app hr_zones shape', function ():
     $zones = zoneFetcher()->fetch($connection, 55);
 
     expect($zones)->toBe([
-        'Z1' => ['lo' => 55, 'hi' => 120],
-        'Z2' => ['lo' => 120, 'hi' => 140],
-        'Z3' => ['lo' => 140, 'hi' => 160],
-        'Z4' => ['lo' => 160, 'hi' => 175],
-        'Z5' => ['lo' => 175, 'hi' => 999],
+        'Z1' => ['lo' => 55, 'hi' => 121],
+        'Z2' => ['lo' => 121, 'hi' => 141],
+        'Z3' => ['lo' => 141, 'hi' => 161],
+        'Z4' => ['lo' => 161, 'hi' => 176],
+        'Z5' => ['lo' => 176, 'hi' => 999],
     ]);
+});
+
+it('reads each Strava range as exclusive of its min, so a zone max stays in that zone', function (): void {
+    Http::fake([
+        'www.strava.com/api/v3/athlete/zones' => Http::response([
+            'heart_rate' => [
+                'custom_zones' => false,
+                'zones' => [
+                    ['min' => 0, 'max' => 137],
+                    ['min' => 137, 'max' => 153],
+                    ['min' => 153, 'max' => 167],
+                    ['min' => 167, 'max' => 175],
+                    ['min' => 175, 'max' => -1],
+                ],
+            ],
+        ]),
+    ]);
+
+    $zones = zoneFetcher()->fetch(stravaZonesConnection(), 55);
+
+    expect($zones)->not->toBeNull();
+    assert($zones !== null);
+    expect($zones)->toBe([
+        'Z1' => ['lo' => 55, 'hi' => 138],
+        'Z2' => ['lo' => 138, 'hi' => 154],
+        'Z3' => ['lo' => 154, 'hi' => 168],
+        'Z4' => ['lo' => 168, 'hi' => 176],
+        'Z5' => ['lo' => 176, 'hi' => 999],
+    ])
+        ->and(153 < $zones['Z3']['lo'])->toBeTrue();
 });
 
 it('lifts a rest-anchored Z1 floor up to the resting HR', function (): void {
@@ -79,11 +109,11 @@ it('lifts a rest-anchored Z1 floor up to the resting HR', function (): void {
 
     expect($zones)->not->toBeNull();
     assert($zones !== null);
-    expect($zones['Z1'])->toBe(['lo' => 56, 'hi' => 137])
-        ->and($zones['Z2'])->toBe(['lo' => 137, 'hi' => 153]);
+    expect($zones['Z1'])->toBe(['lo' => 56, 'hi' => 138])
+        ->and($zones['Z2'])->toBe(['lo' => 138, 'hi' => 154]);
 });
 
-it('leaves Z1 untouched when Strava already starts it above resting', function (): void {
+it('keeps a Strava Z1 floor that sits above resting', function (): void {
     Http::fake([
         'www.strava.com/api/v3/athlete/zones' => Http::response([
             'heart_rate' => [
@@ -103,7 +133,7 @@ it('leaves Z1 untouched when Strava already starts it above resting', function (
 
     expect($zones)->not->toBeNull();
     assert($zones !== null);
-    expect($zones['Z1'])->toBe(['lo' => 100, 'hi' => 120]);
+    expect($zones['Z1'])->toBe(['lo' => 101, 'hi' => 121]);
 });
 
 it('soft-skips (returns null) on a 403, without throwing StravaConnectionRevokedException', function (): void {

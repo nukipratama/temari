@@ -73,11 +73,12 @@ class ZoneFetcher
             $min = (int) $ranges[$index]['min'];
             $max = (int) $ranges[$index]['max'];
 
-            // Strava's top zone has an open-ended max (-1); mirror the app's
-            // gapless-band convention (config/runner.php) with a high cap.
+            // Strava's ranges exclude their min and include their max ({153, 167} is
+            // shown as 154-167), while the app's bands include lo and exclude hi.
+            // Its top zone has an open-ended max (-1), capped high like config/runner.php.
             $zones[$key] = [
-                'lo' => $min,
-                'hi' => $max === -1 ? 999 : $max,
+                'lo' => $min + 1,
+                'hi' => $max === -1 ? 999 : $max + 1,
             ];
         }
 
