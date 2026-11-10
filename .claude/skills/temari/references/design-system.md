@@ -129,7 +129,7 @@ The scale is fluid `clamp()` tokens in `app.css` (`text-display-*`, `text-headli
 | Page title (`<h1>`) | `font-serif text-display-lg text-foreground` (compact/devtools header: `text-headline-xs`) |
 | Section heading (`<h2>`) | `font-serif text-headline-sm text-foreground` |
 | Temari voice line (one-liner, verdict headline) | `font-serif italic text-headline-sm text-foreground` |
-| Narrator prose | `.narration` (`font-sans text-quote-sm leading-relaxed text-foreground`) |
+| Narrator prose | `.narration` (`font-sans text-[14px] leading-[1.45] text-foreground`) |
 | Narrator prose, compact | `.narration-dense` (`font-sans text-[12px] leading-[1.45] text-foreground`) |
 | Sub-label (KPI/table cap) | `font-mono text-xs font-semibold uppercase tracking-wider text-text-3` |
 | Body paragraph | `font-sans text-sm leading-relaxed text-foreground` |
