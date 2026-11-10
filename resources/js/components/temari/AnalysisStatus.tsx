@@ -363,7 +363,7 @@ export default function AnalysisStatus({
                                 onClick={() => setExpanded((open) => !open)}
                                 aria-expanded={expanded}
                                 aria-controls={storyId}
-                                className="focus-ring pressable -my-1 inline-flex min-h-6 items-center gap-1 rounded-xs py-1 text-[0.8125rem] font-semibold text-leaf-ink"
+                                className="focus-ring pressable inline-flex min-h-6 items-center gap-1 rounded-xs text-[0.8125rem] font-semibold text-leaf-ink"
                             >
                                 <span>
                                     {expanded ? 'show less' : 'read more'}
