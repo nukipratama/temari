@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Console\Commands\Notifications\MorningBriefingPushCommand;
 use App\Services\Notifications\QuietHours;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -31,7 +32,7 @@ class UpdateNotificationPreferenceRequest extends FormRequest
         return [
             'notifications_enabled' => ['required', 'boolean'],
             'briefing_push_enabled' => ['required', 'boolean'],
-            'briefing_push_minute' => ['present', 'nullable', 'integer', 'between:0,'.(QuietHours::STARTS_AT_HOUR * 60 - 1)],
+            'briefing_push_minute' => ['present', 'nullable', 'integer', 'between:0,'.(QuietHours::STARTS_AT_HOUR * 60 - 1), 'multiple_of:'.MorningBriefingPushCommand::BUCKET_MINUTES],
             'telegram_enabled' => ['required', 'boolean'],
             'push_enabled' => ['required', 'boolean'],
         ];

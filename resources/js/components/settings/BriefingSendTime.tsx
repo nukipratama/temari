@@ -7,6 +7,8 @@ import { inputVariants } from '@/lib/variants';
 
 const QUIET_HOURS_START_MINUTE = 22 * 60;
 
+const SLOT_MINUTES = 15;
+
 function minuteToClock(minute: number | null): string {
     if (minute === null) {
         return '';
@@ -22,7 +24,9 @@ function clockToMinute(clock: string): number | null {
         return null;
     }
 
-    return Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+    const minute = Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+
+    return minute - (minute % SLOT_MINUTES);
 }
 
 /**
@@ -81,8 +85,11 @@ export default function BriefingSendTime({
                             ) {
                                 setDraft(minuteToClock(minute));
                                 setReverted(true);
-                            } else if (next !== minute) {
-                                onChange(next);
+                            } else {
+                                setDraft(minuteToClock(next));
+                                if (next !== minute) {
+                                    onChange(next);
+                                }
                             }
                         }}
                         className={cn(

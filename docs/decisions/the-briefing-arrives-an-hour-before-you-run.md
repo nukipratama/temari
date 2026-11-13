@@ -17,6 +17,8 @@ code_refs:
 
 **Status:** Accepted (decided 2026-11-02, issue #2351 decision 5)
 
+> **Superseded in part, 2026-11-13, by [[the-briefing-send-time-is-a-quarter-hour]]:** a chosen send time must be a quarter hour, rather than any minute floored to one.
+
 > **Fact update, 2026-11-02.** The catch-up now ends at 22:00: the sweep sends nothing from 22:00,
 > so a slot that misses its tick there, or an automatic slot from 22:00, is dropped rather than held
 > into the next morning. This closes the gap the send-time paragraph below leaves open for a slot
