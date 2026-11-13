@@ -622,7 +622,7 @@ it('refuses to move a day that has already happened, leaving both rows as they w
         ->and($to->refresh()->session_type->value)->toBe('rest');
 });
 
-it('refuses to move a session onto a day that is not a rest day', function (): void {
+it('refuses to swap a session with the race', function (): void {
     $user = User::factory()->create();
     $from = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
@@ -639,6 +639,29 @@ it('refuses to move a session onto a day that is not a rest day', function (): v
 
     expect($from->refresh()->session_type->value)->toBe('tempo')
         ->and($to->refresh()->session_type->value)->toBe('race');
+});
+
+it('swaps Sunday\'s long run with Saturday\'s easy run in one move, pinning both', function (): void {
+    Carbon::setTestNow('2026-11-13 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-12' => 'tempo',
+        '2026-11-13' => 'rest',
+        '2026-11-14' => 'easy',
+        '2026-11-15' => 'long',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-15']->id}", ['date' => '2026-11-14'])
+        ->assertSessionHasNoErrors();
+
+    $saturday = $rows['2026-11-14']->refresh();
+    $sunday = $rows['2026-11-15']->refresh();
+    expect($saturday->session_type)->toBe(SessionType::Long)
+        ->and($saturday->pinned)->toBeTrue()
+        ->and($sunday->session_type)->toBe(SessionType::Easy)
+        ->and($sunday->pinned)->toBeTrue()
+        ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
 });
 
 /**

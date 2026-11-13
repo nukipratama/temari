@@ -94,8 +94,8 @@ class PlanController extends Controller
      * silently overwrite it, unless the caller passes `pinned: false` to hand
      * control back to the periodizer.
      *
-     * A move is a **swap** with the rest day it lands on, not a re-date: the
-     * periodizer materializes all seven days of every week.
+     * A move is a **swap** with the day it lands on, rest or training, not a
+     * re-date: the periodizer materializes all seven days of every week.
      */
     public function update(
         UpdatePlannedSessionRequest $request,
@@ -178,7 +178,7 @@ class PlanController extends Controller
     }
 
     /**
-     * @return array{PlannedSession, bool} the rest day the session lands on, and whether the move is a make-up
+     * @return array{PlannedSession, bool} the day the session lands on, and whether the move is a make-up
      */
     private function moveTarget(User $user, PlannedSession $session, Carbon $toDate, Carbon $today, SessionMatcher $sessionMatcher): array
     {

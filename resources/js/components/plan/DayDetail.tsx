@@ -32,6 +32,8 @@ import {
     raceLongPaceLabel,
     ranHot,
     sessionHint,
+    SESSION_TYPE_ICON,
+    SESSION_TYPE_LABEL,
     sessionLabel,
     STATUS_LABEL,
     STATUS_MEANING,
@@ -449,30 +451,77 @@ export default function DayDetail({
             {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">
                     {picking ? (
-                        <div className="grid grid-cols-7 gap-1.5">
-                            {weekDays.map((target) => {
-                                const valid = day.move_targets.includes(
-                                    target.date,
-                                );
-                                return (
-                                    <button
-                                        key={target.date}
-                                        type="button"
-                                        disabled={!valid}
-                                        onClick={() => {
-                                            onMove(target.date);
-                                            setPicking(false);
-                                        }}
-                                        className={cn(
-                                            'pressable focus-ring flex aspect-square flex-col items-center justify-center rounded-sm border border-border-strong text-xs font-semibold text-foreground',
-                                            !valid && 'opacity-40',
-                                        )}
+                        <>
+                            <div className="grid grid-cols-7 gap-1.5">
+                                {weekDays.map((target) => {
+                                    const valid = day.move_targets.includes(
+                                        target.date,
+                                    );
+                                    const swaps =
+                                        valid && target.session_type !== 'rest';
+                                    const warned =
+                                        valid &&
+                                        target.date in day.move_warnings;
+                                    return (
+                                        <button
+                                            key={target.date}
+                                            type="button"
+                                            disabled={!valid}
+                                            title={
+                                                valid
+                                                    ? moveTargetLabel(
+                                                          target,
+                                                          swaps,
+                                                          day.move_warnings[
+                                                              target.date
+                                                          ],
+                                                      )
+                                                    : undefined
+                                            }
+                                            onClick={() => {
+                                                onMove(target.date);
+                                                setPicking(false);
+                                            }}
+                                            className={cn(
+                                                'pressable focus-ring flex aspect-square flex-col items-center justify-center gap-0.5 rounded-sm border text-xs font-semibold text-foreground',
+                                                warned
+                                                    ? 'border-citrus'
+                                                    : 'border-border-strong',
+                                                !valid && 'opacity-40',
+                                            )}
+                                        >
+                                            {weekdayLabel(target.date)}
+                                            {swaps &&
+                                                SESSION_TYPE_ICON[
+                                                    target.session_type
+                                                ] && (
+                                                    <Icon
+                                                        icon={
+                                                            SESSION_TYPE_ICON[
+                                                                target
+                                                                    .session_type
+                                                            ]
+                                                        }
+                                                        className="size-3 text-text-3"
+                                                        aria-hidden
+                                                    />
+                                                )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {Object.entries(day.move_warnings).map(
+                                ([date, warning]) => (
+                                    <p
+                                        key={date}
+                                        className="mt-1.5 text-label-micro text-citrus-ink"
                                     >
-                                        {weekdayLabel(target.date)}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                        {weekdayLabel(date).toLowerCase()} ·{' '}
+                                        {besideLabel(warning)}
+                                    </p>
+                                ),
+                            )}
+                        </>
                     ) : (
                         <div className="flex flex-wrap gap-3">
                             {canMove && (
@@ -525,4 +574,24 @@ export default function DayDetail({
             )}
         </>
     );
+}
+
+function besideLabel(
+    warning: Readonly<{ beside: string; session_type: string }>,
+): string {
+    return `beside ${weekdayLabel(warning.beside).toLowerCase()}'s ${SESSION_TYPE_LABEL[warning.session_type] ?? warning.session_type}`;
+}
+
+function moveTargetLabel(
+    target: PlanDay,
+    swaps: boolean,
+    warning: Readonly<{ beside: string; session_type: string }> | undefined,
+): string {
+    const action = swaps
+        ? `swap with ${weekdayLabel(target.date).toLowerCase()}'s ${SESSION_TYPE_LABEL[target.session_type] ?? target.session_type}`
+        : `move to ${weekdayLabel(target.date).toLowerCase()}`;
+
+    return warning === undefined
+        ? action
+        : `${action}, ${besideLabel(warning)}`;
 }

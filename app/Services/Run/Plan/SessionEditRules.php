@@ -33,20 +33,21 @@ final class SessionEditRules
     /**
      * @param  Collection<int, PlannedSession>  $rows  the day's {@see self::window()}
      * @param  list<string>  $ranDates  Y-m-d of every day in that window a run landed on
-     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>}
+     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>, move_warnings: array<string, array{beside: string, session_type: string}>}
      */
     public static function rulesFor(PlannedSession $day, PlannedSessionStatus $status, Collection $rows, array $ranDates, Carbon $today): array
     {
         $toggles = self::canToggleSkip($day, $status, $today);
-        $moveTargets = self::canMoveFrom($day, $status, $today) ? self::moveTargets($day, $rows, $ranDates, $today) : [];
+        $moves = self::canMoveFrom($day, $status, $today) ? self::moves($day, $rows, $ranDates, $today) : ['targets' => [], 'warnings' => []];
 
         return [
             'actions' => [
-                'move' => $moveTargets !== [],
+                'move' => $moves['targets'] !== [],
                 'skip' => $toggles && ! $day->skipped,
                 'restore' => $toggles && $day->skipped,
             ],
-            'move_targets' => $moveTargets,
+            'move_targets' => $moves['targets'],
+            'move_warnings' => $moves['warnings'],
         ];
     }
 
@@ -73,45 +74,92 @@ final class SessionEditRules
     }
 
     /**
-     * Rest days of the session's own week from today on, and earlier ones only
-     * where a run landed. A hard session never lands beside another hard day.
-     *
      * @param  Collection<int, PlannedSession>  $rows  the source's {@see self::window()}
      * @param  list<string>  $ranDates
      * @return list<string>
      */
     public static function moveTargets(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today): array
     {
+        return self::moves($source, $rows, $ranDates, $today)['targets'];
+    }
+
+    /**
+     * Rest days of the session's own week from today on, and earlier ones only
+     * where a run landed. From today on, an unrun session also swaps with
+     * another unrun training day of its week. A target that leaves a hard
+     * session beside another hard day stays offered, with a warning naming it.
+     *
+     * @param  Collection<int, PlannedSession>  $rows  the source's {@see self::window()}
+     * @param  list<string>  $ranDates
+     * @return array{targets: list<string>, warnings: array<string, array{beside: string, session_type: string}>}
+     */
+    private static function moves(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today): array
+    {
         $sourceDate = $source->date->toDateString();
         [$windowStart, $windowEnd] = self::window($source->date);
         $weekStart = $windowStart->copy()->addDay()->toDateString();
         $weekEnd = $windowEnd->copy()->subDay()->toDateString();
         $todayKey = $today->toDateString();
-        $dated = $rows->map(static fn (PlannedSession $row): array => [$row->date->toDateString(), $row])->all();
-        $besideHard = [];
-        if (self::isHard($source->session_type)) {
-            foreach ($dated as [$date, $row]) {
-                if ($date !== $sourceDate && self::isHard($row->session_type)) {
-                    $day = Carbon::parse($date);
-                    $besideHard[$day->copy()->subDay()->toDateString()] = true;
-                    $besideHard[$day->addDay()->toDateString()] = true;
+        $dated = $rows->mapWithKeys(static fn (PlannedSession $row): array => [$row->date->toDateString() => $row])->all();
+        $swappable = self::isSwappable($source, $sourceDate, $ranDates, $todayKey);
+
+        $targets = [];
+        $warnings = [];
+        foreach ($dated as $date => $row) {
+            if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->made_up_on !== null) {
+                continue;
+            }
+            $offered = $row->session_type === SessionType::Rest
+                ? $date >= $todayKey || in_array($date, $ranDates, true)
+                : $swappable && self::isSwappable($row, $date, $ranDates, $todayKey);
+            if (! $offered) {
+                continue;
+            }
+            $targets[] = $date;
+            $warning = self::hardNeighbour($dated, [$date => $source->session_type, $sourceDate => $row->session_type]);
+            if ($warning !== null) {
+                $warnings[$date] = $warning;
+            }
+        }
+        sort($targets);
+
+        return ['targets' => $targets, 'warnings' => $warnings];
+    }
+
+    /**
+     * @param  list<string>  $ranDates
+     */
+    private static function isSwappable(PlannedSession $day, string $date, array $ranDates, string $todayKey): bool
+    {
+        return $date >= $todayKey
+            && $day->session_type !== SessionType::Race
+            && $day->made_up_from_id === null
+            && ! in_array($date, $ranDates, true);
+    }
+
+    /**
+     * @param  array<string, PlannedSession>  $dated
+     * @param  array<string, SessionType>  $swapped  the two days' types once the edit lands
+     * @return array{beside: string, session_type: string}|null
+     */
+    private static function hardNeighbour(array $dated, array $swapped): ?array
+    {
+        $typeOn = static fn (string $date): ?SessionType => $swapped[$date] ?? ($dated[$date] ?? null)?->session_type;
+
+        foreach ($swapped as $date => $type) {
+            if (! self::isHard($type)) {
+                continue;
+            }
+            $day = Carbon::parse($date);
+            foreach ([$day->copy()->subDay()->toDateString(), $day->copy()->addDay()->toDateString()] as $neighbour) {
+                $neighbourType = $typeOn($neighbour);
+                if ($neighbourType instanceof SessionType && self::isHard($neighbourType)) {
+                    return ['beside' => $neighbour, 'session_type' => $neighbourType->value];
                 }
             }
         }
 
-        $targets = [];
-        foreach ($dated as [$date, $row]) {
-            if ($date === $sourceDate || $date < $weekStart || $date > $weekEnd || $row->session_type !== SessionType::Rest || $row->made_up_on !== null) {
-                continue;
-            }
-            if (($date < $todayKey && ! in_array($date, $ranDates, true)) || isset($besideHard[$date])) {
-                continue;
-            }
-            $targets[] = $date;
-        }
-        sort($targets);
-
-        return $targets;
+        return null;
     }
 
     /**

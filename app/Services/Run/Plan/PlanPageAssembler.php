@@ -405,7 +405,7 @@ final class PlanPageAssembler
     /**
      * @param  Collection<string, PlannedSession>  $ruleRowsByDate
      * @param  list<string>  $ranDates
-     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>}
+     * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>, move_warnings: array<string, array{beside: string, session_type: string}>}
      */
     private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRowsByDate, array $ranDates, Carbon $today): array
     {

@@ -982,6 +982,8 @@ export type EditablePlanDay = PlanDay & {
     actions: { move: boolean; skip: boolean; restore: boolean };
     /** The days, Y-m-d, a move may land on. */
     move_targets: string[];
+    /** Targets, keyed Y-m-d, that leave a hard session beside another hard day, with that day and its session. */
+    move_warnings: Record<string, { beside: string; session_type: string }>;
     /** Set on a day a make-up emptied: the day, Y-m-d, its session moved to. */
     made_up_on: string | null;
 };
