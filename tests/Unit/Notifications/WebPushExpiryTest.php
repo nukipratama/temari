@@ -91,7 +91,7 @@ it('keeps the recap, race outcome, strava, intervals.icu and test pushes for the
         ->and(pushOptions(new RaceOutcomeNotification($race), $user)['TTL'])->toBe(3 * 86400)
         ->and(pushOptions(new StravaDisconnectedNotification(now()), $user)['TTL'])->toBe(7 * 86400)
         ->and(pushOptions(new IntervalsIcuDisconnectedNotification(now()), $user)['TTL'])->toBe(7 * 86400)
-        ->and(pushOptions(new TestNotification(), $user)['TTL'])->toBe(300);
+        ->and(pushOptions(new TestNotification(), $user)['TTL'])->toBe(3600);
 });
 
 

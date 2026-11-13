@@ -71,6 +71,6 @@ class TestNotification extends Notification implements ShouldQueue
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('dashboard')], $notifiable))
             // Mirror the real push: high urgency so the test is a truthful delivery signal.
-            ->options(['urgency' => 'high', 'TTL' => 300]);
+            ->options(['urgency' => 'high', 'TTL' => 3600]);
     }
 }

@@ -72,7 +72,7 @@ it('builds a titled, high-urgency web push test message', function (): void {
     expect($payload['title'])->toBe('Test notification')
         ->and($payload['body'])->toBe("Test notification from temari. If you're seeing this, push notifications are working. I'll ping you after every run and with your weekly recap.")
         ->and($payload['body'])->not->toContain('Telegram')
-        ->and($message->getOptions())->toBe(['urgency' => 'high', 'TTL' => 300]);
+        ->and($message->getOptions())->toBe(['urgency' => 'high', 'TTL' => 3600]);
 });
 
 it('records the test in the inbox as well, so the send leaves a trace', function (): void {
