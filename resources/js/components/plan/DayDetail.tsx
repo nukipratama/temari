@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
-import type { EditablePlanDay, PlanDay } from '@/lib/plan';
+import type { EditablePlanDay, MoveWarning, PlanDay } from '@/lib/plan';
 
 import {
     AskedRanResult,
@@ -459,6 +459,9 @@ export default function DayDetail({
                                     );
                                     const swaps =
                                         valid && target.session_type !== 'rest';
+                                    const swapIcon = swaps
+                                        ? SESSION_TYPE_ICON[target.session_type]
+                                        : undefined;
                                     const warned =
                                         valid &&
                                         target.date in day.move_warnings;
@@ -491,21 +494,13 @@ export default function DayDetail({
                                             )}
                                         >
                                             {weekdayLabel(target.date)}
-                                            {swaps &&
-                                                SESSION_TYPE_ICON[
-                                                    target.session_type
-                                                ] && (
-                                                    <Icon
-                                                        icon={
-                                                            SESSION_TYPE_ICON[
-                                                                target
-                                                                    .session_type
-                                                            ]
-                                                        }
-                                                        className="size-3 text-text-3"
-                                                        aria-hidden
-                                                    />
-                                                )}
+                                            {swapIcon && (
+                                                <Icon
+                                                    icon={swapIcon}
+                                                    className="size-3 text-text-3"
+                                                    aria-hidden
+                                                />
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -576,16 +571,14 @@ export default function DayDetail({
     );
 }
 
-function besideLabel(
-    warning: Readonly<{ beside: string; session_type: string }>,
-): string {
+function besideLabel(warning: Readonly<MoveWarning>): string {
     return `beside ${weekdayLabel(warning.beside).toLowerCase()}'s ${SESSION_TYPE_LABEL[warning.session_type] ?? warning.session_type}`;
 }
 
 function moveTargetLabel(
     target: PlanDay,
     swaps: boolean,
-    warning: Readonly<{ beside: string; session_type: string }> | undefined,
+    warning: Readonly<MoveWarning> | undefined,
 ): string {
     const action = swaps
         ? `swap with ${weekdayLabel(target.date).toLowerCase()}'s ${SESSION_TYPE_LABEL[target.session_type] ?? target.session_type}`
