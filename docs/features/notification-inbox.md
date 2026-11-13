@@ -155,7 +155,7 @@ released by quiet hours therefore gets its full TTL. The app clock (WIB) defines
 | post-run, weekly and monthly recaps, race outcome | 3 days | none |
 | plan change | end of the changed session's day | none |
 | Strava disconnected | 7 days | none |
-| test | 5 minutes | none |
+| test | 1 hour | none |
 
 A deadline already past clamps to one second. A `Topic` makes a newer briefing or streak push
 replace an undelivered older one. The TTLs are set in each notification's `toWebPush()`, for
