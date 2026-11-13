@@ -72,6 +72,18 @@ it('pushes to an athlete whose slot, an hour before their usual start, falls in 
     'twenty minutes after the bucket' => '2026-05-24 06:20:00',
 ]);
 
+it('floors the automatic slot to the quarter hour', function (): void {
+    Notification::fake();
+
+    $user = morningAthlete('07:10:00');
+
+    $this->artisan('briefing:morning-push')
+        ->expectsOutputToContain('Pushed the morning briefing to 1 athletes.')
+        ->assertSuccessful();
+
+    Notification::assertSentTo($user, MorningBriefingNotification::class);
+});
+
 it('leaves an athlete alone on a day they skipped, and still pushes on a later skipped day', function (): void {
     Notification::fake();
 
