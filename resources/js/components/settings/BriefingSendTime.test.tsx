@@ -40,6 +40,24 @@ describe('BriefingSendTime', () => {
         expect(field).toHaveValue('05:00');
     });
 
+    it('shows the snapped time without saving again when it is the saved one', () => {
+        const onChange = vi.fn();
+        render(
+            <BriefingSendTime
+                minute={5 * 60}
+                disabled={false}
+                onChange={onChange}
+            />,
+        );
+        const field = screen.getByLabelText('send the morning briefing at');
+
+        fireEvent.change(field, { target: { value: '05:10' } });
+        fireEvent.blur(field);
+
+        expect(onChange).not.toHaveBeenCalled();
+        expect(field).toHaveValue('05:00');
+    });
+
     it('puts back the saved time instead of saving one inside the evening quiet hours', () => {
         const onChange = vi.fn();
         render(
