@@ -23,6 +23,8 @@ code_refs:
 
 > **Partly superseded (2026-10-13) by [[the-season-has-no-narrated-read]].** The season band no longer carries Temari's take; the rest of this decision stands.
 
+> **Partly superseded (2026-11-13) by [[a-manual-edit-may-stack-hard-days-with-a-warning]].** Move also swaps directly with another unrun training day of the week from today on, not only onto a rest day; the rest of this decision stands.
+
 > **Fact update, 2026-10-21.** A week behind the loaded window is no longer a plain row: tapping it loads
 > that week's days on demand (`pastWeek`), so the page payload is still unchanged; see [[plan-periodizer]].
 
