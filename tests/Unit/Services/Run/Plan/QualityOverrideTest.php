@@ -110,6 +110,27 @@ it('marks the day the athlete chose to run, undoable until a run lands on it', f
     'the day has passed' => [PlanOverrideKind::WeeklyDrop, '2026-09-18', false, false],
 ]);
 
+it('moves the taken note to the day an overridden session was made up on, with no undo', function (): void {
+    Carbon::setTestNow('2026-09-16 08:00:00');
+    $week = overrideWeek(['override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => '2026-09-15']);
+    $emptied = overrideDay('2026-09-15', SessionType::Rest, ['made_up_on' => '2026-09-17']);
+    $madeUp = overrideDay('2026-09-17', SessionType::Interval, ['made_up_from_id' => 7]);
+    $takenOn = QualityOverride::takenOn($week, collect([$emptied, overrideDay('2026-09-16', SessionType::Easy), $madeUp]));
+
+    expect($takenOn)->toBe('2026-09-17')
+        ->and(QualityOverride::forDay($emptied, Carbon::today(), $emptied->status, false, $week, null, null, $takenOn))->toBeNull()
+        ->and(QualityOverride::forDay($madeUp, Carbon::today(), $madeUp->status, false, $week, null, null, $takenOn))
+        ->toBe(['kind' => 'readiness_ease', 'state' => 'taken', 'note' => QualityOverride::TAKEN_NOTE, 'undoable' => false]);
+});
+
+it('keeps the taken note on the override date while its day was not made up', function (?PlanAdaptation $week, ?string $takenOn): void {
+    expect(QualityOverride::takenOn($week, collect([overrideDay('2026-09-17')])))->toBe($takenOn);
+})->with([
+    'taken' => [fn (): PlanAdaptation => overrideWeek(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17']), '2026-09-17'],
+    'none taken' => [fn (): PlanAdaptation => overrideWeek(), null],
+    'no week' => [null, null],
+]);
+
 it('offers nothing outside the week the adaptation covers', function (): void {
     expect(overrideFor(overrideDay('2026-09-22', SessionType::Easy), overrideWeek(['restorable_quality' => ['date' => '2026-09-22', 'session_type' => 'tempo', 'time_trial' => false]])))->toBeNull();
 });

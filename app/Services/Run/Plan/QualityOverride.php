@@ -14,6 +14,7 @@ use App\Models\RaceGoal;
 use App\Models\User;
 use App\Services\Run\Metrics\ReadinessCeiling;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * The athlete's one "i'm ready" override a week: today's quality session the readiness clamp eased
@@ -45,6 +46,7 @@ final class QualityOverride
      * @param  PlanAdaptation|null  $week  the day's week while {@see self::openWeek()} holds it open
      * @param  string|null  $easeNote  the clamp's note on the ease this day shows
      * @param  ReadinessCeiling|null  $easeCeiling  the ceiling that ease was made at
+     * @param  string|null  $takenOn  the day the taken note sits on, from {@see self::takenOn()}
      * @return array{kind: string, state: 'offered', label: string, reason: string}|array{kind: string, state: 'taken', note: string, undoable: bool}|null
      */
     public static function forDay(
@@ -55,17 +57,19 @@ final class QualityOverride
         ?PlanAdaptation $week,
         ?string $easeNote,
         ?ReadinessCeiling $easeCeiling,
+        ?string $takenOn = null,
     ): ?array {
         if (! $week instanceof PlanAdaptation || ! $week->week_start->isSameDay($day->date->copy()->startOfWeek(Carbon::MONDAY))) {
             return null;
         }
 
-        if ($week->override_kind instanceof PlanOverrideKind && $week->override_date?->isSameDay($day->date) === true) {
+        $overrideDate = $week->override_date?->toDateString();
+        if ($week->override_kind instanceof PlanOverrideKind && ($takenOn ?? $overrideDate) === $day->date->toDateString()) {
             return [
                 'kind' => $week->override_kind->value,
                 'state' => 'taken',
                 'note' => self::TAKEN_NOTE,
-                'undoable' => ! $ran && ! $status->isCredited() && ! $day->date->lt($today),
+                'undoable' => $overrideDate === $day->date->toDateString() && ! $ran && ! $status->isCredited() && ! $day->date->lt($today),
             ];
         }
 
@@ -109,6 +113,23 @@ final class QualityOverride
         }
 
         return null;
+    }
+
+    /**
+     * The day a taken override's note sits on: its own date, or the day its
+     * session was made up on.
+     *
+     * @param  Collection<int, PlannedSession>  $weekRows
+     */
+    public static function takenOn(?PlanAdaptation $week, Collection $weekRows): ?string
+    {
+        $overrideDate = $week?->override_kind instanceof PlanOverrideKind ? $week->override_date?->toDateString() : null;
+        if ($overrideDate === null) {
+            return null;
+        }
+        $overrideDay = $weekRows->first(static fn (PlannedSession $row): bool => $row->date->toDateString() === $overrideDate);
+
+        return $overrideDay?->made_up_on?->toDateString() ?? $overrideDate;
     }
 
     public static function holdsEase(?PlanAdaptation $week, Carbon $today, ReadinessCeiling $ceiling): bool

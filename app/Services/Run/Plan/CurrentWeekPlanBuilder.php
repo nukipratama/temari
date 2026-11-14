@@ -45,6 +45,7 @@ final readonly class CurrentWeekPlanBuilder
         $resolvedStatuses = $week['statuses'];
 
         $overrideWeek = QualityOverride::openWeek($user, $week['adaptation'], $race);
+        $overrideTakenOn = QualityOverride::takenOn($overrideWeek, $currentWeekSessions);
 
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $week['today_session'])
             ? $this->clampVoiceReader->clampVoiceFor($user, $today, $week['briefing']->historyLoading ? null : $week['briefing']->readinessAssessment)
@@ -72,6 +73,7 @@ final readonly class CurrentWeekPlanBuilder
             includeRecommendationToken: $s->date->isSameDay($today),
             easySlowEndSecPerKm: $week['easy_slow_end_sec_per_km'],
             overrideWeek: $overrideWeek,
+            overrideTakenOn: $overrideTakenOn,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

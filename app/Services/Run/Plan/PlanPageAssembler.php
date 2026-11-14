@@ -320,6 +320,7 @@ final class PlanPageAssembler
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $currentWeekAdaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
         $overrideWeek = QualityOverride::openWeek($user, $currentWeekAdaptation, $race);
+        $overrideTakenOn = QualityOverride::takenOn($overrideWeek, $sessionsByWeek->get($currentWeekKey) ?? collect());
         $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($currentWeekAdaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
                 IntensityPrescription::runsAs($todaySession),
@@ -395,6 +396,7 @@ final class PlanPageAssembler
                     includeRecommendationToken: $s->date->toDateString() === $tokenDate,
                     easySlowEndSecPerKm: $easySlowEnd,
                     overrideWeek: $overrideWeek,
+                    overrideTakenOn: $overrideTakenOn,
                 ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today, $currentWeekAdaptation?->override_date?->toDateString()), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }

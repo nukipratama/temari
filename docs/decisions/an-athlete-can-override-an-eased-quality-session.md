@@ -28,7 +28,7 @@ code_refs:
 > (`QualityOverride::openWeek()`). `QualityOverrideService::take()` checks the offer inside the plan
 > lock.
 
-> **Fact update, 2026-11-15.** A passed, unrun override day may be made up within its week, and the coach's `overridden` flag then moves to the day it was made up on ([[a-manual-edit-may-stack-hard-days-with-a-warning]]).
+> **Fact update, 2026-11-15.** A passed, unrun override day may be made up within its week, and the day's taken note and the coach's `overridden` flag then move to the day it was made up on ([[a-manual-edit-may-stack-hard-days-with-a-warning]]).
 
 ## Context
 
