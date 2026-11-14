@@ -28,6 +28,8 @@ code_refs:
 > (`QualityOverride::openWeek()`). `QualityOverrideService::take()` checks the offer inside the plan
 > lock.
 
+> **Fact update, 2026-11-15.** A passed, unrun override day may be made up within its week, and the day's taken note and the coach's `overridden` flag then move to the day it was made up on ([[a-manual-edit-may-stack-hard-days-with-a-warning]]).
+
 ## Context
 
 The plan takes quality work away in two ways. [ReadinessClamp](app/Services/Run/Plan/ReadinessClamp.php) eases today's Tempo or Interval at a `ModerateOk` ceiling to a smaller dose or an easy run, and a `RanTooHard` week ([PlanAdapter](app/Services/Run/Plan/PlanAdapter.php), `quality_delta: -1`) drops a quality session from the current week. Both were final: an athlete who felt ready had no way back, and nothing recorded that they had wanted one.
