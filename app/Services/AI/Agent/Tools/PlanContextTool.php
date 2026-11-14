@@ -103,6 +103,32 @@ final class PlanContextTool extends UserTool
             .'empty list means no plan covers these days.';
     }
 
+    /**
+     * The days whose session the athlete chose to run as written. An override
+     * whose day was made up follows the session to the day it was made up on,
+     * which stays within the same week.
+     *
+     * @return array<string, int>
+     */
+    private function overriddenDates(): array
+    {
+        $overrideDates = array_values(array_filter(PlanAdaptation::query()
+            ->where('user_id', $this->user->id)
+            ->whereBetween('override_date', [$this->asOf->copy()->subDays(6)->toDateString(), $this->through->copy()->addDays(6)->toDateString()])
+            ->get(['override_date'])
+            ->map(static fn (PlanAdaptation $adaptation): ?string => $adaptation->override_date?->toDateString())
+            ->all()));
+        $madeUpOn = PlannedSession::query()
+            ->where('user_id', $this->user->id)
+            ->whereIn('date', $overrideDates)
+            ->whereNotNull('made_up_on')
+            ->get(['date', 'made_up_on'])
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => $session->made_up_on?->toDateString()])
+            ->all();
+
+        return array_flip(array_map(static fn (string $date): string => $madeUpOn[$date] ?? $date, $overrideDates));
+    }
+
     /** @return array<string, mixed> */
     public function handle(array $arguments): array
     {
@@ -117,12 +143,7 @@ final class PlanContextTool extends UserTool
         }
 
         $runDistancesByDate = $this->runDistancesByDate();
-        $overriddenDates = array_flip(array_filter(PlanAdaptation::query()
-            ->where('user_id', $this->user->id)
-            ->whereBetween('override_date', [$this->asOf->toDateString(), $this->through->toDateString()])
-            ->get(['override_date'])
-            ->map(static fn (PlanAdaptation $adaptation): ?string => $adaptation->override_date?->toDateString())
-            ->all()));
+        $overriddenDates = $this->overriddenDates();
 
         $baselineData = $this->baseline->forUser($this->user, $this->asOf);
         $longRunBaselineKm = $baselineData['long_run_km'];

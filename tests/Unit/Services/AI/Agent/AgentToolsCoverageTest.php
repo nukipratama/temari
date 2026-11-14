@@ -1113,6 +1113,24 @@ it('marks the day the athlete chose to run as written after the plan eased or dr
         ->and(planContextTool($user, $monday, $monday)->description())->toContain('overridden true');
 });
 
+it('marks the made-up day, not the emptied one, when an overridden session was made up', function (): void {
+    $user = User::factory()->create();
+    $tuesday = PlannedSession::factory()->for($user)->create(['date' => '2026-09-08', 'session_type' => SessionType::Rest, 'made_up_on' => '2026-09-10']);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-09', 'session_type' => SessionType::Easy]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-10', 'session_type' => SessionType::Tempo, 'made_up_from_id' => $tuesday->id]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-09-07',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-09-08',
+    ]);
+
+    $reading = planContextTool($user, Carbon::parse('2026-09-08'), Carbon::parse('2026-09-10'))->handle([]);
+    $madeUpOnly = planContextTool($user, Carbon::parse('2026-09-10'), Carbon::parse('2026-09-10'))->handle([]);
+
+    expect(array_column(arrayOf($reading['days']), 'overridden'))->toBe([false, false, true])
+        ->and(array_column(arrayOf($madeUpOnly['days']), 'overridden'))->toBe([true]);
+});
+
 it('carries a detailed run and persisted intent beside the plan row', function (): void {
     $user = User::factory()->create();
     $today = Carbon::today();
