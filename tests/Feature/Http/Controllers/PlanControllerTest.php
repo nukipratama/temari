@@ -688,6 +688,27 @@ it('leaves today\'s recorded ease behind when a swap brings another session onto
         ->and($today->readiness_assessment)->toBeNull();
 });
 
+it('refuses to move the day carrying the week\'s taken override, even onto a rest day', function (): void {
+    Carbon::setTestNow('2026-11-11 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-12' => 'tempo',
+        '2026-11-13' => 'rest',
+    ]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-11-09',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-11-12',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-12']->id}", ['date' => '2026-11-13'])
+        ->assertSessionHasErrors('date');
+
+    expect($rows['2026-11-12']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
+});
+
 it('refuses to swap a session onto the day carrying the week\'s taken override', function (): void {
     Carbon::setTestNow('2026-11-13 08:00:00');
     $user = User::factory()->create();
