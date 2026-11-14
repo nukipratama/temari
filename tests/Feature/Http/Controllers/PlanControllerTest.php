@@ -709,6 +709,27 @@ it('refuses to move the day carrying the week\'s taken override, even onto a res
         ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
 });
 
+it('makes up a missed session that carried the week\'s taken override onto a rest day', function (): void {
+    Carbon::setTestNow('2026-11-11 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-10' => 'tempo',
+        '2026-11-12' => 'rest',
+    ], ['2026-11-10' => ['status' => PlannedSessionStatus::Missed]]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-11-09',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-11-10',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-10']->id}", ['date' => '2026-11-12'])
+        ->assertSessionHasNoErrors();
+
+    expect($rows['2026-11-12']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($rows['2026-11-10']->refresh()->session_type)->toBe(SessionType::Rest);
+});
+
 it('refuses to swap a session onto the day carrying the week\'s taken override', function (): void {
     Carbon::setTestNow('2026-11-13 08:00:00');
     $user = User::factory()->create();
