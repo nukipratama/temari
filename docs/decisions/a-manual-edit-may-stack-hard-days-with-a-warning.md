@@ -15,7 +15,7 @@ code_refs:
 
 A move used to refuse any rest day that would leave a Long, Tempo, Interval or Race session beside another of those, and a session could only land on a rest day. Putting a weekend long run on the other weekend day took up to three moves, and moving it next to a hard session was impossible even when the athlete meant it.
 
-- **Training days swap directly.** From today on, an unrun session swaps with another unrun training day of its week in one edit ([SessionEditRules::moves()](app/Services/Run/Plan/SessionEditRules.php)). Race days, made-up days, days a run landed on and past days never swap; past days keep the make-up flow.
+- **Training days swap directly.** From today on, an unrun session swaps with another unrun training day of its week in one edit ([SessionEditRules::moves()](app/Services/Run/Plan/SessionEditRules.php)). Race days, made-up days, days a run landed on, the day carrying the week's taken override and past days never swap; past days keep the make-up flow. An override is stored by date on the week's adaptation, so swapping its day would leave it on the other session.
 - **Hard neighbours warn, they don't refuse.** A target that leaves either swapped session beside another hard day stays offered. The day ships it in `move_warnings`, and [DayDetail](resources/js/components/plan/DayDetail.tsx) outlines the cell and names the hard day it would sit beside.
 - **The plan's own spacing is unchanged.** The periodizer still lays hard days at least two days apart, and no override shortens that ([[a-hard-day-dropped-session-can-be-brought-back]]).
 

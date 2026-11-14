@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\PlanRegenerationReason;
 use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
@@ -190,10 +191,14 @@ class PlanController extends Controller
             ->get();
         $ranDates = array_map(strval(...), array_keys($sessionMatcher->activityByDate($user, $from, $to)));
         $target = $rows->first(static fn (PlannedSession $row): bool => $row->date->isSameDay($toDate));
+        $overrideDate = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->first()?->override_date?->toDateString();
 
         if ($target === null
             || ! SessionEditRules::canMoveFrom($session, $session->status, $today)
-            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today), true)) {
+            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today, $overrideDate), true)) {
             throw ValidationException::withMessages(['date' => "this session can't move to that day."]);
         }
 

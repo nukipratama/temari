@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Collection;
 use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Enums\PlanRegenerationReason;
+use App\Enums\PlanOverrideKind;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\SessionType;
 use App\Http\Controllers\PlanController;
@@ -15,6 +16,7 @@ use App\Jobs\Run\RegeneratePlanJob;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\PersonalRecord;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\RaceGoal;
 use App\Models\RecommendationRevision;
@@ -662,6 +664,28 @@ it('swaps Sunday\'s long run with Saturday\'s easy run in one move, pinning both
         ->and($sunday->session_type)->toBe(SessionType::Easy)
         ->and($sunday->pinned)->toBeTrue()
         ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
+});
+
+it('refuses to swap a session onto the day carrying the week\'s taken override', function (): void {
+    Carbon::setTestNow('2026-11-13 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-13' => 'rest',
+        '2026-11-14' => 'tempo',
+        '2026-11-15' => 'long',
+    ]);
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-11-09',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-11-14',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-15']->id}", ['date' => '2026-11-14'])
+        ->assertSessionHasErrors('date');
+
+    expect($rows['2026-11-14']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($rows['2026-11-15']->refresh()->session_type)->toBe(SessionType::Long);
 });
 
 /**
