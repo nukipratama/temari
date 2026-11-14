@@ -123,9 +123,19 @@ export function stubNarrationLayout(height: number) {
         .spyOn(window, 'getComputedStyle')
         .mockImplementation((element, pseudo) => {
             const style = computed(element, pseudo);
-            style.lineHeight = `${NARRATION_LINE_HEIGHT}px`;
 
-            return style;
+            return new Proxy(style, {
+                get(target, property) {
+                    if (property === 'lineHeight') {
+                        return `${NARRATION_LINE_HEIGHT}px`;
+                    }
+                    const value = Reflect.get(target, property, target);
+
+                    return typeof value === 'function'
+                        ? value.bind(target)
+                        : value;
+                },
+            });
         });
     onTestFinished(() => {
         offsetHeight.mockRestore();
