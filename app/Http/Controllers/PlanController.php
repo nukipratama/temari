@@ -214,8 +214,10 @@ class PlanController extends Controller
         $fromWorkout = $from->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
         $toWorkout = $to->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
-        $to->update([...$fromWorkout, 'pinned' => true]);
-        $from->update([...$toWorkout, 'pinned' => true]);
+        $clampReset = ['clamped_km' => null, 'eased_pace_sec_per_km' => null, 'readiness_assessment' => null];
+
+        $to->update([...$fromWorkout, ...$clampReset, 'pinned' => true]);
+        $from->update([...$toWorkout, ...$clampReset, 'pinned' => true]);
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void

@@ -28,6 +28,7 @@ use App\Models\WeeklySnapshot;
 use App\Models\AI\Analysis;
 use App\Services\AI\AnalysisService;
 use App\Services\AI\AnalysisType;
+use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\PlanRegenerateCooldown;
 use App\Services\Run\Plan\MakeUpService;
 use App\Services\Run\Plan\Periodizer;
@@ -664,6 +665,26 @@ it('swaps Sunday\'s long run with Saturday\'s easy run in one move, pinning both
         ->and($sunday->session_type)->toBe(SessionType::Easy)
         ->and($sunday->pinned)->toBeTrue()
         ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
+});
+
+it('leaves today\'s recorded ease behind when a swap brings another session onto today', function (): void {
+    Carbon::setTestNow('2026-11-14 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-14' => 'easy',
+        '2026-11-15' => 'long',
+    ], [
+        '2026-11-14' => ['clamped_km' => 5.0, 'readiness_assessment' => ['reasons' => ['low readiness']]],
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-15']->id}", ['date' => '2026-11-14'])
+        ->assertSessionHasNoErrors();
+
+    $today = $rows['2026-11-14']->refresh();
+    expect($today->session_type)->toBe(SessionType::Long)
+        ->and(EffectiveSession::of($today, 20.0)->sessionType)->toBe(SessionType::Long)
+        ->and($today->readiness_assessment)->toBeNull();
 });
 
 it('refuses to swap a session onto the day carrying the week\'s taken override', function (): void {
