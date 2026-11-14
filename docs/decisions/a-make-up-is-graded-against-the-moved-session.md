@@ -15,6 +15,8 @@ code_refs:
 
 > **Partly superseded (2026-10-07) by [[a-plan-day-has-no-narrated-read]].** A make-up no longer re-requests either day's read, since there is none; the grading and every other consequence stand.
 
+> **Partly superseded (2026-11-13) by [[a-manual-edit-may-stack-hard-days-with-a-warning]].** A move that leaves a hard session beside another hard day is offered with a warning instead of refused, so a missed session is no longer left with nowhere to go; the rest of this decision stands.
+
 # A make-up is graded against the moved session
 
 **Status:** Accepted (2026-10-07). A documented exception to [[grading-follows-shown-advice-and-actual-stimulus]].

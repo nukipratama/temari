@@ -58,6 +58,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         flagged: false,
         actions: { move: false, skip: false, restore: false },
         move_targets: [],
+        move_warnings: {},
         made_up_on: null,
         override: null,
         ...overrides,
@@ -852,6 +853,40 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
+    });
+
+    it('offers a training day as a swap and warns which hard day a target sits beside', () => {
+        const long = day({
+            id: 5,
+            date: '2026-06-21',
+            session_type: 'long',
+        });
+        const tempo = day({
+            ...defined(WEEK[0]),
+            move_targets: ['2026-06-19', '2026-06-21'],
+            move_warnings: {
+                '2026-06-19': { beside: '2026-06-18', session_type: 'tempo' },
+            },
+        });
+        renderRow({ day: tempo, weekDays: [...WEEK, long] });
+        fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
+
+        const friday = screen.getByRole('button', { name: 'Fri' });
+        expect(friday).toHaveAttribute(
+            'title',
+            "move to fri, beside thu's tempo",
+        );
+        expect(friday).toHaveClass('border-citrus');
+        expect(screen.getByRole('button', { name: 'Sun' })).toHaveAttribute(
+            'title',
+            "swap with sun's long run",
+        );
+        expect(screen.getByRole('button', { name: 'Sun' })).not.toHaveClass(
+            'border-citrus',
+        );
+        expect(screen.getByText("fri · beside thu's tempo")).toHaveClass(
+            'text-citrus-ink',
+        );
     });
 
     it('enables a past rest day the edit rules offer as a target', () => {

@@ -121,7 +121,7 @@ it('offers nothing on a rest day', function (): void {
 });
 
 it('offers no move when no target remains', function (): void {
-    $rows = editRulesWeek(['2026-08-13' => SessionType::Easy, '2026-08-15' => SessionType::Easy]);
+    $rows = editRulesWeek(['2026-08-13' => SessionType::Easy, '2026-08-14' => SessionType::Race, '2026-08-15' => SessionType::Easy]);
 
     expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-14'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => false, 'skip' => true, 'restore' => false]);
@@ -132,10 +132,10 @@ it('targets rest days from today through Sunday, and past rest days only where a
     $source = editRulesDay($rows, '2026-08-14');
 
     expect(SessionEditRules::moveTargets($source, $rows, ['2026-08-10'], Carbon::today()))
-        ->toBe(['2026-08-10', '2026-08-12', '2026-08-13', '2026-08-15']);
+        ->toBe(['2026-08-10', '2026-08-12', '2026-08-13', '2026-08-15', '2026-08-16']);
 });
 
-it('never targets a day outside the session\'s own week, nor a day that is not rest', function (): void {
+it('moves a past session only onto rest days of its own week', function (): void {
     $rows = editRulesWeek();
     $source = editRulesDay($rows, '2026-08-11');
 
@@ -143,15 +143,20 @@ it('never targets a day outside the session\'s own week, nor a day that is not r
         ->toBe(['2026-08-13', '2026-08-15']);
 });
 
-it('keeps a hard session off any day beside another hard day', function (SessionType $neighbour): void {
+it('offers a day beside another hard day to a hard session, warning which day it sits beside', function (SessionType $neighbour): void {
     $rows = editRulesWeek([
         '2026-08-11' => SessionType::Tempo,
         '2026-08-14' => $neighbour,
         '2026-08-16' => SessionType::Easy,
     ]);
 
-    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-11'), $rows, [], Carbon::today()))
-        ->toBe([]);
+    $rules = SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-11'), PlannedSessionStatus::Missed, $rows, [], Carbon::today());
+
+    expect($rules['move_targets'])->toBe(['2026-08-13', '2026-08-15'])
+        ->and($rules['move_warnings'])->toBe([
+            '2026-08-13' => ['beside' => '2026-08-14', 'session_type' => $neighbour->value],
+            '2026-08-15' => ['beside' => '2026-08-14', 'session_type' => $neighbour->value],
+        ]);
 })->with([SessionType::Long, SessionType::Interval, SessionType::Tempo, SessionType::Race]);
 
 it('lets a hard session land beside easy days, and beside the day it leaves', function (): void {
@@ -160,8 +165,10 @@ it('lets a hard session land beside easy days, and beside the day it leaves', fu
         '2026-08-16' => SessionType::Easy,
     ]);
 
-    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, [], Carbon::today()))
-        ->toBe(['2026-08-13', '2026-08-15']);
+    $rules = SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-12'), PlannedSessionStatus::Planned, $rows, [], Carbon::today());
+
+    expect($rules['move_targets'])->toBe(['2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'])
+        ->and($rules['move_warnings'])->toBe([]);
 });
 
 it('reads a hard neighbour across the week boundary', function (): void {
@@ -175,15 +182,20 @@ it('reads a hard neighbour across the week boundary', function (): void {
         '2026-08-17' => SessionType::Tempo,
     ]);
 
-    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, ['2026-08-10'], Carbon::today()))
-        ->toBe([]);
+    $rules = SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-12'), PlannedSessionStatus::Planned, $rows, ['2026-08-10'], Carbon::today());
+
+    expect($rules['move_targets'])->toBe(['2026-08-10', '2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'])
+        ->and($rules['move_warnings'])->toBe([
+            '2026-08-10' => ['beside' => '2026-08-09', 'session_type' => 'long'],
+            '2026-08-16' => ['beside' => '2026-08-17', 'session_type' => 'tempo'],
+        ]);
 });
 
 it('ignores adjacency for an easy session', function (): void {
     $rows = editRulesWeek(['2026-08-14' => SessionType::Tempo]);
 
-    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, [], Carbon::today()))
-        ->toBe(['2026-08-13', '2026-08-15']);
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-12'), PlannedSessionStatus::Planned, $rows, [], Carbon::today()))
+        ->toMatchArray(['move_targets' => ['2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'], 'move_warnings' => []]);
 });
 
 it('moves a day still ahead within its own week, from today on', function (): void {
@@ -202,18 +214,18 @@ it('moves a day still ahead within its own week, from today on', function (): vo
     expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-18'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['actions'])
         ->toBe(['move' => true, 'skip' => true, 'restore' => false])
         ->and(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-18'), $rows, [], Carbon::today()))
-        ->toBe(['2026-08-19']);
+        ->toBe(['2026-08-17', '2026-08-19', '2026-08-20', '2026-08-21', '2026-08-22', '2026-08-23']);
 });
 
 it('returns a day\'s move targets beside its actions, scanning the rows once', function (): void {
     $rows = new class (editRulesWeek()->all()) extends Collection {
         public int $maps = 0;
 
-        public function map(callable $callback): static
+        public function mapWithKeys(callable $callback): static
         {
             $this->maps++;
 
-            return parent::map($callback);
+            return parent::mapWithKeys($callback);
         }
     };
 
@@ -221,7 +233,8 @@ it('returns a day\'s move targets beside its actions, scanning the rows once', f
 
     expect($rules)->toBe([
         'actions' => ['move' => true, 'skip' => true, 'restore' => false],
-        'move_targets' => ['2026-08-13', '2026-08-15'],
+        'move_targets' => ['2026-08-13', '2026-08-14', '2026-08-15', '2026-08-16'],
+        'move_warnings' => [],
     ])
         ->and($rows->maps)->toBe(1);
 });
@@ -233,7 +246,62 @@ it('returns no move targets, and scans nothing, for a day that cannot move', fun
         ->toBe([
             'actions' => ['move' => false, 'skip' => false, 'restore' => false],
             'move_targets' => [],
+            'move_warnings' => [],
         ]);
+});
+
+it('swaps only with an unrun training day from today on that is not a race or a make-up', function (): void {
+    $rows = editRulesWeek(['2026-08-13' => SessionType::Race, '2026-08-15' => SessionType::Easy]);
+    editRulesDay($rows, '2026-08-14')->made_up_from_id = 7;
+
+    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, ['2026-08-15'], Carbon::today()))
+        ->toBe(['2026-08-16']);
+});
+
+it('never swaps a session a run already landed on, nor a race', function (SessionType $type, array $ranDates): void {
+    $rows = editRulesWeek(['2026-08-12' => $type]);
+
+    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, array_values(array_filter($ranDates, is_string(...))), Carbon::today()))
+        ->toBe(['2026-08-13', '2026-08-15']);
+})->with([
+    'a run landed today' => [SessionType::Easy, ['2026-08-12']],
+    'a race' => [SessionType::Race, []],
+]);
+
+it('never swaps the day carrying the week\'s taken override, in either direction', function (): void {
+    $rows = editRulesWeek();
+
+    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, [], Carbon::today(), '2026-08-16'))
+        ->toBe(['2026-08-13', '2026-08-14', '2026-08-15'])
+        ->and(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-16'), $rows, [], Carbon::today(), '2026-08-16'))
+        ->toBe(['2026-08-13', '2026-08-15']);
+});
+
+it('warns when the session swapped in lands beside a hard day', function (): void {
+    $rows = editRulesWeek(['2026-08-13' => SessionType::Tempo]);
+
+    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-14'), PlannedSessionStatus::Planned, $rows, [], Carbon::today())['move_warnings'])
+        ->toBe(['2026-08-16' => ['beside' => '2026-08-13', 'session_type' => 'tempo']]);
+});
+
+it('puts a weekend long run on Saturday in one swap, warning only for the rest day beside the tempo', function (): void {
+    Carbon::setTestNow('2026-11-13 08:00:00');
+    $rows = collect([
+        '2026-11-08' => SessionType::Rest,
+        '2026-11-09' => SessionType::Easy,
+        '2026-11-10' => SessionType::Rest,
+        '2026-11-11' => SessionType::Easy,
+        '2026-11-12' => SessionType::Tempo,
+        '2026-11-13' => SessionType::Rest,
+        '2026-11-14' => SessionType::Easy,
+        '2026-11-15' => SessionType::Long,
+        '2026-11-16' => SessionType::Easy,
+    ])->map(fn (SessionType $type, string $date): PlannedSession => editRulesRow($date, $type))->values();
+
+    $rules = SessionEditRules::rulesFor(editRulesDay($rows, '2026-11-15'), PlannedSessionStatus::Planned, $rows, ['2026-11-12'], Carbon::today());
+
+    expect($rules['move_targets'])->toBe(['2026-11-13', '2026-11-14'])
+        ->and($rules['move_warnings'])->toBe(['2026-11-13' => ['beside' => '2026-11-12', 'session_type' => 'tempo']]);
 });
 
 it('never targets a day a make-up already emptied', function (): void {

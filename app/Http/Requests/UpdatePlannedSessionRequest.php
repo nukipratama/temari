@@ -7,8 +7,8 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Validates a planned-session edit's shape: move (date — a swap with the rest
- * day it lands on) or skip (excuse the day before it passes — see
+ * Validates a planned-session edit's shape: move (date — a swap with the day it
+ * lands on) or skip (excuse the day before it passes — see
  * {@see \App\Models\PlannedSession::$skipped}), never both, plus an optional
  * explicit pin/unpin toggle that a move never carries. Which days may take each
  * edit is {@see \App\Services\Run\Plan\SessionEditRules}, checked under the

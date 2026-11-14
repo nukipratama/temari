@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\PlanRegenerationReason;
 use App\Actions\AI\RenarrateAfterMakeUp;
 use App\Http\Requests\UpdatePlannedSessionRequest;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Services\AI\AnalysisService;
@@ -94,8 +95,8 @@ class PlanController extends Controller
      * silently overwrite it, unless the caller passes `pinned: false` to hand
      * control back to the periodizer.
      *
-     * A move is a **swap** with the rest day it lands on, not a re-date: the
-     * periodizer materializes all seven days of every week.
+     * A move is a **swap** with the day it lands on, rest or training, not a
+     * re-date: the periodizer materializes all seven days of every week.
      */
     public function update(
         UpdatePlannedSessionRequest $request,
@@ -178,7 +179,7 @@ class PlanController extends Controller
     }
 
     /**
-     * @return array{PlannedSession, bool} the rest day the session lands on, and whether the move is a make-up
+     * @return array{PlannedSession, bool} the day the session lands on, and whether the move is a make-up
      */
     private function moveTarget(User $user, PlannedSession $session, Carbon $toDate, Carbon $today, SessionMatcher $sessionMatcher): array
     {
@@ -190,10 +191,14 @@ class PlanController extends Controller
             ->get();
         $ranDates = array_map(strval(...), array_keys($sessionMatcher->activityByDate($user, $from, $to)));
         $target = $rows->first(static fn (PlannedSession $row): bool => $row->date->isSameDay($toDate));
+        $overrideDate = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->first()?->override_date?->toDateString();
 
         if ($target === null
             || ! SessionEditRules::canMoveFrom($session, $session->status, $today)
-            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today), true)) {
+            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today, $overrideDate), true)) {
             throw ValidationException::withMessages(['date' => "this session can't move to that day."]);
         }
 
@@ -209,8 +214,10 @@ class PlanController extends Controller
         $fromWorkout = $from->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
         $toWorkout = $to->only(PlannedSession::WORKOUT_TRANSFER_FIELDS);
 
-        $to->update([...$fromWorkout, 'pinned' => true]);
-        $from->update([...$toWorkout, 'pinned' => true]);
+        $clampReset = ['clamped_km' => null, 'eased_pace_sec_per_km' => null, 'readiness_assessment' => null];
+
+        $to->update([...$fromWorkout, ...$clampReset, 'pinned' => true]);
+        $from->update([...$toWorkout, ...$clampReset, 'pinned' => true]);
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void
