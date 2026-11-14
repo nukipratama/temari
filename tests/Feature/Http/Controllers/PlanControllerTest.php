@@ -626,6 +626,7 @@ it('refuses to move a day that has already happened, leaving both rows as they w
 });
 
 it('refuses to swap a session with the race', function (): void {
+    Carbon::setTestNow('2026-11-11 08:00:00');
     $user = User::factory()->create();
     $from = PlannedSession::factory()->for($user)->create([
         'date' => Carbon::today()->addDay()->toDateString(),
