@@ -87,8 +87,8 @@ final class SessionEditRules
      * Rest days of the session's own week from today on, and earlier ones only
      * where a run landed. From today on, an unrun session also swaps with
      * another unrun training day of its week, unless either carries the week's
-     * taken override. A target that leaves a hard
-     * session beside another hard day stays offered, with a warning naming it.
+     * taken override. A target that leaves a hard session beside another hard
+     * day stays offered, with a warning naming it.
      *
      * @param  Collection<int, PlannedSession>  $rows  the source's {@see self::window()}
      * @param  list<string>  $ranDates
