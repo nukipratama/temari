@@ -13,9 +13,10 @@
 
 Use the ladder above: start with structure or the
 narrowest targeted test, stop at the first failure, and widen only after it passes.
-Both modes are [scripts/gate.sh](../../../../scripts/gate.sh); it stops at the first failure and its
-last line is `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step> (<n>s)`. Step output goes to
-`storage/logs/gate.log`; a failing step prints its last 40 lines above the `GATE:` line. Run it unpiped: it prints one line per step, so there is nothing to filter.
+Both modes are [scripts/gate.sh](../../../../scripts/gate.sh). After `config:clear` its steps run in
+parallel, except that `--full` runs the whole Pest and Vitest suites one after the other because together they starve the CPU and time out. A failing `config:clear` stops the gate; any other failing step doesn't stop the rest, and the last line is
+`GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step>, <step> (<n>s)`. Step output goes to
+`storage/logs/gate.log`; each failed step prints its last 40 lines above the `GATE:` line. Run it unpiped: it prints one line per step, so there is nothing to filter.
 Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**
 (`app/`+`tests/` PHP since the merge base, plus uncommitted ones — sub-second warm), and the
 full-tree `rector --dry-run` stays in **CI** and `check:full`. CI is the
@@ -28,7 +29,10 @@ files paired with the PHP classes changed since the merge base, plus changed tes
 `EveryClassHasATestTest`); the `structure` group still runs in full. The whole suite and coverage are
 CI's, on free GitHub-hosted runners, so a change that breaks some *other* class's test is caught
 there, not locally. There is no test impact analysis: Pest 5's TIA was removed because it silently
-fell back to full runs and its CI baseline never published a usable graph (#1226).
+fell back to full runs and its CI baseline never published a usable graph (#1226). A re-bench on Pest
+5.3.5 (#2465) still found whole-suite runs and re-records after lockfile bumps, so it stays out (#2464).
+DB-free tests that discover classes by scanning `app/` belong in the `structure` group, which pairing
+cannot reach.
 
 **When CI's coverage gate goes red** you can reproduce it locally — `pcov` ships in the dev image,
 so this is a debugging tool, not a routine step:

@@ -170,7 +170,7 @@ it('pins a retry policy for every queued job and notification', function () use 
     sort($expected);
 
     expect(queuedClassesUnder('Jobs', 'Notifications'))->toBe($expected);
-});
+})->group('structure');
 
 it('resolves the pinned retry policy the way the queue does', function (string $class, array $policy): void {
     expect(resolvedRetryPolicy($class))->toBe($policy);
@@ -178,7 +178,7 @@ it('resolves the pinned retry policy the way the queue does', function (string $
     fn (string $class, array $policy): array => [$class, $policy],
     array_keys($expectedRetryPolicies),
     $expectedRetryPolicies,
-));
+))->group('structure');
 
 it('bounds every queued job by a timeout and a tries or retry window', function (): void {
     $retryAfter = config()->integer('queue.connections.redis.retry_after');
@@ -218,4 +218,4 @@ it('bounds every queued job by a timeout and a tries or retry window', function 
     }
 
     expect($violations)->toBe([]);
-});
+})->group('structure');
