@@ -67,10 +67,10 @@ it('builds frontend assets beside the test shards, on every event', function ():
         ->and($runs)->toBe(['npm run build', 'npm run check:chunks']);
 })->group('structure');
 
-it('names each test shard from its matrix, so the shard list is the only count', function (string $file, string $total): void {
+it('leaves test shards on the default matrix name and counts them from the matrix alone', function (string $file, string $total): void {
     $tests = data_get(ciWorkflow($file), 'jobs.tests');
 
-    expect(data_get($tests, 'name'))->toBe('tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})')
+    expect($tests)->not->toHaveKey('name')
         ->and(data_get($tests, "env.{$total}"))->toBe('${{ strategy.job-total }}')
         ->and(data_get(ciWorkflow($file), "env.{$total}"))->toBeNull();
 })->with([
