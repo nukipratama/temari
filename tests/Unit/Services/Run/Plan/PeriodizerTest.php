@@ -984,6 +984,21 @@ it('records the day and type a ran-too-hard week dropped, and keeps the session 
         ->and($adaptation->refresh()->override_kind)->toBe(PlanOverrideKind::WeeklyDrop);
 });
 
+it('leaves a ran-too-hard week\'s adaptation row alone when a rebuild finds it unchanged', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    periodizer()->regenerate($user);
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    periodizer()->regenerate($user);
+    $updates = array_filter(array_column(DB::getQueryLog(), 'query'), fn (string $sql): bool => str_starts_with(strtolower($sql), 'update `plan_adaptations`'));
+    DB::disableQueryLog();
+
+    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->restorable_quality)->not->toBeNull()
+        ->and($updates)->toBe([]);
+});
+
 it('keeps the day a ran-too-hard week dropped on record once that day has passed', function (): void {
     $user = User::factory()->create();
     seedRanTooHardWeek($user);

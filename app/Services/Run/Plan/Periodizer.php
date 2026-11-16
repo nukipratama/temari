@@ -545,7 +545,7 @@ final readonly class Periodizer
      * week is planned as written, with the type it would hold there.
      *
      * @param  array<string, array{session_type: SessionType, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
-     * @return array{date: string, session_type: string, time_trial: bool}|null
+     * @return array{date: string, time_trial: bool, session_type: string}|null
      */
     public function restorableQuality(PlanInputs $inputs, array $rows): ?array
     {
@@ -561,7 +561,8 @@ final readonly class Periodizer
                 break;
             }
             if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
-                return ['date' => $date, 'session_type' => $row['session_type']->value, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context'])];
+                // MySQL's JSON key order, so an unchanged value reads clean on the next rebuild.
+                return ['date' => $date, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context']), 'session_type' => $row['session_type']->value];
             }
         }
 
