@@ -489,7 +489,7 @@ describe('WeekView', () => {
 
         fireEvent.click(
             screen.getByRole('button', {
-                name: /thu.*tempo.*easy.*locked.*2 weeks before race week/i,
+                name: /thu.*tempo.*easy.*can't bring back.*2 weeks before race week/i,
             }),
         );
 

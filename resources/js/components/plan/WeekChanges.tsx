@@ -5,6 +5,7 @@ import type { PlanDay } from '@/lib/plan';
 import { dayChanges } from '@/components/plan/DayDetail';
 import { DeltaPair } from '@/components/plan/DeltaPair';
 import { Icon } from '@/components/ui/Icon';
+import { cn } from '@/lib/cn';
 import { weekdayLabel } from '@/lib/plan';
 
 type WeekChange = {
@@ -53,7 +54,7 @@ function changeOf(day: PlanDay): WeekChange | null {
             override?.state === 'offered'
                 ? 'can bring back'
                 : override?.state === 'locked'
-                  ? override.blocker
+                  ? `can't bring back: ${override.blocker}`
                   : override?.state === 'taken'
                     ? 'brought back'
                     : null,
@@ -85,28 +86,36 @@ export default function WeekChanges({
                         <button
                             type="button"
                             onClick={() => onSelect(change.date)}
-                            className="pressable focus-ring flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 py-1.5 text-left text-xs"
+                            className="pressable focus-ring flex w-full items-baseline gap-x-2 py-1.5 text-left text-xs"
                         >
                             <span className="w-8 flex-none text-label-micro text-text-2">
                                 {weekdayLabel(change.date).toLowerCase()}
                             </span>
-                            <DeltaPair
-                                from={change.from}
-                                to={change.to}
-                                direction="neutral"
-                            />
-                            {change.state !== null && (
-                                <span className="ml-auto flex items-center gap-1 text-label-micro text-text-2">
-                                    {change.locked && (
-                                        <Icon
-                                            icon={Lock}
-                                            className="size-3"
-                                            aria-label="locked"
-                                        />
-                                    )}
-                                    {change.state}
-                                </span>
-                            )}
+                            <span className="min-w-0 flex-1">
+                                <DeltaPair
+                                    from={change.from}
+                                    to={change.to}
+                                    direction="neutral"
+                                />
+                                {change.state !== null && (
+                                    <span
+                                        className={cn(
+                                            'mt-0.5 block text-text-2',
+                                            change.state === 'can bring back' &&
+                                                'text-horizon-ink',
+                                        )}
+                                    >
+                                        {change.locked && (
+                                            <Icon
+                                                icon={Lock}
+                                                className="mr-1 inline size-3 align-[-1px]"
+                                                aria-hidden
+                                            />
+                                        )}
+                                        {change.state}
+                                    </span>
+                                )}
+                            </span>
                         </button>
                     </li>
                 ))}

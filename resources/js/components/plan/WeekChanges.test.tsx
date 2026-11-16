@@ -34,7 +34,7 @@ describe('WeekChanges', () => {
         render(<WeekChanges days={[unchanged, dropped]} onSelect={onSelect} />);
 
         const row = screen.getByRole('button', {
-            name: /thu.*tempo.*easy.*locked.*race week/i,
+            name: /thu.*tempo.*easy.*can't bring back.*race week/i,
         });
         expect(screen.getAllByRole('button')).toHaveLength(1);
         fireEvent.click(row);
