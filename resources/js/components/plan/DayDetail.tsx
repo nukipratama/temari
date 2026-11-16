@@ -226,14 +226,8 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
     const isRest = day.session_type === 'rest';
-    const {
-        droppedDelta,
-        budgetDelta,
-        hardDayDelta,
-        sessionDelta,
-        paceDelta,
-        weekFitDelta,
-    } = dayChanges(day);
+    const { budgetDelta, hardDayDelta, sessionDelta, paceDelta, weekFitDelta } =
+        dayChanges(day);
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
     let status: string = day.skipped ? 'skip' : day.status;
@@ -245,7 +239,6 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const tags = Array.from(
         new Set(
             [
-                droppedDelta !== null ? 'dropped' : null,
                 budgetDelta !== null ? 'budget full' : null,
                 hardDayDelta !== null ? 'two hard days' : null,
                 sessionDelta !== null || paceDelta !== null ? 'eased' : null,
@@ -380,7 +373,6 @@ export default function DayDetail({
                         from={droppedDelta.from}
                         to={droppedDelta.to}
                         direction="neutral"
-                        tag="dropped"
                     />
                     <p className="mt-1 text-xs text-text-2">
                         {DROPPED_WHY}

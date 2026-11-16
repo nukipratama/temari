@@ -1552,7 +1552,7 @@ describe('DayDetail override', () => {
         });
 
         expect(screen.getByText('tempo')).toHaveClass('line-through');
-        expect(within(headline()).getByText('dropped')).toBeInTheDocument();
+        expect(screen.queryByText('dropped')).toBeNull();
         expect(screen.getByText(DROPPED_WHY)).toBeInTheDocument();
         expect(
             screen.getByRole('button', {
