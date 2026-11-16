@@ -1554,6 +1554,21 @@ describe('DayDetail override', () => {
         ).toBeInTheDocument();
     });
 
+    it('spaces a trimmed row below a dropped day', () => {
+        renderRow({
+            day: day({
+                session_type: 'easy',
+                distance_km: 3,
+                asked_km: 8,
+                dropped_from: { session_type: 'tempo', time_trial: false },
+            }),
+        });
+
+        expect(screen.getByText('ahead on the week').closest('p')).toHaveClass(
+            'mt-2',
+        );
+    });
+
     it('names a dropped time trial as a time trial', () => {
         renderRow({
             day: day({

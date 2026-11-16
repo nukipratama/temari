@@ -355,7 +355,7 @@ export default function DayDetail({
             )}
             {sessionDelta?.typeFrom != null && (
                 <ChangeRow
-                    className={budgetDelta ? 'mt-2' : undefined}
+                    className={droppedDelta || budgetDelta ? 'mt-2' : undefined}
                     label="type"
                     from={sessionDelta.typeFrom}
                     to={sessionDelta.typeTo}
@@ -380,7 +380,11 @@ export default function DayDetail({
             )}
             {paceDelta && (
                 <ChangeRow
-                    className={budgetDelta || sessionDelta ? 'mt-2' : undefined}
+                    className={
+                        droppedDelta || budgetDelta || sessionDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="pace"
                     from={paceDelta.from}
                     to={paceDelta.to}
@@ -396,7 +400,7 @@ export default function DayDetail({
             {weekFitDelta && (
                 <ChangeRow
                     className={
-                        budgetDelta || sessionDelta || paceDelta
+                        droppedDelta || budgetDelta || sessionDelta || paceDelta
                             ? 'mt-2'
                             : undefined
                     }
