@@ -20,7 +20,7 @@ use App\Enums\Mood;
  * @property int|null $activity_id
  * @property Carbon|null $for_date
  * @property Mood $mood
- * @property string $speech
+ * @property string|null $speech
  * @property-read User $user
  * @property-read Activity|null $activity
  */
