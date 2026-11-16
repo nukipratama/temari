@@ -100,6 +100,7 @@
     "weekPlan.days[].fast_finish",
     "weekPlan.days[].flagged",
     "weekPlan.days[].goal_pace",
+    "weekPlan.days[].hard_day_dropped",
     "weekPlan.days[].hr_cap_bpm",
     "weekPlan.days[].id",
     "weekPlan.days[].override",
