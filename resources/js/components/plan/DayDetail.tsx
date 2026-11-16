@@ -15,7 +15,9 @@ import {
     ChangeRow,
     DeltaTag,
 } from '@/components/plan/DeltaPair';
-import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
+import QualityOverrideAction, {
+    WhyLink,
+} from '@/components/plan/QualityOverrideAction';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
@@ -322,6 +324,7 @@ export default function DayDetail({
 }>) {
     const [picking, setPicking] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
+    const [whyOpen, setWhyOpen] = useState(false);
 
     const {
         droppedDelta,
@@ -338,6 +341,29 @@ export default function DayDetail({
         sessionDelta !== null ||
         paceDelta !== null ||
         weekFitDelta !== null;
+    const openKind =
+        day.override !== null && day.override.state !== 'taken'
+            ? day.override.kind
+            : null;
+    const linkedRow =
+        openKind === 'weekly_drop' && droppedDelta
+            ? 'dropped'
+            : openKind === 'budget_drop' && budgetDelta
+              ? 'budget'
+              : openKind === 'hard_day_drop' && hardDayDelta
+                ? 'hard_day'
+                : null;
+    const whyLink = (row: typeof linkedRow) =>
+        row !== null &&
+        row === linkedRow && (
+            <>
+                {' '}
+                <WhyLink
+                    open={whyOpen}
+                    onToggle={() => setWhyOpen((open) => !open)}
+                />
+            </>
+        );
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move: canMove, skip: canSkip, restore: canUnskip } = day.actions;
     const showsPoint =
@@ -357,7 +383,10 @@ export default function DayDetail({
                         direction="neutral"
                         tag="dropped"
                     />
-                    <p className="mt-1 text-xs text-text-2">{DROPPED_WHY}</p>
+                    <p className="mt-1 text-xs text-text-2">
+                        {DROPPED_WHY}
+                        {whyLink('dropped')}
+                    </p>
                 </>
             )}
             {budgetDelta && (
@@ -372,6 +401,7 @@ export default function DayDetail({
                     />
                     <p className="mt-1 text-xs text-text-2">
                         {budgetDelta.why}
+                        {whyLink('budget')}
                     </p>
                 </>
             )}
@@ -384,7 +414,10 @@ export default function DayDetail({
                         direction="down"
                         tag="two hard days"
                     />
-                    <p className="mt-1 text-xs text-text-2">{HARD_DAY_WHY}</p>
+                    <p className="mt-1 text-xs text-text-2">
+                        {HARD_DAY_WHY}
+                        {whyLink('hard_day')}
+                    </p>
                 </>
             )}
             {sessionDelta?.typeFrom != null && (
@@ -461,6 +494,7 @@ export default function DayDetail({
                 <QualityOverrideAction
                     sessionId={day.id}
                     override={day.override}
+                    whyOpen={linkedRow !== null ? whyOpen : undefined}
                 />
             )}
             {showsPoint && (
@@ -597,7 +631,7 @@ export default function DayDetail({
                                     aria-label="more actions"
                                     aria-expanded={moreOpen}
                                     onClick={() => setMoreOpen((open) => !open)}
-                                    className="pressable focus-ring flex items-center text-horizon-ink"
+                                    className="pressable focus-ring grid size-7 place-items-center rounded-full border border-border text-text-2"
                                 >
                                     <Icon
                                         icon={Ellipsis}

@@ -1587,7 +1587,7 @@ describe('DayDetail override', () => {
         expect(screen.getByText('time trial')).toHaveClass('line-through');
     });
 
-    it('names the rule that refuses a bring-back, with the full reason behind why?', () => {
+    it('names the rule that refuses a bring-back, with the full reason behind the why link on its reason line', () => {
         renderRow({
             day: day({
                 session_type: 'easy',
@@ -1602,13 +1602,14 @@ describe('DayDetail override', () => {
         });
 
         expect(
-            screen.getByText("can't bring back · race week"),
+            screen.getByText("can't bring back: race week"),
         ).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /bring back/ })).toBeNull();
-        expect(
-            screen.getByText(/the weeks closest to a race/),
-        ).not.toBeVisible();
-        fireEvent.click(screen.getByText('why?'));
+        expect(screen.queryByText(/the weeks closest to a race/)).toBeNull();
+        const why = screen.getByRole('button', { name: 'why' });
+        expect(why.closest('p')).toHaveTextContent(DROPPED_WHY);
+        fireEvent.click(why);
+        expect(why).toHaveAttribute('aria-expanded', 'true');
         expect(screen.getByText(/the weeks closest to a race/)).toBeVisible();
     });
 

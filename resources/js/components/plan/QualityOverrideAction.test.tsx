@@ -35,7 +35,7 @@ describe('QualityOverrideAction', () => {
         expect(router.post).not.toHaveBeenCalled();
     });
 
-    it('names the rule that refuses it, with nothing to press and the full reason behind why?', () => {
+    it('names the rule that refuses it, with only a why link to press', () => {
         render(
             <QualityOverrideAction
                 sessionId={7}
@@ -50,12 +50,12 @@ describe('QualityOverrideAction', () => {
 
         expect(
             screen.getByText(
-                "can't bring back · this week's bring-back went to monday",
+                "can't bring back: this week's bring-back went to monday",
             ),
         ).toBeVisible();
-        expect(screen.queryByRole('button')).toBeNull();
-        expect(screen.getByText(/one bring-back a week/)).not.toBeVisible();
-        fireEvent.click(screen.getByText('why?'));
+        expect(screen.getAllByRole('button')).toHaveLength(1);
+        expect(screen.queryByText(/one bring-back a week/)).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'why' }));
         expect(screen.getByText(/one bring-back a week/)).toBeVisible();
     });
 

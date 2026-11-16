@@ -494,7 +494,7 @@ describe('WeekView', () => {
         );
 
         expect(screen.getByRole('tabpanel')).toHaveTextContent(
-            "can't bring back · 2 weeks before race week",
+            "can't bring back: 2 weeks before race week",
         );
     });
 
