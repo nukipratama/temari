@@ -14,7 +14,7 @@
 Use the ladder above: start with structure or the
 narrowest targeted test, stop at the first failure, and widen only after it passes.
 Both modes are [scripts/gate.sh](../../../../scripts/gate.sh). After `config:clear` its steps run in
-parallel, except that `--full` runs the whole Pest and Vitest suites one after the other because together they starve the CPU and time out. A failing step doesn't stop the others, and the last line is
+parallel, except that `--full` runs the whole Pest and Vitest suites one after the other because together they starve the CPU and time out. A failing `config:clear` stops the gate; any other failing step doesn't stop the rest, and the last line is
 `GATE: PASS (<n>s, mode=fast|full)` or `GATE: FAIL at <step>, <step> (<n>s)`. Step output goes to
 `storage/logs/gate.log`; each failed step prints its last 40 lines above the `GATE:` line. Run it unpiped: it prints one line per step, so there is nothing to filter.
 Pint/phpstan/eslint run on **pre-commit**; the fast gate runs **scoped rector on changed files**

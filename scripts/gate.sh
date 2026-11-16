@@ -25,7 +25,7 @@ STEP_COUNT=0
 GATE_FAILED=""
 FAILED_IDS=""
 
-trap 'kill 0' INT TERM
+trap 'trap - INT TERM; kill 0' INT TERM
 
 # Each step runs in the background into its own log; report waits for all of
 # them and prints one line per step, and finish prints only the failing steps'
@@ -132,12 +132,13 @@ build_and_check_chunks() {
 
 step "config:clear" php artisan config:clear --ansi
 report
+[ -z "$GATE_FAILED" ] || finish
 
 step "typescript:enums --check" php artisan typescript:enums --check
 step "doc citations" php scripts/check-doc-citations.php
 step "see references" php scripts/check-see-references.php
 step "palette" npm run check:palette
-step "pest structure" vendor/bin/pest --group=structure
+step "pest structure" env TEST_TOKEN=1 vendor/bin/pest --group=structure
 step "vitest structure" npx vitest run resources/js/test/structure.test.ts
 step "typecheck" npm run typecheck -- --incremental --tsBuildInfoFile node_modules/.cache/tsbuildinfo
 
