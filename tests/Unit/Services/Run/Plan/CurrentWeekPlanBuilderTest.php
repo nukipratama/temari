@@ -844,7 +844,7 @@ it('locks the dropped session near the race, naming the window, and names what t
     $user = User::factory()->create();
     seedRanTooHardWeek($user);
     app(Periodizer::class)->regenerate($user);
-    RaceGoal::query()->where('user_id', $user->id)->update(['race_date' => '2026-10-04']);
+    RaceGoal::query()->where('user_id', $user->id)->update(['race_date' => '2026-10-04', 'distance_m' => 21_097]);
     app()->forgetScopedInstances();
 
     expect(data_get(weekPlanDay(weekPlanHome($user)['days'], '2026-09-17'), 'override'))->toMatchArray([

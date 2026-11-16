@@ -34,7 +34,7 @@ final class QualityOverride
 
     /**
      * The week's adaptation while this athlete may override it: never the demo athlete, and never
-     * in the {@see PreRaceWindow} unless the override was already taken.
+     * in the window {@see PreRaceWindow::locksOverride()} holds unless the override was already taken.
      */
     public static function openWeek(User $user, ?PlanAdaptation $week, ?RaceGoal $race): ?PlanAdaptation
     {
@@ -62,7 +62,7 @@ final class QualityOverride
     /** What would keep a bring-back shut in the week starting $weekStart: "race week", or how far before it the week is. */
     public static function raceWindowBlocker(Carbon $weekStart, ?RaceGoal $race): ?string
     {
-        if (! $race instanceof RaceGoal || ! PreRaceWindow::contains($weekStart, $race->race_date)) {
+        if (! $race instanceof RaceGoal || ! PreRaceWindow::locksOverride($weekStart, $race)) {
             return null;
         }
         $weeks = (int) $weekStart->diffInWeeks($race->race_date->copy()->startOfWeek(Carbon::MONDAY));

@@ -32,6 +32,8 @@ code_refs:
 > (`QualityOverride::openWeek()`). `QualityOverrideService::take()` checks the offer inside the plan
 > lock.
 
+> **Superseded in part, 2026-11-16.** The pre-race guardrail now scales with race distance ([[the-override-window-scales-with-race-distance]]).
+
 > **Fact update, 2026-11-15.** A passed, unrun override day may be made up within its week, and the day's taken note and the coach's `overridden` flag then move to the day it was made up on ([[a-manual-edit-may-stack-hard-days-with-a-warning]]).
 
 ## Context
