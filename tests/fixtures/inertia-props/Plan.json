@@ -58,6 +58,7 @@
     "weeks[].days[].credited_km",
     "weeks[].days[].date",
     "weeks[].days[].distance_km",
+    "weeks[].days[].dropped_from",
     "weeks[].days[].eased_from",
     "weeks[].days[].fall_off_tilt",
     "weeks[].days[].fast_finish",
