@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import type { NextWeekOutlook } from '@/components/plan/NextWeekCard';
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 import type {
     PlanRaceCard as PlanRaceCardPayload,
@@ -53,6 +54,8 @@ interface PlanProps {
     seasonSummary: SeasonSummaryWeek[];
     seasonAdherencePct: number | null;
     adaptation: PlanAdaptation | null;
+    /** What this week's hot easy days do to next week; null while nothing is at stake. */
+    nextWeek?: NextWeekOutlook | null;
     /** Served from App\Support\TrainingDisclaimer, shared with the legal pages. */
     disclaimerLine: string;
     /** Seconds left before Regenerate may run again, or null when it's free to click. */
@@ -88,6 +91,7 @@ export default function Plan({
     seasonSummary,
     seasonAdherencePct,
     adaptation,
+    nextWeek = null,
     disclaimerLine,
     regenerateCooldownSeconds = null,
     planRecalibration,
@@ -275,6 +279,7 @@ export default function Plan({
                             today={today}
                             raceDate={race?.race_date ?? null}
                             weekFocus={adaptation}
+                            nextWeek={nextWeek}
                             focusDay={focusDay}
                             selectedDay={selectedDay}
                             onMove={moveSession}

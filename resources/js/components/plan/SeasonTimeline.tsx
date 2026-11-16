@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 
+import type { NextWeekOutlook } from '@/components/plan/NextWeekCard';
 import type { PlanDay, PlanWeek, SeasonSummaryWeek } from '@/lib/plan';
 
 import WeeksList from '@/components/plan/WeeksList';
@@ -18,6 +19,7 @@ export default function SeasonTimeline({
     today,
     raceDate = null,
     weekFocus,
+    nextWeek = null,
     focusDay = null,
     selectedDay = null,
     onMove,
@@ -32,6 +34,8 @@ export default function SeasonTimeline({
     raceDate?: string | null;
     /** The current week's adaptation verdict, shown as its note. */
     weekFocus: { headline: string; detail: string } | null;
+    /** What this week's hot easy days do to next week. */
+    nextWeek?: NextWeekOutlook | null;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
     /** The day selected earlier in this tab session. */
@@ -108,6 +112,7 @@ export default function SeasonTimeline({
                         detailByWeekStart[shown.week_start]?.hard_budget ?? null
                     }
                     focus={shown === current ? weekFocus : null}
+                    nextWeek={shown === current ? nextWeek : null}
                     focusDay={pendingFocusDay}
                     selectedDay={selectedDay}
                     onBack={

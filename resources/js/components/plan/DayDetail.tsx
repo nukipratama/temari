@@ -144,11 +144,9 @@ export function dayChanges(day: PlanDay) {
               }
             : null,
         budgetDelta: budgetChange(day),
-        hardDayDelta:
-            day.override?.kind === 'hard_day_drop' &&
-            day.override.state !== 'taken'
-                ? { from: 'hard', to: 'easy' }
-                : null,
+        hardDayDelta: day.hard_day_dropped
+            ? { from: 'hard', to: 'easy' }
+            : null,
         sessionDelta: day.eased_from
             ? easedFromDelta(day.eased_from, day)
             : null,

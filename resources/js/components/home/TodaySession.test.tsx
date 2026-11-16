@@ -71,6 +71,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         eased_from: null,
         pace_eased_from: null,
         dropped_from: null,
+        hard_day_dropped: false,
         credit_note: null,
         ran_hot: false,
         result_note: null,

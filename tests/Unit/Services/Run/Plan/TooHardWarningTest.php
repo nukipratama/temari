@@ -7,6 +7,7 @@ use App\Enums\SessionType;
 use App\Models\Activity;
 use App\Models\ActivityDetail;
 use App\Models\InboxNotification;
+use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
 use App\Models\User;
 use App\Notifications\EasyTooHardNotification;
@@ -55,7 +56,7 @@ it('says next week loses a quality session once a second day runs hot', function
 
     warnOn($user, '2026-11-04', '2026-11-04');
 
-    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->state === EasyTooHardNotification::SET && ! $n->egregious);
+    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->state === EasyTooHardNotification::SET && ! $n->outlook['egregious'] && $n->causeDate === '2026-11-04');
 });
 
 it('says so at once when one easy day runs far enough over to set it alone', function (): void {
@@ -64,7 +65,7 @@ it('says so at once when one easy day runs far enough over to set it alone', fun
 
     warnOn($user, WARNING_MONDAY, WARNING_MONDAY);
 
-    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->state === EasyTooHardNotification::SET && $n->egregious);
+    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->state === EasyTooHardNotification::SET && $n->outlook['egregious']);
 });
 
 it('sends each state once a week', function (): void {
@@ -105,3 +106,41 @@ it('stays quiet for an easy day held under the cap, a run from an earlier week, 
 
     Notification::assertNothingSent();
 })->with(['under the cap', 'earlier week', 'demo']);
+
+it('names the session next week loses, read from the week\'s plan', function (): void {
+    $user = User::factory()->create();
+    $drop = ['date' => '2026-11-12', 'time_trial' => false, 'session_type' => 'tempo'];
+    PlanAdaptation::factory()->for($user)->create(['week_start' => WARNING_MONDAY, 'next_week_drop' => $drop]);
+    warningEasyDay($user, WARNING_MONDAY, 800);
+
+    warnOn($user, WARNING_MONDAY, WARNING_MONDAY);
+
+    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->outlook['drop'] === $drop && $n->causeDate === WARNING_MONDAY);
+});
+
+it('tells a set week on sunday which session next week loses, once', function (): void {
+    $user = User::factory()->create();
+    PlanAdaptation::factory()->for($user)->create(['week_start' => WARNING_MONDAY, 'next_week_drop' => ['date' => '2026-11-12', 'time_trial' => false, 'session_type' => 'tempo']]);
+    warningEasyDay($user, WARNING_MONDAY, 800);
+    warningEasyDay($user, '2026-11-04', 800);
+    $sunday = Carbon::parse('2026-11-08');
+
+    expect(app(TooHardWarning::class)->lock($user, $sunday))->toBeTrue()
+        ->and(app(TooHardWarning::class)->lock($user, $sunday))->toBeFalse();
+
+    Notification::assertSentToTimes($user, EasyTooHardNotification::class, 1);
+    Notification::assertSentTo($user, EasyTooHardNotification::class, static fn (EasyTooHardNotification $n): bool => $n->state === EasyTooHardNotification::LOCKED && $n->causeDate === null);
+});
+
+it('sends no sunday message while next week loses nothing', function (string $case): void {
+    $user = User::factory()->create();
+    PlanAdaptation::factory()->for($user)->create(['week_start' => WARNING_MONDAY, 'next_week_drop' => $case === 'nothing to drop' ? null : ['date' => '2026-11-12', 'time_trial' => false, 'session_type' => 'tempo']]);
+    warningEasyDay($user, WARNING_MONDAY, 800);
+    if ($case === 'nothing to drop') {
+        warningEasyDay($user, '2026-11-04', 800);
+    }
+
+    expect(app(TooHardWarning::class)->lock($user, Carbon::parse('2026-11-08')))->toBeFalse();
+
+    Notification::assertNothingSent();
+})->with(['one hot day', 'nothing to drop']);

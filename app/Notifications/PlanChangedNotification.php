@@ -91,7 +91,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         $session = $this->sessionFor($notifiable) ?? throw new LogicException('shouldSend gates every send on the session.');
 
         return new TelegramMessage(
-            text: self::title($this->date, $this->was, $session)."\n\n".self::body($session, self::bringBackOffered($notifiable, $session))."\n\nOpen Temari: ".route('plan'),
+            text: self::title($this->date, $this->was, $session)."\n\n".self::body($session, self::bringBackLine($notifiable, $session))."\n\nOpen Temari: ".route('plan'),
         );
     }
 
@@ -101,7 +101,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
 
         return new WebPushMessage()
             ->title(self::title($this->date, $this->was, $session))
-            ->body(self::body($session, self::bringBackOffered($notifiable, $session)))
+            ->body(self::body($session, self::bringBackLine($notifiable, $session)))
             ->icon('/icon-192.png')
             ->data($this->withUnreadBadge(['url' => route('plan')], $notifiable))
             ->options(['TTL' => $this->secondsUntil(Carbon::parse($this->date)->endOfDay())]);
@@ -114,7 +114,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         return new InboxMessage(
             kind: NotificationKind::PlanChange,
             title: self::title($this->date, $this->was, $session),
-            body: self::body($session, self::bringBackOffered($notifiable, $session)),
+            body: self::body($session, self::bringBackLine($notifiable, $session)),
             payload: ['url' => route('plan')],
             dedupeKey: self::dedupeKeyFor($this->date),
         );
@@ -139,25 +139,38 @@ class PlanChangedNotification extends Notification implements ShouldQueue
         };
     }
 
-    private static function bringBackOffered(User $user, PlannedSession $session): bool
+    private static function bringBackLine(User $user, PlannedSession $session): ?string
     {
-        if ($session->prescription_budget === null || $session->skipped) {
-            return false;
+        $budget = $session->prescription_budget;
+        if (($budget === null && ! $session->hard_day_restorable) || $session->skipped) {
+            return null;
         }
 
-        $week = QualityOverride::openWeek(
-            $user,
-            PlanAdaptation::query()
-                ->where('user_id', $user->id)
-                ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
-                ->first(),
-            app(ResolveActiveRaceAction::class)($user->id),
-        );
+        $week = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->first();
+        if (! $week instanceof PlanAdaptation) {
+            return null;
+        }
+        if ($week->override_kind instanceof PlanOverrideKind) {
+            return "You can't bring it back: ".QualityOverride::ONE_A_WEEK_RULE." This week's is used.";
+        }
+        $blocker = QualityOverride::raceBlocker($week, app(ResolveActiveRaceAction::class)($user->id));
+        if ($blocker !== null) {
+            return "You can't bring it back: it's {$blocker}, and ".QualityOverride::RACE_RULE;
+        }
+        if ($budget === null) {
+            return 'Bring it back from the plan as a third hard day this week.';
+        }
+        $cost = $budget['needed_minutes'] - $budget['left_minutes'];
 
-        return $week instanceof PlanAdaptation && ! $week->override_kind instanceof PlanOverrideKind;
+        return $cost > 0
+            ? "Bring it back from the plan for {$cost} hard min over this week's cap."
+            : 'Bring it back from the plan.';
     }
 
-    private static function body(PlannedSession $session, bool $bringBackOffered): string
+    private static function body(PlannedSession $session, ?string $bringBack): string
     {
         $reason = $session->prescription_reason;
         $lines = [match ($reason) {
@@ -165,13 +178,8 @@ class PlanChangedNotification extends Notification implements ShouldQueue
             Periodizer::BUDGET_SPENT_REASON, Periodizer::NO_FAST_FINISH_REASON => "This week's hard-minute budget is spent.",
             default => ucfirst($reason).'.',
         }];
-
-        $budget = $session->prescription_budget;
-        if ($bringBackOffered && $budget !== null) {
-            $cost = $budget['needed_minutes'] - $budget['left_minutes'];
-            $lines[] = $cost > 0
-                ? "Bring it back from the plan for {$cost} hard min over this week's cap."
-                : 'Bring it back from the plan.';
+        if ($bringBack !== null) {
+            $lines[] = $bringBack;
         }
 
         return implode(' ', $lines);
@@ -187,7 +195,7 @@ class PlanChangedNotification extends Notification implements ShouldQueue
             ->first();
     }
 
-    private static function label(SessionType $type): string
+    public static function label(SessionType $type): string
     {
         return match ($type) {
             SessionType::Easy => 'easy run',

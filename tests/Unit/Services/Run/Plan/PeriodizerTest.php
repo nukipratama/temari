@@ -29,6 +29,7 @@ use App\Services\Run\Metrics\VdotEstimator;
 use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\EffectiveSession;
 use App\Services\Run\Plan\Periodizer;
+use App\Services\Run\Plan\QualityOverride;
 use App\Services\Run\Plan\PlanInputsGatherer;
 use App\Services\Run\Plan\QualityOverrideService;
 use App\Services\Run\Plan\SeasonService;
@@ -957,6 +958,30 @@ it('plans a quality session a ran-too-hard week dropped back where the week as w
 
     expect($restored)->toBe($asWritten)
         ->and($dropped)->not->toBe($asWritten);
+});
+
+it('finds the session next week would lose to a ran-too-hard week, leaving this week and the plan as written alone', function (): void {
+    $inputs = planInputsWith(arcInputs(today: '2026-09-14', raceDay: '2026-11-29'), ['seasonStart' => Carbon::parse('2026-08-03')]);
+    $rows = periodizer()->rowsFor($inputs);
+    $droppedRows = periodizer()->rowsFor($inputs->withNextWeekQualityDropped());
+
+    $drop = nonNull(periodizer()->nextWeekDrop($inputs, $rows));
+
+    expect($drop['date'] >= '2026-09-21' && $drop['date'] <= '2026-09-27')->toBeTrue()
+        ->and($rows[$drop['date']]['session_type']->value)->toBe($drop['session_type'])
+        ->and(QualityOverride::isWorkout($droppedRows[$drop['date']]['session_type']))->toBeFalse()
+        ->and(weekTypes($droppedRows, '2026-09-14'))->toBe(weekTypes($rows, '2026-09-14'))
+        ->and(weekTypes($droppedRows, '2026-09-21'))->not->toBe(weekTypes($rows, '2026-09-21'));
+});
+
+it('records next week\'s session at stake on the week\'s adaptation', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+
+    periodizer()->regenerate($user);
+    $drop = nonNull(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->next_week_drop);
+
+    expect(PlannedSession::query()->where('user_id', $user->id)->where('date', $drop['date'])->firstOrFail()->session_type->value)->toBe($drop['session_type']);
 });
 
 it('records the day and type a ran-too-hard week dropped, and keeps the session once the athlete brings it back', function (): void {

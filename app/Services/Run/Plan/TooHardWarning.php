@@ -11,14 +11,16 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Tells the athlete, while the week is still open, what its hot easy days
- * will cost next week under {@see PlanAdapter::ranTooHard()}: once when one
- * more would set it, once when it is set.
+ * Tells the athlete what this week's hot easy days cost next week, from {@see NextWeekOutlook}:
+ * once when one more would set it, once when it is set, while the week is still open, and once
+ * on Sunday evening when the session next week loses is settled.
  */
 final readonly class TooHardWarning
 {
-    public function __construct(private PlanAdapter $adapter)
-    {
+    public function __construct(
+        private PlanAdapter $adapter,
+        private NextWeekOutlook $outlook,
+    ) {
     }
 
     public function warn(User $user, Carbon $runDate, Carbon $today): void
@@ -32,22 +34,33 @@ final readonly class TooHardWarning
             return;
         }
 
-        $execution = $this->adapter->executionBetween($user, $weekStart, $today);
-        $state = match (true) {
-            PlanAdapter::ranTooHard($execution['ragged'], $execution['egregious_easy']) => EasyTooHardNotification::SET,
-            PlanAdapter::ranTooHard($execution['ragged'] + 1, 0) => EasyTooHardNotification::ONE_MORE,
-            default => null,
-        };
-        if ($state === null) {
-            return;
+        $outlook = $this->outlook->for($user, $today);
+        if ($outlook !== null) {
+            $this->send($user, $weekStart, $outlook['state'], $outlook, $runDate->toDateString());
+        }
+    }
+
+    public function lock(User $user, Carbon $today): bool
+    {
+        $outlook = $this->outlook->for($user, $today);
+        if ($outlook === null || $outlook['state'] !== NextWeekOutlook::SET || $outlook['drop'] === null) {
+            return false;
         }
 
+        return $this->send($user, $today->copy()->startOfWeek(Carbon::MONDAY), EasyTooHardNotification::LOCKED, $outlook, null);
+    }
+
+    /** @param array{state: 'set'|'one_more', egregious: bool, hot_days: list<array{date: string, session_type: string, over_cap_minutes: int}>, drop: array{date: string, session_type: string, time_trial: bool}|null, blocker: string|null} $outlook */
+    private function send(User $user, Carbon $weekStart, string $state, array $outlook, ?string $causeDate): bool
+    {
         $dedupeKey = EasyTooHardNotification::dedupeKeyFor($weekStart, $state);
         if (InboxNotification::query()->where('user_id', $user->id)->where('dedupe_key', $dedupeKey)->exists()
             || ! Cache::add("{$dedupeKey}:{$user->id}", true, $weekStart->copy()->addWeeks(2))) {
-            return;
+            return false;
         }
 
-        $user->notify(new EasyTooHardNotification($weekStart->toDateString(), $state, $execution['egregious_easy'] > 0));
+        $user->notify(new EasyTooHardNotification($weekStart->toDateString(), $state, $outlook, $causeDate));
+
+        return true;
     }
 }

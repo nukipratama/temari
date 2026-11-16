@@ -45,6 +45,7 @@ final readonly class PlanInputs
      * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
      * @param  array{date: string, session_type: string, time_trial: bool}|null  $droppedQuality  the session this week's adaptation first dropped, kept once recorded
      * @param  bool  $bringBackRefunded  the plan reads the same without the day the athlete brought back over its hard-minute budget or hard-day count
+     * @param  bool  $nextWeekQualityDropped  plan next week as a ran-too-hard week would, to find the session it would lose
      */
     public function __construct(
         public int $userId,
@@ -93,6 +94,7 @@ final readonly class PlanInputs
         public ?string $hardDayOverrideDate = null,
         public bool $bringBackRefunded = false,
         public ?array $droppedQuality = null,
+        public bool $nextWeekQualityDropped = false,
     ) {
     }
 
@@ -104,6 +106,20 @@ final readonly class PlanInputs
     public function currentWeekQualityDelta(): int
     {
         return $this->qualityRestored && ! $this->restoreLapsed() ? max(0, $this->adaptation['quality_delta']) : $this->adaptation['quality_delta'];
+    }
+
+    public function qualityDeltaFor(Carbon $weekStart): int
+    {
+        return match (true) {
+            $weekStart->isSameDay($this->currentWeekStart()) => $this->currentWeekQualityDelta(),
+            $this->nextWeekQualityDropped && $weekStart->isSameDay($this->currentWeekStart()->addWeek()) => -1,
+            default => 0,
+        };
+    }
+
+    public function withNextWeekQualityDropped(): self
+    {
+        return clone($this, ['nextWeekQualityDropped' => true]);
     }
 
     public function refundsOverride(): bool

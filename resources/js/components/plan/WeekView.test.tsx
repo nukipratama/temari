@@ -73,6 +73,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         eased_from: null,
         pace_eased_from: null,
         dropped_from: null,
+        hard_day_dropped: false,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -195,6 +196,33 @@ describe('WeekView', () => {
         });
 
         expect(screen.getByText('hard min this week')).toBeInTheDocument();
+    });
+
+    it('shows what this week does to next week only when something is at stake', () => {
+        const { rerender } = renderWeek();
+        expect(
+            screen.queryByRole('region', { name: 'next week, as of now' }),
+        ).not.toBeInTheDocument();
+
+        rerender({
+            nextWeek: {
+                state: 'set',
+                egregious: false,
+                hot_days: [
+                    { date: TODAY, session_type: 'easy', over_cap_minutes: 9 },
+                ],
+                drop: {
+                    date: '2026-06-25',
+                    session_type: 'tempo',
+                    time_trial: false,
+                },
+                blocker: null,
+            },
+        });
+
+        expect(
+            screen.getByRole('region', { name: 'next week, as of now' }),
+        ).toHaveTextContent(/tempo\s*→\s*easy/);
     });
 
     it('heads the week with its number, dates, target, sessions and adherence', () => {

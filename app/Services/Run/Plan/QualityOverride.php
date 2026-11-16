@@ -52,11 +52,20 @@ final class QualityOverride
     /** What keeps an untaken override shut this week near the race: "race week", or how far before it the week is. */
     public static function raceBlocker(?PlanAdaptation $week, ?RaceGoal $race): ?string
     {
-        if (! $week instanceof PlanAdaptation || $week->override_kind instanceof PlanOverrideKind
-            || ! $race instanceof RaceGoal || ! PreRaceWindow::contains($week->week_start, $race->race_date)) {
+        if (! $week instanceof PlanAdaptation || $week->override_kind instanceof PlanOverrideKind) {
             return null;
         }
-        $weeks = (int) $week->week_start->diffInWeeks($race->race_date->copy()->startOfWeek(Carbon::MONDAY));
+
+        return self::raceWindowBlocker($week->week_start, $race);
+    }
+
+    /** What would keep a bring-back shut in the week starting $weekStart: "race week", or how far before it the week is. */
+    public static function raceWindowBlocker(Carbon $weekStart, ?RaceGoal $race): ?string
+    {
+        if (! $race instanceof RaceGoal || ! PreRaceWindow::contains($weekStart, $race->race_date)) {
+            return null;
+        }
+        $weeks = (int) $weekStart->diffInWeeks($race->race_date->copy()->startOfWeek(Carbon::MONDAY));
 
         return match ($weeks) {
             0 => 'race week',

@@ -90,6 +90,7 @@ say about each TTL.
 | `briefing:morning-push` | every 15 min | 14 | yes | one sweep, an hour before each athlete's usual start or at their chosen time, that keeps only the athletes due this tick, then loads their briefings and deliveries in one query each; sends only, generates nothing | 2,872 runs, 0.69 / 0.97 / 1.26s |
 | `intervals-icu:sync` | every 15 min | 14 | yes | one indexed read of working intervals.icu connections, one queued job per athlete; the HTTP calls run on the queue, not in the tick | 1,991 runs, 0.68 / 0.97 / 1.20s |
 | `streak:remind` | Sat 18:00 | 15 | yes | one push-eligibility sweep; one athlete's failure is reported and alerted once at the end, the rest still get their nudge | 4 runs, 0.70 / 0.82 / 0.82s |
+| `plan:lock-next-week` | Sun 19:00 | 15 | yes | one sweep of non-demo athletes whose week's adaptation records a session next week could lose, re-reading each one's hot easy days; the inbox dedupe key and a cache claim make a re-run a no-op | not yet measured |
 | `streak:settle` | hourly | 20 | yes | queues chronological per-user settlement for the athletes still behind or marked dirty; one query when nobody is | 717 runs, 0.68 / 0.91 / 1.20s |
 | `schedule:monday-check` | Mon 06:00 | 10 | yes | one indexed count plus the chain flags, at most one alert per week | 4 runs, 0.88 / 1.05 / 1.05s |
 | `horizon:snapshot` | every 5 minutes | 4 | yes | one Redis snapshot of Horizon's per-queue and per-job metrics for its Metrics tab, trimmed by `horizon.metrics.trim_snapshots` | 8,091 runs, 0.68 / 0.95 / 1.29s |
@@ -116,7 +117,7 @@ minute's run. The :00 tick is the busy one: `ai:self-heal`, `ai:catch-up`, `geo:
 and `streak:settle` every hour, the five- and fifteen-minute entries (`notifications:*`,
 `strava:ingest`, `strava:hydrate-backlog`, `briefing:morning-push`, `intervals-icu:sync`, `schedule:check-late`), and on
 their hours `ai:trend-read arc`, `schedule:monday-check`, `race:ask-outcome`,
-`fitness:notify-improvement`, `race:remind`, `streak:remind` and the 21:00 digests.
+`fitness:notify-improvement`, `race:remind`, `streak:remind`, `plan:lock-next-week` and the 21:00 digests.
 
 `strava:sync` runs at **:07** (`hourlyAt(7)`), a minute no other entry uses and not a multiple of 5,
 so it shares its tick only with `schedule:heartbeat`, which is registered first. Its runtime grows

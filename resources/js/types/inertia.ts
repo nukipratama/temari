@@ -672,6 +672,8 @@ export interface WeekPlanDay {
      *  the day still shows something easier; kept once the day has passed.
      *  Null on every other day. */
     dropped_from: { session_type: string; time_trial: boolean } | null;
+    /** The two-hard-day count made this day easy, kept after the day passes. */
+    hard_day_dropped: boolean;
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
