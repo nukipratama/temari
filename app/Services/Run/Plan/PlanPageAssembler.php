@@ -65,6 +65,7 @@ final class PlanPageAssembler
         private readonly RaceAmbitionAssessor $ambition,
         private readonly RaceOutcomeMatcher $outcomeMatcher,
         private readonly WeekHardBudget $weekHardBudget,
+        private readonly NextWeekOutlook $nextWeekOutlook,
     ) {
     }
 
@@ -193,6 +194,19 @@ final class PlanPageAssembler
         ];
     }
 
+    /**
+     * The session next week loses, or would lose, to this week's hot easy days so far. Null
+     * while nothing next week is at stake.
+     *
+     * @return array{state: 'set'|'one_more', egregious: bool, hot_days: list<array{date: string, session_type: string, over_cap_minutes: int}>, drop: array{date: string, session_type: string, time_trial: bool}, blocker: string|null}|null
+     */
+    public function nextWeek(User $user, Carbon $today): ?array
+    {
+        $outlook = $this->nextWeekOutlook->for($user, $today);
+
+        return $outlook === null || $outlook['drop'] === null ? null : $outlook;
+    }
+
     public function regenerateCooldownSeconds(User $user): ?int
     {
         return $this->regenerateCooldown->remaining($user);
@@ -319,7 +333,8 @@ final class PlanPageAssembler
         // knowable today, so clamping never reaches past this one row.
         $todaySession = $sessions->first(fn (PlannedSession $s): bool => $s->date->isSameDay($today));
         $currentWeekAdaptation = ($this->weekAdaptation)($user->id, $currentWeekKey);
-        $overrideWeek = QualityOverride::openWeek($user, $currentWeekAdaptation, $race);
+        $overrideWeek = QualityOverride::shownWeek($user, $currentWeekAdaptation);
+        $overrideRaceBlocker = QualityOverride::raceBlocker($overrideWeek, $race);
         $overrideTakenOn = QualityOverride::takenOn($overrideWeek, $sessionsByWeek->get($currentWeekKey) ?? collect());
         $clamp = ($todaySession !== null && ! $loadPending && ! QualityOverride::holdsEase($currentWeekAdaptation, $today, $ceiling))
             ? ReadinessClamp::apply(
@@ -397,6 +412,7 @@ final class PlanPageAssembler
                     easySlowEndSecPerKm: $easySlowEnd,
                     overrideWeek: $overrideWeek,
                     overrideTakenOn: $overrideTakenOn,
+                    overrideRaceBlocker: $overrideRaceBlocker,
                 ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today, $currentWeekAdaptation?->override_date?->toDateString()), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }

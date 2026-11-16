@@ -28,26 +28,59 @@ final class QualityOverride
 {
     public const string TAKEN_NOTE = 'you chose to run this one as written.';
 
+    public const string RACE_RULE = 'the weeks closest to a race stay as the plan set them.';
+
+    public const string ONE_A_WEEK_RULE = 'you get one bring-back a week.';
+
     /**
      * The week's adaptation while this athlete may override it: never the demo athlete, and never
      * in the window {@see PreRaceWindow::locksOverride()} holds unless the override was already taken.
      */
     public static function openWeek(User $user, ?PlanAdaptation $week, ?RaceGoal $race): ?PlanAdaptation
     {
-        if (! $week instanceof PlanAdaptation || $user->is_demo
-            || (! $week->override_kind instanceof PlanOverrideKind && PreRaceWindow::locksOverride($week->week_start, $race))) {
-            return null;
-        }
-
-        return $week;
+        return $week instanceof PlanAdaptation && ! $user->is_demo && self::raceBlocker($week, $race) === null ? $week : null;
     }
 
     /**
-     * @param  PlanAdaptation|null  $week  the day's week while {@see self::openWeek()} holds it open
+     * The week's adaptation while this athlete may see its overrides, offered or locked: never the demo athlete.
+     */
+    public static function shownWeek(User $user, ?PlanAdaptation $week): ?PlanAdaptation
+    {
+        return $user->is_demo ? null : $week;
+    }
+
+    /** What keeps an untaken override shut this week near the race: "race week", or how far before it the week is. */
+    public static function raceBlocker(?PlanAdaptation $week, ?RaceGoal $race): ?string
+    {
+        if (! $week instanceof PlanAdaptation || $week->override_kind instanceof PlanOverrideKind) {
+            return null;
+        }
+
+        return self::raceWindowBlocker($week->week_start, $race);
+    }
+
+    /** What would keep a bring-back shut in the week starting $weekStart: "race week", or how far before it the week is. */
+    public static function raceWindowBlocker(Carbon $weekStart, ?RaceGoal $race): ?string
+    {
+        if (! $race instanceof RaceGoal || ! PreRaceWindow::locksOverride($weekStart, $race)) {
+            return null;
+        }
+        $weeks = (int) $weekStart->diffInWeeks($race->race_date->copy()->startOfWeek(Carbon::MONDAY));
+
+        return match ($weeks) {
+            0 => 'race week',
+            1 => '1 week before race week',
+            default => "{$weeks} weeks before race week",
+        };
+    }
+
+    /**
+     * @param  PlanAdaptation|null  $week  the day's week from {@see self::shownWeek()}
      * @param  string|null  $easeNote  the clamp's note on the ease this day shows
      * @param  ReadinessCeiling|null  $easeCeiling  the ceiling that ease was made at
      * @param  string|null  $takenOn  the day the taken note sits on, from {@see self::takenOn()}
-     * @return array{kind: string, state: 'offered', label: string, reason: string}|array{kind: string, state: 'taken', note: string, undoable: bool}|null
+     * @param  string|null  $raceBlocker  what shuts the week near its race, from {@see self::raceBlocker()}
+     * @return array{kind: string, state: 'offered', label: string, reason: string}|array{kind: string, state: 'locked', blocker: string, reason: string}|array{kind: string, state: 'taken', note: string, undoable: bool}|null
      */
     public static function forDay(
         PlannedSession $day,
@@ -58,6 +91,7 @@ final class QualityOverride
         ?string $easeNote,
         ?ReadinessCeiling $easeCeiling,
         ?string $takenOn = null,
+        ?string $raceBlocker = null,
     ): ?array {
         if (! $week instanceof PlanAdaptation || ! $week->week_start->isSameDay($day->date->copy()->startOfWeek(Carbon::MONDAY))) {
             return null;
@@ -73,12 +107,51 @@ final class QualityOverride
             ];
         }
 
-        if ($week->override_kind instanceof PlanOverrideKind || $ran || $day->pinned || $day->skipped
-            || $status !== PlannedSessionStatus::Planned || $day->date->lt($today)) {
+        if ($ran || $day->pinned || $day->skipped || $status !== PlannedSessionStatus::Planned || $day->date->lt($today)) {
             return null;
         }
 
-        if ($day->date->isSameDay($today) && $easeNote !== null && $easeCeiling === ReadinessCeiling::ModerateOk && self::isWorkout($day->session_type)) {
+        $isToday = $day->date->isSameDay($today);
+        if ($isToday && $easeNote !== null && self::isWorkout($day->session_type) && in_array($easeCeiling, [ReadinessCeiling::EasyOnly, ReadinessCeiling::Rest], true)) {
+            return self::locked(PlanOverrideKind::ReadinessEase, $easeCeiling === ReadinessCeiling::Rest ? 'readiness says rest today' : 'readiness says easy only today', $easeNote);
+        }
+
+        $offer = self::offerFor($day, $week, $isToday ? $easeNote : null, $easeCeiling);
+        if ($offer === null) {
+            return null;
+        }
+        if ($week->override_kind instanceof PlanOverrideKind) {
+            $usedOn = strtolower(($week->override_date ?? $today)->format('l'));
+
+            return self::locked(PlanOverrideKind::from($offer['kind']), "this week's bring-back went to {$usedOn}", $offer['reason'].' '.self::ONE_A_WEEK_RULE);
+        }
+        if ($raceBlocker !== null) {
+            return self::locked(PlanOverrideKind::from($offer['kind']), $raceBlocker, $offer['reason'].' '.self::RACE_RULE);
+        }
+
+        return $offer;
+    }
+
+    /**
+     * The quality session a ran-too-hard week dropped from this day, while the day still shows an easy run there.
+     *
+     * @return array{session_type: string, time_trial: bool}|null
+     */
+    public static function droppedFrom(PlannedSession $day, SessionType $shownType, ?PlanAdaptation $week): ?array
+    {
+        $dropped = $week?->dropped_quality;
+        if ($dropped === null || $dropped['date'] !== $day->date->toDateString() || $shownType !== SessionType::Easy
+            || $week->reason !== AdaptationReason::RanTooHard || $week->quality_delta >= 0) {
+            return null;
+        }
+
+        return ['session_type' => $dropped['session_type'], 'time_trial' => $dropped['time_trial']];
+    }
+
+    /** @return array{kind: string, state: 'offered', label: string, reason: string}|null */
+    private static function offerFor(PlannedSession $day, PlanAdaptation $week, ?string $easeNote, ?ReadinessCeiling $easeCeiling): ?array
+    {
+        if ($easeNote !== null && $easeCeiling === ReadinessCeiling::ModerateOk && self::isWorkout($day->session_type)) {
             return ['kind' => PlanOverrideKind::ReadinessEase->value, 'state' => 'offered', 'label' => "i'm ready", 'reason' => $easeNote];
         }
 
@@ -113,6 +186,12 @@ final class QualityOverride
         }
 
         return null;
+    }
+
+    /** @return array{kind: string, state: 'locked', blocker: string, reason: string} */
+    private static function locked(PlanOverrideKind $kind, string $blocker, string $reason): array
+    {
+        return ['kind' => $kind->value, 'state' => 'locked', 'blocker' => $blocker, 'reason' => $reason];
     }
 
     /**

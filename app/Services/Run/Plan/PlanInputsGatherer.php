@@ -86,7 +86,7 @@ final readonly class PlanInputsGatherer
         $currentWeekAdaptation = PlanAdaptation::query()
             ->where('user_id', $user->id)
             ->where('week_start', $currentWeekStart->toDateString())
-            ->first(['override_kind', 'override_date', 'hard_cap_minutes']);
+            ->first(['override_kind', 'override_date', 'hard_cap_minutes', 'dropped_quality']);
         $restoredDay = $currentWeekAdaptation?->override_kind === PlanOverrideKind::WeeklyDrop ? $currentWeekAdaptation->override_date : null;
         $refundableDay = in_array($currentWeekAdaptation?->override_kind, [PlanOverrideKind::WeeklyDrop, PlanOverrideKind::BudgetDrop, PlanOverrideKind::HardDayDrop], true) ? $currentWeekAdaptation->override_date : null;
         $weeks = ($this->trailingWeeks)($user->id, $currentWeekStart->copy()->subDay()->toDateString(), 6)
@@ -142,6 +142,7 @@ final readonly class PlanInputsGatherer
             lockedHardCapMinutes: $currentWeekAdaptation?->hard_cap_minutes,
             budgetOverrideDate: $currentWeekAdaptation?->override_kind === PlanOverrideKind::BudgetDrop ? $currentWeekAdaptation->override_date?->toDateString() : null,
             hardDayOverrideDate: $currentWeekAdaptation?->override_kind === PlanOverrideKind::HardDayDrop ? $currentWeekAdaptation->override_date?->toDateString() : null,
+            droppedQuality: $currentWeekAdaptation?->dropped_quality,
         );
     }
 

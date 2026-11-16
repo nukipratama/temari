@@ -17,6 +17,10 @@ code_refs:
 
 **Status:** Accepted (2026-11-02). Decision 4 of #2351 and its layer-4 sub-decisions.
 
+> **Fact update, 2026-11-16 (#2475).** An offer a rule refuses (the pre-race window, the week's one
+> override already taken, an easy-only or rest ceiling) is no longer hidden: `QualityOverride::forDay()`
+> returns it `locked` with the rule named, and the day shows "can't bring back · {rule}".
+
 > **Fact update, 2026-11-02 (#2351 layer 6).** A weekly-drop restore holds only while the week's
 > reason is still `RanTooHard`. The rebuild that finds another reason plans the week by that reason.
 > While the overridden day is today or later with no run on it, the same condition as "ease it

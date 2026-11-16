@@ -138,7 +138,7 @@ it('skips a change that reverted before sending, and frees the session for a lat
     Notification::assertSentToTimes($user, PlanChangedNotification::class, 2);
 });
 
-it('leaves out the bring-back line once the plan no longer offers one', function (array $week, array $day, ?string $raceDate = null): void {
+it('names the rule that keeps a dropped session from coming back, and says nothing for a skipped day', function (array $week, array $day, ?string $raceDate, string $line): void {
     $user = User::factory()->create();
     if ($raceDate !== null) {
         RaceGoal::factory()->for($user)->create(['race_date' => $raceDate, 'distance_m' => 21097]);
@@ -146,11 +146,11 @@ it('leaves out the bring-back line once the plan no longer offers one', function
     PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-11-02', ...$week]);
     changedSession($user, ['prescribed_hard_minutes' => 0, 'prescribed_pace_band' => null, 'prescription_reason' => Periodizer::BUDGET_SPENT_REASON, 'prescription_budget' => ['cap_minutes' => 60, 'left_minutes' => 4, 'needed_minutes' => 25], ...$day]);
 
-    expect(new PlanChangedNotification(CHANGED_DAY, CHANGED_WAS)->toInbox($user)->body)->toBe("This week's hard-minute budget is spent.");
+    expect(new PlanChangedNotification(CHANGED_DAY, CHANGED_WAS)->toInbox($user)->body)->toBe(trim("This week's hard-minute budget is spent. {$line}"));
 })->with([
-    'override already taken this week' => [['override_kind' => 'weekly_drop', 'override_date' => '2026-11-04'], []],
-    'day skipped' => [[], ['skipped' => true]],
-    'race inside the pre-race window' => [[], [], '2026-11-15'],
+    'override already taken this week' => [['override_kind' => 'weekly_drop', 'override_date' => '2026-11-04'], [], null, "You can't bring it back: you get one bring-back a week. This week's is used."],
+    'day skipped' => [[], ['skipped' => true], null, ''],
+    'race inside the pre-race window' => [[], [], '2026-11-15', "You can't bring it back: it's 1 week before race week, and the weeks closest to a race stay as the plan set them."],
 ]);
 
 it('says nothing about a day that has passed by the time it is released', function (): void {

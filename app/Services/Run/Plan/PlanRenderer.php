@@ -233,6 +233,7 @@ final class PlanRenderer
         ?int $easySlowEndSecPerKm = null,
         ?PlanAdaptation $overrideWeek = null,
         ?string $overrideTakenOn = null,
+        ?string $overrideRaceBlocker = null,
     ): array {
         $isToday = $s->date->isSameDay($today);
         $volumeScale = $volumeScaleByDate[$s->date->toDateString()] ?? 1.0;
@@ -349,7 +350,9 @@ final class PlanRenderer
                 $activity['runs'] ?? [],
             ),
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
-            'override' => QualityOverride::forDay($s, $today, $status, ($activity['runs'] ?? []) !== [], $overrideWeek, $easeAssessment === null ? null : $shownClamp['note'] ?? null, $easeCeiling, $overrideTakenOn),
+            'override' => QualityOverride::forDay($s, $today, $status, ($activity['runs'] ?? []) !== [], $overrideWeek, $easeAssessment === null ? null : $shownClamp['note'] ?? null, $easeCeiling, $overrideTakenOn, $overrideRaceBlocker),
+            'dropped_from' => QualityOverride::droppedFrom($s, $sessionType, $overrideWeek),
+            'hard_day_dropped' => in_array($s->prescription_reason, [Periodizer::HARD_DAYS_FULL_REASON, Periodizer::NO_FAST_FINISH_HARD_DAYS_REASON], true),
         ];
     }
 

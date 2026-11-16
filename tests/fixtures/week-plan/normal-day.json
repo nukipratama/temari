@@ -73,7 +73,9 @@
                 }
             ],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 2,
@@ -138,7 +140,9 @@
                 }
             ],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 3,
@@ -352,7 +356,9 @@
             "credited_km": null,
             "activities": [],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 4,
@@ -391,7 +397,9 @@
             "credited_km": null,
             "activities": [],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 5,
@@ -440,7 +448,9 @@
             "credited_km": null,
             "activities": [],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 6,
@@ -489,7 +499,9 @@
             "credited_km": null,
             "activities": [],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 7,
@@ -528,7 +540,9 @@
             "credited_km": null,
             "activities": [],
             "flagged": false,
-            "override": null
+            "override": null,
+            "dropped_from": null,
+            "hard_day_dropped": false
         }
     ]
 }

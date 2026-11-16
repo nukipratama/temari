@@ -57,6 +57,7 @@ class PlanController extends Controller
             'seasonSummary' => fn (): array => $plan->seasonSummary($user, $today),
             'seasonAdherencePct' => fn (): ?int => $plan->seasonAdherencePct($user, $today),
             'adaptation' => fn (): ?array => $plan->adaptation($user, $today),
+            'nextWeek' => fn (): ?array => $plan->nextWeek($user, $today),
             'disclaimerLine' => TrainingDisclaimer::SHORT,
             'regenerateCooldownSeconds' => fn (): ?int => $plan->regenerateCooldownSeconds($user),
         ]);

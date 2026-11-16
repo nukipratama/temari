@@ -840,6 +840,44 @@ it('offers Home the session a ran-too-hard week dropped, on the day the week as 
     Carbon::setTestNow();
 });
 
+it('locks the dropped session near the race, naming the window, and names what the day was once it has passed', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    app(Periodizer::class)->regenerate($user);
+    RaceGoal::query()->where('user_id', $user->id)->update(['race_date' => '2026-10-04', 'distance_m' => 21_097]);
+    app()->forgetScopedInstances();
+
+    expect(data_get(weekPlanDay(weekPlanHome($user)['days'], '2026-09-17'), 'override'))->toMatchArray([
+        'kind' => 'weekly_drop',
+        'state' => 'locked',
+        'blocker' => '2 weeks before race week',
+    ])
+        ->and(data_get(weekPlanDay(weekPlanHome($user)['days'], '2026-09-17'), 'dropped_from'))->toBe(['session_type' => 'interval', 'time_trial' => false]);
+
+    Carbon::setTestNow('2026-09-18 08:00:00');
+    RaceGoal::query()->where('user_id', $user->id)->update(['race_date' => '2026-10-11']);
+    app()->forgetScopedInstances();
+    app(Periodizer::class)->regenerate($user);
+    $thursday = weekPlanDay(weekPlanHome($user)['days'], '2026-09-17');
+
+    expect(data_get($thursday, 'dropped_from'))->toBe(['session_type' => 'interval', 'time_trial' => false])
+        ->and(data_get($thursday, 'override'))->toBeNull();
+    Carbon::setTestNow();
+});
+
+it('marks a day the hard-day count made easy, and keeps the mark once the day has passed', function (): void {
+    Carbon::setTestNow('2026-09-18 08:00:00');
+    $user = User::factory()->create();
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-16', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 0, 'prescription_reason' => Periodizer::HARD_DAYS_FULL_REASON]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-09-17', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy, 'prescription_reason' => Periodizer::HARD_DAY_SPACING_REASON]);
+
+    $days = weekPlanHome($user)['days'];
+
+    expect(data_get(weekPlanDay($days, '2026-09-16'), 'hard_day_dropped'))->toBeTrue()
+        ->and(data_get(weekPlanDay($days, '2026-09-17'), 'hard_day_dropped'))->toBeFalse();
+    Carbon::setTestNow();
+});
+
 it('eases Home\'s today again under a taken readiness override once the ceiling drops below moderate', function (): void {
     Carbon::setTestNow('2026-08-12 08:00:00');
     $user = User::factory()->create();

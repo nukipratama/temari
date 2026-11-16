@@ -668,6 +668,12 @@ export interface WeekPlanDay {
      *  distance above are unchanged, and `segments`' pace is already the
      *  slower one. */
     pace_eased_from: PlanDayPaceEasedFrom | null;
+    /** The quality session a ran-too-hard week dropped from this day, while
+     *  the day still shows something easier; kept once the day has passed.
+     *  Null on every other day. */
+    dropped_from: { session_type: string; time_trial: boolean } | null;
+    /** The two-hard-day count made this day easy, kept after the day passes. */
+    hard_day_dropped: boolean;
     /** Why a long day that covered its distance still reads `partial` — it
      *  arrived in pieces rather than in one run. Null on every other day. */
     credit_note: string | null;
@@ -701,8 +707,8 @@ export interface WeekPlanDay {
     /** This athlete has already flagged this day as wrong. */
     flagged?: boolean;
     /** The week's one "i'm ready" override on this day, from
-     *  `QualityOverride::forDay()`: offered, or taken and undoable until a
-     *  run lands. Null on every other day. */
+     *  `QualityOverride::forDay()`: offered, locked by a named rule, or
+     *  taken and undoable until a run lands. Null on every other day. */
     override: PlanDayOverride | null;
 }
 
@@ -712,6 +718,14 @@ export type PlanDayOverride =
           state: 'offered';
           label: string;
           /** The plan's own reason: the clamp note or the adaptation detail. */
+          reason: string;
+      }
+    | {
+          kind: PlanOverrideKind;
+          state: 'locked';
+          /** The rule that refuses it, short: "race week". */
+          blocker: string;
+          /** Why the day changed, then the rule in full. */
           reason: string;
       }
     | {

@@ -81,7 +81,7 @@ export function ChangeRow({
     from: string;
     to: string;
     direction: DeltaPairDirection;
-    tag: string;
+    tag?: string;
     quiet?: boolean;
     className?: string;
 }>) {
@@ -101,7 +101,7 @@ export function ChangeRow({
                 direction={direction}
                 quiet={quiet}
             />
-            <DeltaTag>{tag}</DeltaTag>
+            {tag !== undefined && <DeltaTag>{tag}</DeltaTag>}
         </p>
     );
 }

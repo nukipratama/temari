@@ -37,8 +37,10 @@ use Override;
  * @property float|null $volume_floor_km
  * @property bool $increases_held
  * @property int|null $hard_cap_minutes
- * @property array{distance_m: int, moved_to: string|null}|null $deferred_time_trial
- * @property array{date: string, session_type: string, time_trial: bool}|null $restorable_quality
+ * @property array{moved_to: string|null, distance_m: int}|null $deferred_time_trial
+ * @property array{date: string, time_trial: bool, session_type: string}|null $restorable_quality
+ * @property array{date: string, time_trial: bool, session_type: string}|null $dropped_quality
+ * @property array{date: string, time_trial: bool, session_type: string}|null $next_week_drop
  * @property PlanOverrideKind|null $override_kind
  * @property Carbon|null $override_date
  * @property Carbon|null $overridden_at
@@ -57,6 +59,8 @@ use Override;
     'hard_cap_minutes',
     'deferred_time_trial',
     'restorable_quality',
+    'dropped_quality',
+    'next_week_drop',
     'override_kind',
     'override_date',
     'overridden_at',
@@ -115,6 +119,8 @@ class PlanAdaptation extends Model
             'hard_cap_minutes' => 'integer',
             'deferred_time_trial' => 'array',
             'restorable_quality' => 'array',
+            'dropped_quality' => 'array',
+            'next_week_drop' => 'array',
             'override_kind' => PlanOverrideKind::class,
             'override_date' => 'date:Y-m-d',
             'overridden_at' => 'datetime',

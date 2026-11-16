@@ -223,7 +223,7 @@ final readonly class Periodizer
                 $inputs->raceDistanceM,
                 $inputs->isSelfScaled(),
                 $inputs->today,
-                $week['week_start']->isSameDay($inputs->currentWeekStart()) ? $inputs->currentWeekQualityDelta() : 0,
+                $inputs->qualityDeltaFor($week['week_start']),
                 $inputs->runDays,
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
@@ -251,7 +251,7 @@ final readonly class Periodizer
                 $trials->placedIn($week['week_start']);
                 if ($deferredDates !== null && ! $trial->retry) {
                     foreach ($deferredDates as $date) {
-                        $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => $week['week_start']->toDateString()]];
+                        $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['moved_to' => $week['week_start']->toDateString(), 'distance_m' => $trial->distanceM]];
                     }
                 }
                 $deferredDates = null;
@@ -259,7 +259,7 @@ final readonly class Periodizer
                 $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, $goalPace, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
                 if ($trial instanceof TimeTrial && ! $trial->retry && $deferredDates === null) {
                     $deferredDates = array_keys($weekRows);
-                    $weekDeferral = ['deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => null]];
+                    $weekDeferral = ['deferred_time_trial' => ['moved_to' => null, 'distance_m' => $trial->distanceM]];
                 }
             }
             if (array_any($weekRows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0 && FastFinishLongRun::isFastFinish($row['prescription_race_context']))) {
@@ -491,6 +491,7 @@ final readonly class Periodizer
                 PlannedSession::forgetCachedReads($inputs->userId);
             }
 
+            $restorable = $this->restorableQuality($inputs, $rows);
             PlanAdaptation::query()->updateOrCreate(
                 ['user_id' => $inputs->userId, 'week_start' => $inputs->currentWeekStart()->toDateString()],
                 [
@@ -503,7 +504,9 @@ final readonly class Periodizer
                     'increases_held' => $inputs->increasesHeld,
                     'hard_cap_minutes' => $inputs->lockedHardCapMinutes ?? self::currentWeekHardCap($inputs, $rows),
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
-                    'restorable_quality' => $this->restorableQuality($inputs, $rows),
+                    'restorable_quality' => $restorable,
+                    'dropped_quality' => $inputs->droppedQuality ?? $restorable,
+                    'next_week_drop' => $this->nextWeekDrop($inputs, $rows),
                     ...($inputs->refundsOverride() ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null] : []),
                 ],
             );
@@ -543,7 +546,7 @@ final readonly class Periodizer
      * week is planned as written, with the type it would hold there.
      *
      * @param  array<string, array{session_type: SessionType, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
-     * @return array{date: string, session_type: string, time_trial: bool}|null
+     * @return array{date: string, time_trial: bool, session_type: string}|null
      */
     public function restorableQuality(PlanInputs $inputs, array $rows): ?array
     {
@@ -559,7 +562,36 @@ final readonly class Periodizer
                 break;
             }
             if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
-                return ['date' => $date, 'session_type' => $row['session_type']->value, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context'])];
+                // MySQL's JSON key order, so an unchanged value reads clean on the next rebuild.
+                return ['date' => $date, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context']), 'session_type' => $row['session_type']->value];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The quality session next week would lose if this week ends run too hard: the first
+     * workout next week holds as planned that a ran-too-hard plan of it would not.
+     *
+     * @param  array<string, array{session_type: SessionType, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+     * @return array{date: string, session_type: string, time_trial: bool}|null
+     */
+    public function nextWeekDrop(PlanInputs $inputs, array $rows): ?array
+    {
+        $dropped = $this->rowsFor($inputs->withNextWeekQualityDropped());
+        $nextWeekStart = $inputs->currentWeekStart()->addWeek()->toDateString();
+        $nextWeekEnd = $inputs->currentWeekStart()->addWeek()->addDays(6)->toDateString();
+        foreach ($rows as $date => $row) {
+            if ($date < $nextWeekStart) {
+                continue;
+            }
+            if ($date > $nextWeekEnd) {
+                break;
+            }
+            if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
+                // MySQL's JSON key order, so an unchanged value reads clean on the next rebuild.
+                return ['date' => $date, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context']), 'session_type' => $row['session_type']->value];
             }
         }
 
@@ -1079,7 +1111,7 @@ final readonly class Periodizer
     }
 
     /**
-     * @param  array<string, array{deferred_time_trial?: array{distance_m: int, moved_to: string|null}, ...}>  $rows
+     * @param  array<string, array{deferred_time_trial?: array{moved_to: string|null, distance_m: int}, ...}>  $rows
      * @return array{distance_m: int, moved_to: string|null}|null
      */
     private static function deferredTimeTrial(PlanInputs $inputs, array $rows): ?array

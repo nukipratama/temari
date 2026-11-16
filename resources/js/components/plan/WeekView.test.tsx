@@ -19,6 +19,14 @@ import { defined } from '@/test/defined';
 
 import WeekView from './WeekView';
 
+/** Move and skip sit behind the day panel's "more actions" overflow. */
+function openMoreActions() {
+    const more = screen.queryByRole('button', { name: 'more actions' });
+    if (more?.getAttribute('aria-expanded') === 'false') {
+        fireEvent.click(more);
+    }
+}
+
 vi.mock('@/lib/http', () => ({
     getJson: vi.fn().mockResolvedValue({ ok: false }),
     postJson: vi.fn().mockResolvedValue({ ok: true }),
@@ -64,6 +72,8 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
+        dropped_from: null,
+        hard_day_dropped: false,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -186,6 +196,33 @@ describe('WeekView', () => {
         });
 
         expect(screen.getByText('hard min this week')).toBeInTheDocument();
+    });
+
+    it('shows what this week does to next week only when something is at stake', () => {
+        const { rerender } = renderWeek();
+        expect(
+            screen.queryByRole('region', { name: 'next week, as of now' }),
+        ).not.toBeInTheDocument();
+
+        rerender({
+            nextWeek: {
+                state: 'set',
+                egregious: false,
+                hot_days: [
+                    { date: TODAY, session_type: 'easy', over_cap_minutes: 9 },
+                ],
+                drop: {
+                    date: '2026-06-25',
+                    session_type: 'tempo',
+                    time_trial: false,
+                },
+                blocker: null,
+            },
+        });
+
+        expect(
+            screen.getByRole('region', { name: 'next week, as of now' }),
+        ).toHaveTextContent(/tempo\s*→\s*easy/);
     });
 
     it('heads the week with its number, dates, target, sessions and adherence', () => {
@@ -416,7 +453,7 @@ describe('WeekView', () => {
         ).toBeTruthy();
     });
 
-    it("offers the week's dropped session back on the adaptation note", () => {
+    it("lists a dropped session in the week's changes and opens its day with the bring-back", () => {
         renderWeek({
             focus: {
                 headline: 'one less quality session',
@@ -426,6 +463,11 @@ describe('WeekView', () => {
                 i === 3
                     ? {
                           ...d,
+                          session_type: 'easy',
+                          dropped_from: {
+                              session_type: 'tempo',
+                              time_trial: false,
+                          },
                           override: {
                               kind: 'weekly_drop',
                               state: 'offered',
@@ -437,50 +479,51 @@ describe('WeekView', () => {
             ),
         });
 
-        const note = screen.getByText('one less quality session');
-        const offer = screen.getByRole('button', {
-            name: "bring back thursday's tempo",
+        const change = screen.getByRole('button', {
+            name: /thu.*tempo.*easy.*can bring back/i,
         });
+        fireEvent.click(change);
+
+        const panel = screen.getByRole('tabpanel');
+        expect(panel).toHaveTextContent(/tempo → easy/);
         expect(
-            offer.compareDocumentPosition(screen.getByRole('tablist')) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-        expect(
-            note.compareDocumentPosition(offer) &
-                Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
+            within(panel).getByRole('button', {
+                name: "bring back thursday's tempo",
+            }),
+        ).toBeVisible();
     });
 
-    it('keeps a taken weekly drop and its undo on the adaptation note', () => {
+    it('names the rule that locks a dropped session, in the list and on its day', () => {
         renderWeek({
-            focus: {
-                headline: 'one less quality session',
-                detail: 'you ran last week harder than it was written.',
-            },
             days: WEEK.map((d, i) =>
                 i === 3
                     ? {
                           ...d,
+                          session_type: 'easy',
+                          dropped_from: {
+                              session_type: 'tempo',
+                              time_trial: false,
+                          },
                           override: {
                               kind: 'weekly_drop',
-                              state: 'taken',
-                              note: 'you chose to run this one as written.',
-                              undoable: true,
+                              state: 'locked',
+                              blocker: '2 weeks before race week',
+                              reason: 'one less quality session. the weeks closest to a race stay as the plan set them.',
                           },
                       }
                     : d,
             ),
         });
 
-        expect(
-            screen.getByText('you ran last week harder than it was written.'),
-        ).toBeVisible();
-        expect(
-            screen.getByText('you chose to run this one as written.'),
-        ).toBeVisible();
-        expect(
-            screen.getByRole('button', { name: 'ease it again' }),
-        ).toBeVisible();
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /thu.*tempo.*easy.*can't bring back.*2 weeks before race week/i,
+            }),
+        );
+
+        expect(screen.getByRole('tabpanel')).toHaveTextContent(
+            "can't bring back: 2 weeks before race week",
+        );
     });
 
     it("shows the run's asked and ran result and its activity link", () => {
@@ -497,6 +540,7 @@ describe('WeekView', () => {
     it('skips the selected session through the caller', () => {
         const { onSkip } = renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(onSkip).toHaveBeenCalledWith(WEEK[3]);
@@ -521,6 +565,7 @@ describe('WeekView', () => {
     it('moves the selected session onto one of its move targets', () => {
         const { onMove } = renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         expect(screen.getByRole('button', { name: 'Wed' })).toBeDisabled();
@@ -537,6 +582,7 @@ describe('WeekView', () => {
         const onMove = vi.fn((_day, _toDate, onMoved: () => void) => onMoved());
         renderWeek({ onMove });
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
@@ -549,6 +595,7 @@ describe('WeekView', () => {
     it('leaves the selection where it was until the move lands', () => {
         renderWeek();
         fireEvent.click(screen.getByRole('tab', { name: /^Thu/ }));
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 

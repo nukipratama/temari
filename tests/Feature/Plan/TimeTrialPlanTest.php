@@ -156,7 +156,7 @@ it('marks the week a ran-too-hard week left without its trial with where the tri
     $week = array_filter($rows, static fn (string $date): bool => $date <= $weekEnd, ARRAY_FILTER_USE_KEY);
 
     expect(array_values(array_unique(array_map(static fn (array $row): mixed => $row['deferred_time_trial'] ?? null, $week), SORT_REGULAR)))
-        ->toBe([['distance_m' => 5_000, 'moved_to' => $movedTo]]);
+        ->toBe([['moved_to' => $movedTo, 'distance_m' => 5_000]]);
 })->with([
     'moved past the deload' => ['2026-11-09', '2026-11-23'],
     'the next cycle\'s trial' => ['2026-11-02', '2026-11-09'],

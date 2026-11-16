@@ -78,6 +78,7 @@ it('paints a fresh user\'s plan body at once, creating the season and its 5 goal
             ->has('seasonSummary')
             ->where('seasonAdherencePct', null)
             ->where('adaptation', null)
+            ->where('nextWeek', null)
             ->etc());
 
     $season = Season::query()->where('user_id', $user->id)->sole();
@@ -560,7 +561,7 @@ it('paints the Plan page and resolves its deferred race group inside their query
 
     $this->actingAs($user)->get('/plan')->assertSuccessful();
 
-    expect($queries)->toBeLessThanOrEqual(41);
+    expect($queries)->toBeLessThanOrEqual(42);
     expect($readinessQueries)->toBe(['stress' => 1]);
 
     $headers = inertiaPartialHeaders(
