@@ -48,7 +48,7 @@ const REASON =
 export default {
     name: 'DayDetail',
     description:
-        'A changed day leads with was → now, one line of why, and its bring-back or the rule that locks it; the full reason sits behind "why?", move and skip behind "more actions".',
+        'A changed day leads with was → now, one line of why, and its bring-back or the rule that locks it; the full reason opens from a "why" link on that line, move and skip behind "more actions".',
     usage: `<DayDetail day={day} weekDays={days} onMove={move} onSkip={skip} onUnskip={unskip} />`,
     states: [
         {
