@@ -53,6 +53,7 @@ function tooHardCase(string $case): array
         'one more, nothing next week to lose' => tooHardOutlook(state: EasyTooHardNotification::ONE_MORE, hotDays: [HOT_TUESDAY], drop: null),
         'set by one far over, near the race' => tooHardOutlook(egregious: true, hotDays: [[...HOT_SATURDAY, 'over_cap_minutes' => 31]], blocker: 'race week'),
         'set, nothing next week to lose' => tooHardOutlook(drop: null),
+        'set by one far over, nothing next week to lose' => tooHardOutlook(egregious: true, hotDays: [[...HOT_SATURDAY, 'over_cap_minutes' => 31]], drop: null),
         'locked on sunday' => tooHardOutlook(blocker: '2 weeks before race week'),
         default => tooHardOutlook(),
     };
@@ -94,6 +95,11 @@ it('says which run went how far over, which day next week it costs, and whether 
         'set, nothing next week to lose', EasyTooHardNotification::SET, '2026-11-07',
         'Easy runs ran hot this week',
         "saturday's long run went 14 min over your heart-rate cap. that is 2 easy days over it this week. next week has no workout to lose. keep the rest of this week easy.",
+    ],
+    'set by one far over, nothing next week to lose' => [
+        'set by one far over, nothing next week to lose', EasyTooHardNotification::SET, '2026-11-07',
+        'An easy run ran hot this week',
+        "saturday's long run went 31 min over your heart-rate cap. that is far enough over to count for the whole week. next week has no workout to lose. keep the rest of this week easy.",
     ],
     'locked on sunday' => [
         'locked on sunday', EasyTooHardNotification::LOCKED, null,

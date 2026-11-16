@@ -45,7 +45,7 @@ export default function NextWeekCard({
             <p className="text-label-micro text-text-3">
                 next week · as of now
             </p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 <span className="text-label-micro text-text-2">
                     {weekdayLabel(drop.date).toLowerCase()}
                 </span>
@@ -59,16 +59,6 @@ export default function NextWeekCard({
                     direction="neutral"
                 />
                 {state === 'one_more' && <Chip>at risk</Chip>}
-                <span className="ml-auto flex items-center gap-1 text-label-micro text-text-2">
-                    {blocker !== null && (
-                        <Icon
-                            icon={Lock}
-                            className="size-3"
-                            aria-label="locked"
-                        />
-                    )}
-                    {blocker ?? 'can bring back'}
-                </span>
             </p>
             <p className="mt-1 text-xs leading-relaxed text-text-2">
                 over your heart-rate cap: {hotDays}.{' '}
@@ -76,6 +66,17 @@ export default function NextWeekCard({
                     ? "this week's runs can't undo it."
                     : 'one more easy day over it this week makes it so.'}
             </p>
+            {blocker !== null ? (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-sm bg-card px-2.5 py-1 text-xs text-text-2">
+                    <Icon icon={Lock} className="size-3" aria-hidden />
+                    can't bring back: {blocker}
+                </p>
+            ) : (
+                <p className="mt-2 text-xs text-text-2">
+                    {state === 'set' ? 'you can' : 'you could'} bring it back on
+                    the day.
+                </p>
+            )}
         </section>
     );
 }

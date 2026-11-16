@@ -22,7 +22,7 @@ describe('NextWeekCard', () => {
             name: 'next week, as of now',
         });
         expect(card).toHaveTextContent(/thu\s*tempo\s*→\s*easy/i);
-        expect(card).toHaveTextContent('can bring back');
+        expect(card).toHaveTextContent('you can bring it back on the day.');
         expect(card).toHaveTextContent(
             'over your heart-rate cap: tue easy 9 min, sat long run 14 min.',
         );
@@ -33,9 +33,10 @@ describe('NextWeekCard', () => {
     it('names the rule that keeps a session near the race', () => {
         render(<NextWeekCard outlook={{ ...set, blocker: 'race week' }} />);
 
-        expect(screen.getByLabelText('locked')).toBeInTheDocument();
-        expect(screen.getByText('race week')).toBeInTheDocument();
-        expect(screen.queryByText('can bring back')).not.toBeInTheDocument();
+        expect(
+            screen.getByText("can't bring back: race week"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/bring it back on the day/)).toBeNull();
     });
 
     it('marks a session one more hot day away as at risk', () => {
@@ -50,6 +51,9 @@ describe('NextWeekCard', () => {
         );
 
         expect(screen.getByText('at risk')).toBeInTheDocument();
+        expect(
+            screen.getByText('you could bring it back on the day.'),
+        ).toBeInTheDocument();
         expect(
             screen.getByText(/one more easy day over it this week makes it so/),
         ).toBeInTheDocument();

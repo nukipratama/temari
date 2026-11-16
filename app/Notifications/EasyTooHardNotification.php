@@ -100,7 +100,11 @@ class EasyTooHardNotification extends Notification implements ShouldQueue
     {
         $drop = $this->outlook['drop'];
         if ($drop === null) {
-            return $this->state === self::ONE_MORE ? 'An easy run ran hot' : 'Easy runs ran hot this week';
+            return match (true) {
+                $this->state === self::ONE_MORE => 'An easy run ran hot',
+                count($this->outlook['hot_days']) > 1 => 'Easy runs ran hot this week',
+                default => 'An easy run ran hot this week',
+            };
         }
         $session = ucfirst(NextWeekOutlook::dropLabel($drop));
 
