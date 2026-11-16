@@ -325,14 +325,14 @@ export default function FitnessPanel({
 
     return (
         <div className={className}>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline justify-between gap-2">
                 {activePoint ? (
-                    <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                        {formatNaiveMonthDayId(activePoint.date)} · long-term
-                        load {Math.round(activePoint.ctl)}
+                    <p className="min-w-0 truncate font-mono text-sm font-semibold tabular-nums text-foreground">
+                        {formatNaiveMonthDayId(activePoint.date)} · load{' '}
+                        {Math.round(activePoint.ctl)}
                     </p>
                 ) : (
-                    <p className="flex items-baseline gap-2 font-mono tabular-nums text-foreground">
+                    <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 font-mono tabular-nums text-foreground">
                         <span className="text-stat-sm font-bold">
                             {Math.round(latest.ctl)}
                         </span>
@@ -353,6 +353,7 @@ export default function FitnessPanel({
                         setCursorIndex(null);
                     }}
                     aria-label="chart range"
+                    className="shrink-0 flex-nowrap"
                 >
                     {RANGE_KEYS.map((key) => (
                         <ToggleGroupItem key={key} value={key}>
