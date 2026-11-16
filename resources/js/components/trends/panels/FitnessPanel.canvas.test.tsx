@@ -104,7 +104,7 @@ describe('FitnessPanel on a real Chart.js canvas', () => {
                 chart,
             );
         });
-        expect(screen.getByText(/· long-term load/)).toBeInTheDocument();
+        expect(screen.getByText(/· load \d/)).toBeInTheDocument();
 
         const strokeStyles: string[] = [];
         const stroke = vi

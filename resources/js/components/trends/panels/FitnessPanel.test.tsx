@@ -124,9 +124,7 @@ describe('FitnessPanel', () => {
         expect(chart.options.plugins.fitnessOverlay!.cursorIndex).toBe(5);
         expect(chart.draw).toHaveBeenCalledOnce();
 
-        expect(
-            await screen.findByText(/jan 6 · long-term load 41/),
-        ).toBeInTheDocument();
+        expect(await screen.findByText(/jan 6 · load 41/)).toBeInTheDocument();
     });
 
     it('hands the deload index to the overlay when a deload date falls inside the trend', async () => {
