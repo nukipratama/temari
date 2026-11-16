@@ -45,7 +45,7 @@ export default function NextWeekCard({
             <p className="text-label-micro text-text-3">
                 next week · as of now
             </p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+            <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
                 <span className="text-label-micro text-text-2">
                     {weekdayLabel(drop.date).toLowerCase()}
                 </span>
