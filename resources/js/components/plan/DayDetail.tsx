@@ -353,8 +353,7 @@ export default function DayDetail({
               : openKind === 'hard_day_drop' && hardDayDelta
                 ? 'hard_day'
                 : null;
-    const whyLink = (row: typeof linkedRow) =>
-        row !== null &&
+    const whyLink = (row: NonNullable<typeof linkedRow>) =>
         row === linkedRow && (
             <>
                 {' '}
