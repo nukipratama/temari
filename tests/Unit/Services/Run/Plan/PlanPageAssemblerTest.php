@@ -6,6 +6,7 @@ use App\Enums\AdaptationReason;
 use App\Enums\IngestState;
 use App\Enums\PlannedSessionStatus;
 use App\Enums\PlanOverrideKind;
+use App\Enums\PlanPhase;
 use App\Enums\RaceOutcome;
 use App\Models\AI\Analysis;
 use App\Models\Activity;
@@ -132,6 +133,28 @@ it('carries the under-ready line on the first Plan visit of a short block, and n
 
 it('has nothing to explain about a week the adapter never touched', function (): void {
     expect(planPageAssembler()->adaptation(assemblerAthlete(), Carbon::today()))->toBeNull();
+});
+
+it('shows next week only while a hot easy day puts a session in it at stake', function (bool $drop): void {
+    $user = assemblerAthlete();
+    PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-08-10',
+        'next_week_drop' => $drop ? ['date' => '2026-08-20', 'time_trial' => false, 'session_type' => 'tempo'] : null,
+    ]);
+    PlannedSession::factory()->for($user)->create(['date' => '2026-08-10', 'phase' => PlanPhase::Build, 'session_type' => SessionType::Easy]);
+    ActivityDetail::factory()->for(Activity::factory()->for($user))->create([
+        'start_date_local' => Carbon::parse('2026-08-10 06:00:00'),
+        'moving_time' => 3000,
+        'stream_summary' => ['easy_cap_bpm' => 150, 'over_easy_cap_sec' => 800],
+    ]);
+
+    $nextWeek = planPageAssembler()->nextWeek($user, Carbon::today());
+
+    expect($nextWeek === null ? null : $nextWeek['drop']['date'])->toBe($drop ? '2026-08-20' : null);
+})->with(['a session at stake' => [true], 'nothing next week to lose' => [false]]);
+
+it('has no next week to show while no easy day ran hot', function (): void {
+    expect(planPageAssembler()->nextWeek(assemblerAthlete(), Carbon::today()))->toBeNull();
 });
 
 it('explains the current week in the adapter\'s own words', function (): void {

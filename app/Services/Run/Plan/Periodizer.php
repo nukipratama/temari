@@ -223,7 +223,7 @@ final readonly class Periodizer
                 $inputs->raceDistanceM,
                 $inputs->isSelfScaled(),
                 $inputs->today,
-                $week['week_start']->isSameDay($inputs->currentWeekStart()) ? $inputs->currentWeekQualityDelta() : 0,
+                $inputs->qualityDeltaFor($week['week_start']),
                 $inputs->runDays,
                 $inputs->longRunDay,
                 $inputs->projectedRaceSeconds,
@@ -506,6 +506,7 @@ final readonly class Periodizer
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
                     'restorable_quality' => $restorable,
                     'dropped_quality' => $inputs->droppedQuality ?? $restorable,
+                    'next_week_drop' => $this->nextWeekDrop($inputs, $rows),
                     ...($inputs->refundsOverride() ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null] : []),
                 ],
             );
@@ -558,6 +559,34 @@ final readonly class Periodizer
         $weekEnd = $inputs->currentWeekStart()->addDays(6)->toDateString();
         foreach ($restored as $date => $row) {
             if ($date > $weekEnd) {
+                break;
+            }
+            if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {
+                // MySQL's JSON key order, so an unchanged value reads clean on the next rebuild.
+                return ['date' => $date, 'time_trial' => TimeTrial::isTrial($row['prescription_race_context']), 'session_type' => $row['session_type']->value];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The quality session next week would lose if this week ends run too hard: the first
+     * workout next week holds as planned that a ran-too-hard plan of it would not.
+     *
+     * @param  array<string, array{session_type: SessionType, prescription_race_context: array<string, int|float|string>|null, ...}>  $rows
+     * @return array{date: string, session_type: string, time_trial: bool}|null
+     */
+    public function nextWeekDrop(PlanInputs $inputs, array $rows): ?array
+    {
+        $dropped = $this->rowsFor($inputs->withNextWeekQualityDropped());
+        $nextWeekStart = $inputs->currentWeekStart()->addWeek()->toDateString();
+        $nextWeekEnd = $inputs->currentWeekStart()->addWeek()->addDays(6)->toDateString();
+        foreach ($rows as $date => $row) {
+            if ($date < $nextWeekStart) {
+                continue;
+            }
+            if ($date > $nextWeekEnd) {
                 break;
             }
             if (QualityOverride::isWorkout($row['session_type']) && ! QualityOverride::isWorkout($dropped[$date]['session_type'] ?? SessionType::Rest)) {

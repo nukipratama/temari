@@ -14,6 +14,9 @@ import DayDetail, {
 } from '@/components/plan/DayDetail';
 import { DeltaPair } from '@/components/plan/DeltaPair';
 import HardMinuteWallet from '@/components/plan/HardMinuteWallet';
+import NextWeekCard, {
+    type NextWeekOutlook,
+} from '@/components/plan/NextWeekCard';
 import WeekChanges from '@/components/plan/WeekChanges';
 import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
@@ -86,6 +89,7 @@ export default function WeekView({
     raceDate = null,
     hardBudget = null,
     focus,
+    nextWeek = null,
     focusDay = null,
     selectedDay = null,
     onBack,
@@ -103,6 +107,8 @@ export default function WeekView({
     hardBudget?: HardBudget | null;
     /** The periodizer's adaptation verdict for this week, where one exists. */
     focus: { headline: string; detail: string } | null;
+    /** What this week's hot easy days do to next week; the current week only. */
+    nextWeek?: NextWeekOutlook | null;
     /** The day the visitor arrived asking for, from `/plan?day=`. */
     focusDay?: string | null;
     /** The day selected earlier in this tab session. */
@@ -209,6 +215,7 @@ export default function WeekView({
                     </div>
                 )}
                 <WeekChanges days={days} onSelect={selectDate} />
+                {nextWeek !== null && <NextWeekCard outlook={nextWeek} />}
                 {days.length > 0 && (
                     <WeekStrip
                         days={days}

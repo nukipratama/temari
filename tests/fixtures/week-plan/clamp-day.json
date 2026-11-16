@@ -74,7 +74,8 @@
             ],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 2,
@@ -140,7 +141,8 @@
             ],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 3,
@@ -387,7 +389,8 @@
             "activities": [],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 4,
@@ -427,7 +430,8 @@
             "activities": [],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 5,
@@ -477,7 +481,8 @@
             "activities": [],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 6,
@@ -527,7 +532,8 @@
             "activities": [],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         },
         {
             "id": 7,
@@ -567,7 +573,8 @@
             "activities": [],
             "flagged": false,
             "override": null,
-            "dropped_from": null
+            "dropped_from": null,
+            "hard_day_dropped": false
         }
     ]
 }

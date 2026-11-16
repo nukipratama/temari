@@ -248,20 +248,21 @@ final readonly class PlanAdapter
      * A day counts once however many runs it holds. A run carrying no heart-rate stream reads as no
      * signal rather than as a clean day.
      *
-     * @return array{ragged: int, egregious_easy: int}
+     * `hot_days` names each counted day, in date order, with its minutes over the cap.
+     *
+     * @return array{ragged: int, egregious_easy: int, hot_days: list<array{date: string, session_type: string, over_cap_minutes: int}>}
      */
     public function executionBetween(User $user, Carbon $start, Carbon $end): array
     {
-        $easyEffortDates = PlannedSession::query()
+        $easyEffortTypes = PlannedSession::query()
             ->where('user_id', $user->id)
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->get(['date', 'session_type', 'clamped_km', 'eased_pace_sec_per_km', 'readiness_assessment', 'prescribed_hard_minutes', 'prescribed_pace_band', 'prescribed_pace_sec_per_km', 'prescription_race_context', 'intent_evidence'])
             ->filter(static fn (PlannedSession $session): bool => self::isEasyEffort($session))
-            ->map(static fn (PlannedSession $session): string => $session->date->toDateString())
-            ->flip();
+            ->mapWithKeys(static fn (PlannedSession $session): array => [$session->date->toDateString() => EffectiveSession::settledTypeOf($session)->value]);
 
-        if ($easyEffortDates->isEmpty()) {
-            return ['ragged' => 0, 'egregious_easy' => 0];
+        if ($easyEffortTypes->isEmpty()) {
+            return ['ragged' => 0, 'egregious_easy' => 0, 'hot_days' => []];
         }
 
         $runsByDate = ActivityDetail::query()
@@ -273,10 +274,12 @@ final readonly class PlanAdapter
 
         $ragged = 0;
         $egregiousEasy = 0;
-        foreach ($runsByDate as $date => $runs) {
-            $effort = $easyEffortDates->has($date) ? EasyEffort::of($runs->all()) : null;
+        $hotDays = [];
+        foreach ($runsByDate->sortKeys() as $date => $runs) {
+            $effort = $easyEffortTypes->has($date) ? EasyEffort::of($runs->all()) : null;
             if ($effort?->tooHard() === true) {
                 $ragged++;
+                $hotDays[] = ['date' => (string) $date, 'session_type' => (string) $easyEffortTypes->get($date), 'over_cap_minutes' => (int) round($effort->overCapMinutes())];
             }
             if ($effort?->egregious() === true) {
                 $egregiousEasy++;
@@ -286,6 +289,7 @@ final readonly class PlanAdapter
         return [
             'ragged' => $ragged,
             'egregious_easy' => $egregiousEasy,
+            'hot_days' => $hotDays,
         ];
     }
 

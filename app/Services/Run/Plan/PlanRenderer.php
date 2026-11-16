@@ -352,6 +352,7 @@ final class PlanRenderer
             'flagged' => app(ResolveFlaggedSubjectsAction::class)(FeedbackSubject::PlanDay, $s->id),
             'override' => QualityOverride::forDay($s, $today, $status, ($activity['runs'] ?? []) !== [], $overrideWeek, $easeAssessment === null ? null : $shownClamp['note'] ?? null, $easeCeiling, $overrideTakenOn, $overrideRaceBlocker),
             'dropped_from' => QualityOverride::droppedFrom($s, $sessionType, $overrideWeek),
+            'hard_day_dropped' => in_array($s->prescription_reason, [Periodizer::HARD_DAYS_FULL_REASON, Periodizer::NO_FAST_FINISH_HARD_DAYS_REASON], true),
         ];
     }
 

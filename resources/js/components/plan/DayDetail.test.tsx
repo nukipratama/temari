@@ -61,6 +61,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         eased_from: null,
         pace_eased_from: null,
         dropped_from: null,
+        hard_day_dropped: false,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -1616,12 +1617,27 @@ describe('DayDetail override', () => {
     it('shows a day the hard-day count made easy as hard → easy, with its one-line why', () => {
         renderRow({
             day: day({
+                hard_day_dropped: true,
                 override: {
                     kind: 'hard_day_drop',
                     state: 'locked',
                     blocker: "this week's bring-back went to monday",
                     reason: 'r',
                 },
+            }),
+        });
+
+        expect(screen.getByText('hard')).toHaveClass('line-through');
+        expect(screen.getByText(HARD_DAY_WHY)).toBeInTheDocument();
+    });
+
+    it('keeps the hard → easy row once the day has passed and no bring-back is left', () => {
+        renderRow({
+            day: day({
+                date: '2026-06-15',
+                status: 'done',
+                hard_day_dropped: true,
+                override: null,
             }),
         });
 

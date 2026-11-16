@@ -65,6 +65,7 @@ final class PlanPageAssembler
         private readonly RaceAmbitionAssessor $ambition,
         private readonly RaceOutcomeMatcher $outcomeMatcher,
         private readonly WeekHardBudget $weekHardBudget,
+        private readonly NextWeekOutlook $nextWeekOutlook,
     ) {
     }
 
@@ -191,6 +192,19 @@ final class PlanPageAssembler
             'detail' => $detail,
             'deload' => $adaptation->deload,
         ];
+    }
+
+    /**
+     * The session next week loses, or would lose, to this week's hot easy days so far. Null
+     * while nothing next week is at stake.
+     *
+     * @return array{state: 'set'|'one_more', egregious: bool, hot_days: list<array{date: string, session_type: string, over_cap_minutes: int}>, drop: array{date: string, session_type: string, time_trial: bool}, blocker: string|null}|null
+     */
+    public function nextWeek(User $user, Carbon $today): ?array
+    {
+        $outlook = $this->nextWeekOutlook->for($user, $today);
+
+        return $outlook === null || $outlook['drop'] === null ? null : $outlook;
     }
 
     public function regenerateCooldownSeconds(User $user): ?int

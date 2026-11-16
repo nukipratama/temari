@@ -212,6 +212,12 @@ Schedule::command('weather:backfill')->dailyAt('03:30')->withoutOverlapping(55);
 // claim table makes a same-week re-run a no-op, not a second push.
 Schedule::command('streak:remind')->weeklyOn(Carbon::SATURDAY, '18:00')->withoutOverlapping(15);
 
+// Sunday 19:00: tell an athlete whose hot easy days this week cost next week a
+// quality session which session it is and whether it can be brought back,
+// before Monday's plan:regenerate makes it so. Demo excluded (notDemo() on the
+// scan); the inbox dedupe key and a cache claim make a re-run a no-op. No LLM.
+Schedule::command('plan:lock-next-week')->weeklyOn(Carbon::SUNDAY, '19:00')->withoutOverlapping(15);
+
 // Hourly: settle every closed week not yet settled — mint a rest token every
 // 4th streak week, or spend one to forgive a runless week. Each per-user job
 // advances a durable cursor and a run only queues athletes still behind or
