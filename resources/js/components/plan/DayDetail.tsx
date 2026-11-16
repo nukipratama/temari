@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import {
     ArrowRight,
     ArrowRightLeft,
+    Ellipsis,
     RotateCcw,
     SkipForward,
 } from 'lucide-react';
@@ -14,7 +15,9 @@ import {
     ChangeRow,
     DeltaTag,
 } from '@/components/plan/DeltaPair';
-import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
+import QualityOverrideAction, {
+    WhyLink,
+} from '@/components/plan/QualityOverrideAction';
 import SessionBarGraph from '@/components/plan/SessionBarGraph';
 import { Icon } from '@/components/ui/Icon';
 import { cn } from '@/lib/cn';
@@ -35,6 +38,7 @@ import {
     SESSION_TYPE_ICON,
     SESSION_TYPE_LABEL,
     sessionLabel,
+    TIME_TRIAL_LABEL,
     STATUS_LABEL,
     STATUS_MEANING,
     targetLabel,
@@ -119,12 +123,32 @@ function complianceLabel(day: PlanDay): string {
     return `${day.compliance_score}%`;
 }
 
-function dayChanges(day: PlanDay) {
+export const DROPPED_WHY =
+    "last week's easy runs went too hard, so this stays easy.";
+
+export const HARD_DAY_WHY =
+    'this week already has two hard days, so this one is easy.';
+
+export function dayChanges(day: PlanDay) {
     const adjustedFrom = volumeAdjustedFrom(day);
     const trimmed = adjustedFrom !== null && adjustedFrom > day.distance_km;
 
     return {
+        droppedDelta: day.dropped_from
+            ? {
+                  from: day.dropped_from.time_trial
+                      ? TIME_TRIAL_LABEL
+                      : (SESSION_TYPE_LABEL[day.dropped_from.session_type] ??
+                        day.dropped_from.session_type),
+                  to: sessionLabel(day),
+              }
+            : null,
         budgetDelta: budgetChange(day),
+        hardDayDelta:
+            day.override?.kind === 'hard_day_drop' &&
+            day.override.state !== 'taken'
+                ? { from: 'hard', to: 'easy' }
+                : null,
         sessionDelta: day.eased_from
             ? easedFromDelta(day.eased_from, day)
             : null,
@@ -163,13 +187,14 @@ function dayPoint(day: PlanDay) {
  * only there, never in the headline.
  */
 export function hasDayDetail(day: EditablePlanDay): boolean {
-    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
+    const { droppedDelta, budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
         dayChanges(day);
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move, skip, restore } = day.actions;
 
     return (
         day.segments.some((s) => (s.minutes ?? 0) > 0) ||
+        droppedDelta !== null ||
         budgetDelta !== null ||
         sessionDelta !== null ||
         paceDelta !== null ||
@@ -185,9 +210,7 @@ export function hasDayDetail(day: EditablePlanDay): boolean {
         Boolean(day.credit_note) ||
         Boolean(day.result_note) ||
         day.activities.length > 0 ||
-        day.override?.kind === 'readiness_ease' ||
-        day.override?.kind === 'budget_drop' ||
-        day.override?.kind === 'hard_day_drop' ||
+        day.override !== null ||
         move ||
         skip ||
         restore
@@ -203,7 +226,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
     const isRest = day.session_type === 'rest';
-    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
+    const { budgetDelta, hardDayDelta, sessionDelta, paceDelta, weekFitDelta } =
         dayChanges(day);
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
@@ -217,6 +240,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
         new Set(
             [
                 budgetDelta !== null ? 'budget full' : null,
+                hardDayDelta !== null ? 'two hard days' : null,
                 sessionDelta !== null || paceDelta !== null ? 'eased' : null,
                 weekFitDelta?.tag ?? null,
             ].filter((tag): tag is string => tag !== null),
@@ -292,9 +316,46 @@ export default function DayDetail({
     onUnskip: () => void;
 }>) {
     const [picking, setPicking] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
+    const [whyOpen, setWhyOpen] = useState(false);
 
-    const { budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
-        dayChanges(day);
+    const {
+        droppedDelta,
+        budgetDelta,
+        hardDayDelta,
+        sessionDelta,
+        paceDelta,
+        weekFitDelta,
+    } = dayChanges(day);
+    const changed =
+        droppedDelta !== null ||
+        hardDayDelta !== null ||
+        budgetDelta !== null ||
+        sessionDelta !== null ||
+        paceDelta !== null ||
+        weekFitDelta !== null;
+    const openKind =
+        day.override !== null && day.override.state !== 'taken'
+            ? day.override.kind
+            : null;
+    const linkedRow =
+        openKind === 'weekly_drop' && droppedDelta
+            ? 'dropped'
+            : openKind === 'budget_drop' && budgetDelta
+              ? 'budget'
+              : openKind === 'hard_day_drop' && hardDayDelta
+                ? 'hard_day'
+                : null;
+    const whyLink = (row: NonNullable<typeof linkedRow>) =>
+        row === linkedRow && (
+            <>
+                {' '}
+                <WhyLink
+                    open={whyOpen}
+                    onToggle={() => setWhyOpen((open) => !open)}
+                />
+            </>
+        );
     const { purpose, doseWhy, tiltWhy, hint } = dayPoint(day);
     const { move: canMove, skip: canSkip, restore: canUnskip } = day.actions;
     const showsPoint =
@@ -305,9 +366,24 @@ export default function DayDetail({
 
     return (
         <>
+            {droppedDelta && (
+                <>
+                    <ChangeRow
+                        label="type"
+                        from={droppedDelta.from}
+                        to={droppedDelta.to}
+                        direction="neutral"
+                    />
+                    <p className="mt-1 text-xs text-text-2">
+                        {DROPPED_WHY}
+                        {whyLink('dropped')}
+                    </p>
+                </>
+            )}
             {budgetDelta && (
                 <>
                     <ChangeRow
+                        className={droppedDelta ? 'mt-2' : undefined}
                         label={budgetDelta.label}
                         from={budgetDelta.from}
                         to={budgetDelta.to}
@@ -316,18 +392,32 @@ export default function DayDetail({
                     />
                     <p className="mt-1 text-xs text-text-2">
                         {budgetDelta.why}
+                        {whyLink('budget')}
                     </p>
                 </>
             )}
-            {day.override?.kind === 'budget_drop' && (
-                <QualityOverrideAction
-                    sessionId={day.id}
-                    override={day.override}
-                />
+            {hardDayDelta && (
+                <>
+                    <ChangeRow
+                        label="work"
+                        from={hardDayDelta.from}
+                        to={hardDayDelta.to}
+                        direction="down"
+                        tag="two hard days"
+                    />
+                    <p className="mt-1 text-xs text-text-2">
+                        {HARD_DAY_WHY}
+                        {whyLink('hard_day')}
+                    </p>
+                </>
             )}
             {sessionDelta?.typeFrom != null && (
                 <ChangeRow
-                    className={budgetDelta ? 'mt-2' : undefined}
+                    className={
+                        droppedDelta || hardDayDelta || budgetDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="type"
                     from={sessionDelta.typeFrom}
                     to={sessionDelta.typeTo}
@@ -352,7 +442,14 @@ export default function DayDetail({
             )}
             {paceDelta && (
                 <ChangeRow
-                    className={budgetDelta || sessionDelta ? 'mt-2' : undefined}
+                    className={
+                        droppedDelta ||
+                        hardDayDelta ||
+                        budgetDelta ||
+                        sessionDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="pace"
                     from={paceDelta.from}
                     to={paceDelta.to}
@@ -368,7 +465,11 @@ export default function DayDetail({
             {weekFitDelta && (
                 <ChangeRow
                     className={
-                        budgetDelta || sessionDelta || paceDelta
+                        droppedDelta ||
+                        hardDayDelta ||
+                        budgetDelta ||
+                        sessionDelta ||
+                        paceDelta
                             ? 'mt-2'
                             : undefined
                     }
@@ -380,13 +481,16 @@ export default function DayDetail({
                     quiet
                 />
             )}
+            {day.override && (
+                <QualityOverrideAction
+                    sessionId={day.id}
+                    override={day.override}
+                    whyOpen={linkedRow !== null ? whyOpen : undefined}
+                />
+            )}
             {showsPoint && (
                 <div
-                    className={cn(
-                        budgetDelta || sessionDelta || paceDelta || weekFitDelta
-                            ? 'mt-2'
-                            : undefined,
-                    )}
+                    className={cn(changed || day.override ? 'mt-3' : undefined)}
                 >
                     <p className="text-label-micro text-text-3">the point</p>
                     {purpose && (
@@ -441,13 +545,6 @@ export default function DayDetail({
                 closesAtGoalPace={day.closes_at_goal_pace}
             />
             {day.activities.length > 0 && <RunList runs={day.activities} />}
-            {(day.override?.kind === 'readiness_ease' ||
-                day.override?.kind === 'hard_day_drop') && (
-                <QualityOverrideAction
-                    sessionId={day.id}
-                    override={day.override}
-                />
-            )}
             {(canMove || canSkip || canUnskip) && (
                 <div className="mt-3">
                     {picking ? (
@@ -518,8 +615,23 @@ export default function DayDetail({
                             )}
                         </>
                     ) : (
-                        <div className="flex flex-wrap gap-3">
-                            {canMove && (
+                        <div className="flex flex-wrap items-center gap-3">
+                            {(canMove || canSkip) && (
+                                <button
+                                    type="button"
+                                    aria-label="more actions"
+                                    aria-expanded={moreOpen}
+                                    onClick={() => setMoreOpen((open) => !open)}
+                                    className="pressable focus-ring grid size-7 place-items-center rounded-full border border-border text-text-2"
+                                >
+                                    <Icon
+                                        icon={Ellipsis}
+                                        className="size-4"
+                                        aria-hidden
+                                    />
+                                </button>
+                            )}
+                            {canMove && moreOpen && (
                                 <button
                                     type="button"
                                     onClick={() => setPicking(true)}
@@ -533,7 +645,7 @@ export default function DayDetail({
                                     move
                                 </button>
                             )}
-                            {canSkip && (
+                            {canSkip && moreOpen && (
                                 <button
                                     type="button"
                                     onClick={onSkip}

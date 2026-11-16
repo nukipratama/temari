@@ -52,3 +52,16 @@ it('enforces one row per user per week', function (): void {
     expect(fn () => PlanAdaptation::factory()->for($user)->create(['week_start' => '2026-08-10']))
         ->toThrow(QueryException::class);
 });
+
+it('reads the JSON records the periodizer writes back clean, so an unchanged rebuild writes nothing', function (): void {
+    $records = [
+        'deferred_time_trial' => ['moved_to' => '2026-11-23', 'distance_m' => 5_000],
+        'restorable_quality' => ['date' => '2026-11-12', 'time_trial' => false, 'session_type' => 'tempo'],
+        'dropped_quality' => ['date' => '2026-11-12', 'time_trial' => false, 'session_type' => 'tempo'],
+    ];
+    $adaptation = PlanAdaptation::factory()->create($records)->refresh();
+
+    $adaptation->fill($records);
+
+    expect($adaptation->isDirty())->toBeFalse();
+});

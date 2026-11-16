@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 
 import type {
     BriefingResult,
@@ -13,7 +13,6 @@ import {
     type TodayIntervalsIcu,
 } from '@/components/home/IntervalsIcuStatus';
 import { AskedRanResult, ChangeRow } from '@/components/plan/DeltaPair';
-import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
 import AnalysisStatus from '@/components/temari/AnalysisStatus';
 import { renderNarration } from '@/components/temari/Citation';
 import MascotWatermark from '@/components/temari/MascotWatermark';
@@ -23,6 +22,7 @@ import PillButton from '@/components/ui/PillButton';
 import { useRecommendationView } from '@/hooks/useRecommendationView';
 import { showToast } from '@/hooks/useToast';
 import { cn } from '@/lib/cn';
+import { lazyIsland } from '@/lib/lazyIsland';
 import { formatPace } from '@/lib/pace';
 import {
     easedFromDelta,
@@ -36,6 +36,10 @@ import {
     targetLabel,
 } from '@/lib/plan';
 import { stripEdgeQuotes } from '@/lib/richText';
+
+const QualityOverrideAction = lazyIsland(
+    () => import('@/components/plan/QualityOverrideAction'),
+);
 
 /**
  * Paragraph breaks when the narrator honoured them, otherwise the opening
@@ -374,10 +378,12 @@ export default function TodaySession({
                     />
                 ))}
             {today?.override?.kind === 'readiness_ease' && (
-                <QualityOverrideAction
-                    sessionId={today.id}
-                    override={today.override}
-                />
+                <Suspense fallback={null}>
+                    <QualityOverrideAction
+                        sessionId={today.id}
+                        override={today.override}
+                    />
+                </Suspense>
             )}
             {showsVoice && (
                 <div className={cn('mt-3', titled && '[&_p]:max-w-prose')}>

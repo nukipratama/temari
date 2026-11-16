@@ -43,6 +43,7 @@ final readonly class PlanInputs
      * @param  int|null  $supportedTenKTimeSec  the time the athlete's fitness supports over 10K
      * @param  bool  $qualityRestored  the athlete brought back the quality session this week's adaptation dropped
      * @param  bool  $restoredDayOpen  the overridden day is today or later and has no run yet
+     * @param  array{date: string, session_type: string, time_trial: bool}|null  $droppedQuality  the session this week's adaptation first dropped, kept once recorded
      * @param  bool  $bringBackRefunded  the plan reads the same without the day the athlete brought back over its hard-minute budget or hard-day count
      */
     public function __construct(
@@ -91,6 +92,7 @@ final readonly class PlanInputs
         public ?string $budgetOverrideDate = null,
         public ?string $hardDayOverrideDate = null,
         public bool $bringBackRefunded = false,
+        public ?array $droppedQuality = null,
     ) {
     }
 

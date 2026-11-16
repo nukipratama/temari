@@ -14,7 +14,7 @@ import DayDetail, {
 } from '@/components/plan/DayDetail';
 import { DeltaPair } from '@/components/plan/DeltaPair';
 import HardMinuteWallet from '@/components/plan/HardMinuteWallet';
-import QualityOverrideAction from '@/components/plan/QualityOverrideAction';
+import WeekChanges from '@/components/plan/WeekChanges';
 import WeekStrip from '@/components/plan/WeekStrip';
 import FlagWrong from '@/components/temari/FlagWrong';
 import Chip from '@/components/ui/Chip';
@@ -135,7 +135,6 @@ export default function WeekView({
         setSelectedDate(date);
         rememberPlanSelectedDay(date);
     };
-    const weeklyDrop = days.find((day) => day.override?.kind === 'weekly_drop');
     const tally = complianceTally(days);
     const adherence = computeAdherence(days);
 
@@ -207,14 +206,9 @@ export default function WeekView({
                         <p className="mt-1 text-sm leading-relaxed text-text-2">
                             {focus.detail}
                         </p>
-                        {weeklyDrop?.override && (
-                            <QualityOverrideAction
-                                sessionId={weeklyDrop.id}
-                                override={weeklyDrop.override}
-                            />
-                        )}
                     </div>
                 )}
+                <WeekChanges days={days} onSelect={selectDate} />
                 {days.length > 0 && (
                     <WeekStrip
                         days={days}

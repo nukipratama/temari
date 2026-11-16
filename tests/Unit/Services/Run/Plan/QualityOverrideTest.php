@@ -39,9 +39,9 @@ function overrideWeek(array $attributes = []): PlanAdaptation
 }
 
 /** @return array<string, mixed>|null */
-function overrideFor(PlannedSession $day, ?PlanAdaptation $week = null, ?string $easeNote = null, ?ReadinessCeiling $ceiling = null, bool $ran = false): ?array
+function overrideFor(PlannedSession $day, ?PlanAdaptation $week = null, ?string $easeNote = null, ?ReadinessCeiling $ceiling = null, bool $ran = false, ?string $raceBlocker = null): ?array
 {
-    return QualityOverride::forDay($day, Carbon::today(), $day->status, $ran, $week ?? overrideWeek(), $easeNote, $ceiling);
+    return QualityOverride::forDay($day, Carbon::today(), $day->status, $ran, $week ?? overrideWeek(), $easeNote, $ceiling, raceBlocker: $raceBlocker);
 }
 
 it('offers today\'s eased quality session back at a moderate ceiling, with the clamp\'s own reason', function (SessionType $type): void {
@@ -52,14 +52,20 @@ it('offers today\'s eased quality session back at a moderate ceiling, with the c
 it('offers no readiness override where the ceiling, the session or the day rules it out', function (PlannedSession $day, ?string $easeNote, ?ReadinessCeiling $ceiling, bool $ran): void {
     expect(overrideFor($day, easeNote: $easeNote, ceiling: $ceiling, ran: $ran))->toBeNull();
 })->with([
-    'easy-only ceiling' => [fn () => overrideDay(), 'easy today.', ReadinessCeiling::EasyOnly, false],
-    'rest ceiling' => [fn () => overrideDay(), 'rest today.', ReadinessCeiling::Rest, false],
     'nothing eased' => [fn () => overrideDay(), null, null, false],
     'a long run' => [fn () => overrideDay(type: SessionType::Long), 'slower.', ReadinessCeiling::ModerateOk, false],
     'already ran' => [fn () => overrideDay(), 'quality can wait.', ReadinessCeiling::ModerateOk, true],
     'skipped' => [fn () => overrideDay(attributes: ['skipped' => true]), 'quality can wait.', ReadinessCeiling::ModerateOk, false],
     'pinned' => [fn () => overrideDay(attributes: ['pinned' => true]), 'quality can wait.', ReadinessCeiling::ModerateOk, false],
     'tomorrow' => [fn () => overrideDay('2026-09-16'), 'quality can wait.', ReadinessCeiling::ModerateOk, false],
+]);
+
+it('locks today\'s eased quality session behind an easy-only or rest ceiling, naming the ceiling', function (ReadinessCeiling $ceiling, string $blocker): void {
+    expect(overrideFor(overrideDay(), easeNote: 'easy today.', ceiling: $ceiling))
+        ->toBe(['kind' => 'readiness_ease', 'state' => 'locked', 'blocker' => $blocker, 'reason' => 'easy today.']);
+})->with([
+    'easy-only ceiling' => [ReadinessCeiling::EasyOnly, 'readiness says easy only today'],
+    'rest ceiling' => [ReadinessCeiling::Rest, 'readiness says rest today'],
 ]);
 
 it('offers the dropped session back on its natural day by name, with the adaptation\'s own detail', function (string $today): void {
@@ -90,12 +96,64 @@ it('offers no weekly drop off its natural day, once that day is gone, or on a we
     'moved by the athlete' => [fn () => overrideDay('2026-09-17', SessionType::Rest, ['pinned' => true]), fn () => overrideWeek(), '2026-09-15'],
 ]);
 
-it('offers nothing more once the week\'s one override is taken', function (): void {
+it('locks every other offer once the week\'s one override is taken, naming the day it went to', function (): void {
     $week = overrideWeek(['override_kind' => PlanOverrideKind::ReadinessEase, 'override_date' => '2026-09-14']);
 
-    expect(overrideFor(overrideDay(), $week, 'quality can wait.', ReadinessCeiling::ModerateOk))->toBeNull()
-        ->and(overrideFor(overrideDay('2026-09-17', SessionType::Easy), $week))->toBeNull();
+    expect(overrideFor(overrideDay(), $week, 'quality can wait.', ReadinessCeiling::ModerateOk))->toBe([
+        'kind' => 'readiness_ease',
+        'state' => 'locked',
+        'blocker' => "this week's bring-back went to monday",
+        'reason' => 'quality can wait. '.QualityOverride::ONE_A_WEEK_RULE,
+    ])
+        ->and(overrideFor(overrideDay('2026-09-17', SessionType::Easy), $week))->toMatchArray(['kind' => 'weekly_drop', 'state' => 'locked', 'blocker' => "this week's bring-back went to monday"]);
 });
+
+it('locks the offer near the race, naming the window and the rule', function (): void {
+    expect(overrideFor(overrideDay('2026-09-17', SessionType::Easy), raceBlocker: '2 weeks before race week'))->toBe([
+        'kind' => 'weekly_drop',
+        'state' => 'locked',
+        'blocker' => '2 weeks before race week',
+        'reason' => AdaptationReason::RanTooHard->detail(100, 100, -1).' '.QualityOverride::RACE_RULE,
+    ]);
+});
+
+it('names how far before race week an untaken override is shut', function (?string $raceDate, ?PlanOverrideKind $taken, ?string $blocker): void {
+    $race = $raceDate === null ? null : new RaceGoal()->forceFill(['race_date' => $raceDate]);
+
+    expect(QualityOverride::raceBlocker(overrideWeek(['override_kind' => $taken]), $race))->toBe($blocker);
+})->with([
+    'no race' => [null, null, null],
+    'race well ahead' => ['2026-10-11', null, null],
+    'two weeks before race week' => ['2026-10-04', null, '2 weeks before race week'],
+    'one week before race week' => ['2026-09-27', null, '1 week before race week'],
+    'race week' => ['2026-09-19', null, 'race week'],
+    'override already taken' => ['2026-09-19', PlanOverrideKind::WeeklyDrop, null],
+]);
+
+it('shows the week to everyone but the demo athlete', function (bool $demo): void {
+    $week = overrideWeek();
+
+    expect(QualityOverride::shownWeek(new User()->forceFill(['is_demo' => $demo]), $week))->toBe($demo ? null : $week);
+})->with(['athlete' => false, 'demo athlete' => true]);
+
+it('names the quality session a ran-too-hard week dropped from its day, even once the day has passed', function (string $today): void {
+    Carbon::setTestNow($today.' 08:00:00');
+    $week = overrideWeek(['restorable_quality' => null, 'dropped_quality' => ['date' => '2026-09-17', 'session_type' => 'tempo', 'time_trial' => false]]);
+
+    expect(QualityOverride::droppedFrom(overrideDay('2026-09-17', SessionType::Easy), SessionType::Easy, $week))->toBe(['session_type' => 'tempo', 'time_trial' => false]);
+})->with(['before the day' => '2026-09-15', 'after the day' => '2026-09-18']);
+
+it('names no dropped session on another day, once it is back, or on a week that dropped nothing', function (string $date, SessionType $shown, array $week): void {
+    $adaptation = overrideWeek(['dropped_quality' => ['date' => '2026-09-17', 'session_type' => 'tempo', 'time_trial' => false], ...$week]);
+
+    expect(QualityOverride::droppedFrom(overrideDay($date, $shown), $shown, $adaptation))->toBeNull();
+})->with([
+    'another day' => ['2026-09-16', SessionType::Easy, []],
+    'brought back' => ['2026-09-17', SessionType::Tempo, []],
+    'swapped with the long run' => ['2026-09-17', SessionType::Long, []],
+    'week no longer ran too hard' => ['2026-09-17', SessionType::Easy, ['reason' => AdaptationReason::Steady, 'quality_delta' => 0]],
+    'nothing recorded' => ['2026-09-17', SessionType::Easy, ['dropped_quality' => null]],
+]);
 
 it('marks the day the athlete chose to run, undoable until a run lands on it', function (PlanOverrideKind $kind, string $today, bool $ran, bool $undoable): void {
     Carbon::setTestNow($today.' 08:00:00');
@@ -148,7 +206,7 @@ it('opens the override to everyone but the demo athlete, outside the weeks befor
     'demo athlete' => [true, null, false],
 ]);
 
-it('keeps a taken override, its note and its undo once the week falls before race week, offering nothing new there', function (): void {
+it('keeps a taken override, its note and its undo once the week falls before race week, locking anything new there', function (): void {
     $user = new User()->forceFill(['is_demo' => false]);
     $race = new RaceGoal()->forceFill(['race_date' => '2026-10-04']);
     $week = overrideWeek(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17']);
@@ -157,7 +215,8 @@ it('keeps a taken override, its note and its undo once the week falls before rac
 
     expect($open)->toBe($week)
         ->and(overrideFor(overrideDay('2026-09-17'), $open))->toBe(['kind' => 'weekly_drop', 'state' => 'taken', 'note' => QualityOverride::TAKEN_NOTE, 'undoable' => true])
-        ->and(overrideFor(overrideDay(), $open, 'quality can wait.', ReadinessCeiling::ModerateOk))->toBeNull();
+        ->and(overrideFor(overrideDay(), $open, 'quality can wait.', ReadinessCeiling::ModerateOk, raceBlocker: QualityOverride::raceBlocker($open, $race)))
+        ->toMatchArray(['state' => 'locked', 'blocker' => "this week's bring-back went to thursday"]);
 });
 
 it('offers a session the hard-minute budget took back, stating how far over the cap it puts the week', function (): void {
@@ -191,12 +250,18 @@ it('offers a session the weekly hard-day count made easy back as a third hard da
     ]);
 });
 
-it('offers no hard-day bring-back on a day already run or gone, or once the week\'s override is taken', function (string $date, bool $ran, ?PlanOverrideKind $taken): void {
+it('offers no hard-day bring-back on a day already run or gone', function (string $date, bool $ran): void {
     $day = overrideDay($date, SessionType::Long, ['hard_day_restorable' => true]);
 
-    expect(overrideFor($day, overrideWeek(['override_kind' => $taken, 'override_date' => $taken instanceof PlanOverrideKind ? '2026-09-18' : null]), ran: $ran))->toBeNull();
+    expect(overrideFor($day, ran: $ran))->toBeNull();
 })->with([
-    'yesterday' => ['2026-09-14', false, null],
-    'already ran' => ['2026-09-15', true, null],
-    'override taken' => ['2026-09-20', false, PlanOverrideKind::BudgetDrop],
+    'yesterday' => ['2026-09-14', false],
+    'already ran' => ['2026-09-15', true],
 ]);
+
+it('locks a hard-day bring-back once the week\'s override is taken', function (): void {
+    $day = overrideDay('2026-09-20', SessionType::Long, ['hard_day_restorable' => true]);
+    $week = overrideWeek(['reason' => AdaptationReason::Steady, 'quality_delta' => 0, 'restorable_quality' => null, 'override_kind' => PlanOverrideKind::BudgetDrop, 'override_date' => '2026-09-18']);
+
+    expect(overrideFor($day, $week))->toMatchArray(['kind' => 'hard_day_drop', 'state' => 'locked', 'blocker' => "this week's bring-back went to friday"]);
+});

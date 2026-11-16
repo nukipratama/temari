@@ -70,6 +70,7 @@ function day(overrides: Partial<WeekPlanDay> = {}): WeekPlanDay {
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
+        dropped_from: null,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -418,7 +419,7 @@ describe('TodaySession', () => {
         expect(blocks).toHaveLength(1);
     });
 
-    it("offers today's own override under the prescription", () => {
+    it("offers today's own override under the prescription", async () => {
         render(
             <TodaySession
                 briefing={briefing('Easy 6k.')}
@@ -435,7 +436,7 @@ describe('TodaySession', () => {
         );
 
         expect(
-            screen.getByRole('button', { name: "i'm ready" }),
+            await screen.findByRole('button', { name: "i'm ready" }),
         ).toBeInTheDocument();
     });
 
