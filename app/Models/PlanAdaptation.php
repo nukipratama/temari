@@ -37,9 +37,9 @@ use Override;
  * @property float|null $volume_floor_km
  * @property bool $increases_held
  * @property int|null $hard_cap_minutes
- * @property array{distance_m: int, moved_to: string|null}|null $deferred_time_trial
- * @property array{date: string, session_type: string, time_trial: bool}|null $restorable_quality
- * @property array{date: string, session_type: string, time_trial: bool}|null $dropped_quality
+ * @property array{moved_to: string|null, distance_m: int}|null $deferred_time_trial
+ * @property array{date: string, time_trial: bool, session_type: string}|null $restorable_quality
+ * @property array{date: string, time_trial: bool, session_type: string}|null $dropped_quality
  * @property PlanOverrideKind|null $override_kind
  * @property Carbon|null $override_date
  * @property Carbon|null $overridden_at

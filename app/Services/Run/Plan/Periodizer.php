@@ -251,7 +251,7 @@ final readonly class Periodizer
                 $trials->placedIn($week['week_start']);
                 if ($deferredDates !== null && ! $trial->retry) {
                     foreach ($deferredDates as $date) {
-                        $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => $week['week_start']->toDateString()]];
+                        $rows[$date] = [...$rows[$date], 'deferred_time_trial' => ['moved_to' => $week['week_start']->toDateString(), 'distance_m' => $trial->distanceM]];
                     }
                 }
                 $deferredDates = null;
@@ -259,7 +259,7 @@ final readonly class Periodizer
                 $weekRows = $this->withIntensityPrescriptions($weekRows, $week['multiplier'], $inputs, $week['week_start'], $rows, $goalPace, buildQualityMinutes: $buildQualityMinutes, peakGoalPaceMinutes: $peakGoalPaceMinutes, fastFinish: $fastFinish, longestKm: $longestKm);
                 if ($trial instanceof TimeTrial && ! $trial->retry && $deferredDates === null) {
                     $deferredDates = array_keys($weekRows);
-                    $weekDeferral = ['deferred_time_trial' => ['distance_m' => $trial->distanceM, 'moved_to' => null]];
+                    $weekDeferral = ['deferred_time_trial' => ['moved_to' => null, 'distance_m' => $trial->distanceM]];
                 }
             }
             if (array_any($weekRows, static fn (array $row): bool => $row['prescribed_hard_minutes'] > 0 && FastFinishLongRun::isFastFinish($row['prescription_race_context']))) {
@@ -1082,7 +1082,7 @@ final readonly class Periodizer
     }
 
     /**
-     * @param  array<string, array{deferred_time_trial?: array{distance_m: int, moved_to: string|null}, ...}>  $rows
+     * @param  array<string, array{deferred_time_trial?: array{moved_to: string|null, distance_m: int}, ...}>  $rows
      * @return array{distance_m: int, moved_to: string|null}|null
      */
     private static function deferredTimeTrial(PlanInputs $inputs, array $rows): ?array
