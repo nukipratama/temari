@@ -44,7 +44,8 @@ final readonly class CurrentWeekPlanBuilder
         $clamp = $week['clamp'];
         $resolvedStatuses = $week['statuses'];
 
-        $overrideWeek = QualityOverride::openWeek($user, $week['adaptation'], $race);
+        $overrideWeek = QualityOverride::shownWeek($user, $week['adaptation']);
+        $overrideRaceBlocker = QualityOverride::raceBlocker($overrideWeek, $race);
         $overrideTakenOn = QualityOverride::takenOn($overrideWeek, $currentWeekSessions);
 
         $clampVoice = EffectiveSession::clampVoiceNeeded($clamp, $week['today_session'])
@@ -74,6 +75,7 @@ final readonly class CurrentWeekPlanBuilder
             easySlowEndSecPerKm: $week['easy_slow_end_sec_per_km'],
             overrideWeek: $overrideWeek,
             overrideTakenOn: $overrideTakenOn,
+            overrideRaceBlocker: $overrideRaceBlocker,
         ))->values()->all();
 
         // A rest day asks for nothing and always scores Done, so counting it

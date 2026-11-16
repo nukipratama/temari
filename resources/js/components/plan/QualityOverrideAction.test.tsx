@@ -35,6 +35,30 @@ describe('QualityOverrideAction', () => {
         expect(router.post).not.toHaveBeenCalled();
     });
 
+    it('names the rule that refuses it, with nothing to press and the full reason behind why?', () => {
+        render(
+            <QualityOverrideAction
+                sessionId={7}
+                override={{
+                    kind: 'weekly_drop',
+                    state: 'locked',
+                    blocker: "this week's bring-back went to monday",
+                    reason: 'one less quality session. you get one bring-back a week.',
+                }}
+            />,
+        );
+
+        expect(
+            screen.getByText(
+                "can't bring back · this week's bring-back went to monday",
+            ),
+        ).toBeVisible();
+        expect(screen.queryByRole('button')).toBeNull();
+        expect(screen.getByText(/one bring-back a week/)).not.toBeVisible();
+        fireEvent.click(screen.getByText('why?'));
+        expect(screen.getByText(/one bring-back a week/)).toBeVisible();
+    });
+
     it('overrides the day on confirm', async () => {
         render(
             <QualityOverrideAction

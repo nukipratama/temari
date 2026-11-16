@@ -5,7 +5,15 @@ import type { EditablePlanDay } from '@/lib/plan';
 
 import { defined } from '@/test/defined';
 
-import DayDetail, { DayHeadline, hasDayDetail } from './DayDetail';
+import DayDetail, { DROPPED_WHY, DayHeadline, hasDayDetail } from './DayDetail';
+
+/** Move and skip sit behind the day panel's "more actions" overflow. */
+function openMoreActions() {
+    const more = screen.queryByRole('button', { name: 'more actions' });
+    if (more !== null) {
+        fireEvent.click(more);
+    }
+}
 
 const TODAY = '2026-06-17';
 
@@ -47,6 +55,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
+        dropped_from: null,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -211,6 +220,7 @@ describe('DayHeadline and DayDetail', () => {
         fireEvent.click(screen.getByRole('button', { name: 'restore' }));
 
         expect(onUnskip).toHaveBeenCalledOnce();
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
@@ -735,9 +745,11 @@ describe('DayHeadline and DayDetail', () => {
     it('offers move and skip on a day still ahead', () => {
         renderRow();
 
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
@@ -752,9 +764,11 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
@@ -770,9 +784,11 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
@@ -781,9 +797,11 @@ describe('DayHeadline and DayDetail', () => {
     it('offers neither when the edit rules withhold both', () => {
         renderRow({ day: day({ date: '2026-06-15', status: 'done' }) });
 
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
@@ -806,9 +824,11 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
@@ -823,6 +843,7 @@ describe('DayHeadline and DayDetail', () => {
             }),
         });
 
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^skip$/i }),
         ).not.toBeInTheDocument();
@@ -830,6 +851,7 @@ describe('DayHeadline and DayDetail', () => {
 
     it('skips through to the caller', () => {
         const { onSkip } = renderRow();
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(onSkip).toHaveBeenCalledOnce();
@@ -837,6 +859,7 @@ describe('DayHeadline and DayDetail', () => {
 
     it("offers a weekday picker whose only enabled targets are the day's move targets", () => {
         renderRow();
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         expect(screen.getByRole('button', { name: 'Fri' })).toBeEnabled();
@@ -846,10 +869,12 @@ describe('DayHeadline and DayDetail', () => {
 
     it('moves onto the picked day and closes the picker', () => {
         const { onMove } = renderRow();
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
         expect(onMove).toHaveBeenCalledWith('2026-06-19');
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^move$/i }),
         ).toBeInTheDocument();
@@ -869,6 +894,7 @@ describe('DayHeadline and DayDetail', () => {
             },
         });
         renderRow({ day: tempo, weekDays: [...WEEK, long] });
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         const friday = screen.getByRole('button', { name: 'Fri' });
@@ -904,6 +930,7 @@ describe('DayHeadline and DayDetail', () => {
             move_targets: ['2026-06-15'],
         });
         renderRow({ day: missed, weekDays: [pastRest, missed] });
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
 
         expect(screen.getByRole('button', { name: 'Mon' })).toBeEnabled();
@@ -914,6 +941,7 @@ describe('DayHeadline and DayDetail', () => {
         const noTargets = [day({ id: 1, date: '2026-06-18' })];
         renderRow({ day: noTargets[0], weekDays: noTargets });
 
+        openMoreActions();
         expect(
             screen.queryByRole('button', { name: /^move$/i }),
         ).not.toBeInTheDocument();
@@ -1458,20 +1486,15 @@ describe('hasDayDetail', () => {
         expect(hasDayDetail(REST)).toBe(false);
     });
 
-    it("has no detail for an unsized day whose only extra is the week card's dropped session", () => {
+    it('has detail for an unsized day whose only extra is its dropped session', () => {
         expect(
             hasDayDetail(
                 day({
                     segments: [],
-                    override: {
-                        kind: 'weekly_drop',
-                        state: 'offered',
-                        label: "bring back thursday's tempo",
-                        reason: 'one less quality session.',
-                    },
+                    dropped_from: { session_type: 'tempo', time_trial: false },
                 }),
             ),
-        ).toBe(false);
+        ).toBe(true);
     });
 
     it('has detail for a day carrying safety advice even with no segments', () => {
@@ -1507,9 +1530,11 @@ describe('DayDetail override', () => {
             screen.getByRole('button', { name: 'ease it again' }),
         ).toBeInTheDocument();
     });
-    it("leaves the week's dropped session to the week card", () => {
+    it('shows what a dropped day was, why in one line, and its bring-back', () => {
         renderRow({
             day: day({
+                session_type: 'easy',
+                dropped_from: { session_type: 'tempo', time_trial: false },
                 override: {
                     kind: 'weekly_drop',
                     state: 'offered',
@@ -1519,10 +1544,64 @@ describe('DayDetail override', () => {
             }),
         });
 
+        expect(screen.getByText('tempo')).toHaveClass('line-through');
+        expect(within(headline()).getByText('dropped')).toBeInTheDocument();
+        expect(screen.getByText(DROPPED_WHY)).toBeInTheDocument();
         expect(
-            screen.queryByRole('button', {
+            screen.getByRole('button', {
                 name: "bring back thursday's tempo",
             }),
-        ).not.toBeInTheDocument();
+        ).toBeInTheDocument();
+    });
+
+    it('names a dropped time trial as a time trial', () => {
+        renderRow({
+            day: day({
+                session_type: 'easy',
+                dropped_from: { session_type: 'interval', time_trial: true },
+            }),
+        });
+
+        expect(screen.getByText('time trial')).toHaveClass('line-through');
+    });
+
+    it('names the rule that refuses a bring-back, with the full reason behind why?', () => {
+        renderRow({
+            day: day({
+                session_type: 'easy',
+                dropped_from: { session_type: 'tempo', time_trial: false },
+                override: {
+                    kind: 'weekly_drop',
+                    state: 'locked',
+                    blocker: 'race week',
+                    reason: 'one less quality session. the weeks closest to a race stay as the plan set them.',
+                },
+            }),
+        });
+
+        expect(
+            screen.getByText("can't bring back · race week"),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /bring back/ })).toBeNull();
+        expect(
+            screen.getByText(/the weeks closest to a race/),
+        ).not.toBeVisible();
+        fireEvent.click(screen.getByText('why?'));
+        expect(screen.getByText(/the weeks closest to a race/)).toBeVisible();
+    });
+
+    it('keeps move and skip behind the more actions overflow', () => {
+        renderRow({
+            day: day({
+                date: TODAY,
+                actions: { move: true, skip: true, restore: false },
+            }),
+        });
+
+        expect(screen.queryByRole('button', { name: /^skip$/i })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'more actions' }));
+        expect(
+            screen.getByRole('button', { name: /^skip$/i }),
+        ).toBeInTheDocument();
     });
 });

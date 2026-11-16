@@ -16,6 +16,14 @@ import { setMockPage } from '@/test/setup';
 
 import Plan from './Plan';
 
+/** Move and skip sit behind the day panel's "more actions" overflow. */
+function openMoreActions() {
+    const more = screen.queryByRole('button', { name: 'more actions' });
+    if (more !== null) {
+        fireEvent.click(more);
+    }
+}
+
 vi.mock('@/hooks/useToast', () => ({ showToast: vi.fn() }));
 
 function settlePatch(
@@ -84,6 +92,7 @@ function day(overrides: Partial<EditablePlanDay> = {}): EditablePlanDay {
         advice_note: null,
         eased_from: null,
         pace_eased_from: null,
+        dropped_from: null,
         credit_note: null,
         ran_hot: false,
         result_note: null,
@@ -194,6 +203,7 @@ describe('Plan', () => {
 
         renderPlan();
 
+        openMoreActions();
         expect(
             screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
@@ -422,6 +432,7 @@ describe('Plan', () => {
 
     it('skips a session through the sessions endpoint', () => {
         renderPlan();
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
         expect(router.patch).toHaveBeenCalledWith(
@@ -462,6 +473,7 @@ describe('Plan', () => {
 
     it('moves a session onto the day picked from the weekday grid', () => {
         renderPlan();
+        openMoreActions();
         fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
         fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
@@ -491,9 +503,12 @@ describe('Plan', () => {
                 ],
             },
         ];
-        const skip = () =>
+        const skip = () => {
+            openMoreActions();
             fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+        };
         const move = () => {
+            openMoreActions();
             fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
             fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
         };
@@ -568,6 +583,7 @@ describe('Plan', () => {
         it('selects the day a session moved to once the move lands', () => {
             settlePatch('onSuccess');
             renderPlan();
+            openMoreActions();
             fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
             fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
@@ -601,6 +617,7 @@ describe('Plan', () => {
         it('names the weekday a session moved to once the move lands', () => {
             settlePatch('onSuccess');
             renderPlan();
+            openMoreActions();
             fireEvent.click(screen.getByRole('button', { name: /^move$/i }));
             fireEvent.click(screen.getByRole('button', { name: 'Fri' }));
 
@@ -610,6 +627,7 @@ describe('Plan', () => {
         it('says skipped once the skip lands', () => {
             settlePatch('onSuccess');
             renderPlan();
+            openMoreActions();
             fireEvent.click(screen.getByRole('button', { name: /^skip$/i }));
 
             expect(showToast).toHaveBeenCalledExactlyOnceWith('skipped');
@@ -628,6 +646,7 @@ describe('Plan', () => {
                 'move',
                 () => {
                     renderPlan();
+                    openMoreActions();
                     fireEvent.click(
                         screen.getByRole('button', { name: /^move$/i }),
                     );
@@ -640,6 +659,7 @@ describe('Plan', () => {
                 'skip',
                 () => {
                     renderPlan();
+                    openMoreActions();
                     fireEvent.click(
                         screen.getByRole('button', { name: /^skip$/i }),
                     );
@@ -677,6 +697,7 @@ describe('Plan', () => {
                     },
                 );
                 renderPlan();
+                openMoreActions();
                 fireEvent.click(
                     screen.getByRole('button', { name: /^skip$/i }),
                 );

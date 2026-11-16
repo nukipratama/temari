@@ -491,6 +491,7 @@ final readonly class Periodizer
                 PlannedSession::forgetCachedReads($inputs->userId);
             }
 
+            $restorable = $this->restorableQuality($inputs, $rows);
             PlanAdaptation::query()->updateOrCreate(
                 ['user_id' => $inputs->userId, 'week_start' => $inputs->currentWeekStart()->toDateString()],
                 [
@@ -503,7 +504,8 @@ final readonly class Periodizer
                     'increases_held' => $inputs->increasesHeld,
                     'hard_cap_minutes' => $inputs->lockedHardCapMinutes ?? self::currentWeekHardCap($inputs, $rows),
                     'deferred_time_trial' => self::deferredTimeTrial($inputs, $rows),
-                    'restorable_quality' => $this->restorableQuality($inputs, $rows),
+                    'restorable_quality' => $restorable,
+                    'dropped_quality' => $inputs->droppedQuality ?? $restorable,
                     ...($inputs->refundsOverride() ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null] : []),
                 ],
             );

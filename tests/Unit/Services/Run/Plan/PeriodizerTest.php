@@ -984,6 +984,19 @@ it('records the day and type a ran-too-hard week dropped, and keeps the session 
         ->and($adaptation->refresh()->override_kind)->toBe(PlanOverrideKind::WeeklyDrop);
 });
 
+it('keeps the day a ran-too-hard week dropped on record once that day has passed', function (): void {
+    $user = User::factory()->create();
+    seedRanTooHardWeek($user);
+    periodizer()->regenerate($user);
+
+    Carbon::setTestNow('2026-09-18 06:00:00');
+    periodizer()->regenerate($user);
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($adaptation->dropped_quality)->toEqual(['date' => '2026-09-17', 'session_type' => 'interval', 'time_trial' => false])
+        ->and($adaptation->restorable_quality['date'] ?? null)->not->toBe('2026-09-17');
+});
+
 it('refunds the week\'s override once a rebuild finds the week no longer ran too hard, and shows no taken note', function (): void {
     $user = User::factory()->create();
     seedRanTooHardWeek($user);
@@ -1036,7 +1049,10 @@ it('records nothing to restore on a week that dropped no quality session', funct
 
     periodizer()->regenerate($user);
 
-    expect(PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail()->restorable_quality)->toBeNull();
+    $adaptation = PlanAdaptation::query()->where('user_id', $user->id)->firstOrFail();
+
+    expect($adaptation->restorable_quality)->toBeNull()
+        ->and($adaptation->dropped_quality)->toBeNull();
 });
 
 it('locks the current week\'s hard-minute cap at its first regeneration and holds it through the week', function (): void {
