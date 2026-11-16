@@ -36,6 +36,7 @@ function warnOn(User $user, string $runDate, string $today): void
 
 beforeEach(function (): void {
     Notification::fake();
+    $this->travelTo(Carbon::parse(WARNING_MONDAY.' 12:00:00'));
 });
 
 it('warns once the week is one hot easy day short of costing next week a quality session', function (): void {
