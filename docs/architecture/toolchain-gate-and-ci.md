@@ -44,14 +44,18 @@ and scoping ESLint once let two lint errors reach `main`, while the full-tree ru
   Rector `--dry-run` scoped to files changed since the merge-base, Vitest `--changed`, then only the
   Pest tests paired with changed files ([scripts/changed-tests.sh](../../scripts/changed-tests.sh):
   `{Name}Test.php` for each changed class, plus changed tests). Seconds, not minutes, so any number of
-  worktrees can gate at once; the full suite is CI's. Each step's output goes to
-  `storage/logs/gate.log`; a failing step prints its last 40 lines before the final `GATE:` line.
+  worktrees can gate at once; the full suite is CI's. After `config:clear`, every step runs in
+  parallel, so the wall time is the slowest step's (the structural Pest suite) rather than their sum.
+  A failing step doesn't stop the others. Each step's output goes to `storage/logs/gate.log`, and every
+  failed step prints its last 40 lines before the final `GATE:` line, which names all of them.
 - **full** (`composer check:full`, `sh scripts/gate.sh --full`): everything fast mode runs, plus
   Pint/PHPStan/full-tree Rector (all in `--test`/dry-run form), ESLint/Prettier `--check`, the full
   Pest suite in parallel (no backend coverage; that is CI's), the migration-safety check against the
   merge-base, Vitest coverage, the asset
   build, and the bundle-chunk budget check. This reproduces what CI runs, opt-in and slow — for when
-  the fast gate isn't enough confidence before a push.
+  the fast gate isn't enough confidence before a push. Its whole-tree Rector, Vitest and Pest runs
+  replace the changed-file steps. The lighter checks run in parallel, but the whole Pest and Vitest
+  suites run one after the other, because together they starve the CPU and Vitest's 5 s test timeouts trip.
 
 Every changed-file step (Rector, Vitest `--changed`, Pest, and the full gate's migration-safety check)
 diffs against one base from [scripts/vitest-changed-base.sh](../../scripts/vitest-changed-base.sh),
