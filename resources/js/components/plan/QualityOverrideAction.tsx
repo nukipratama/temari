@@ -118,7 +118,7 @@ export default function QualityOverrideAction({
                 <PillButton
                     tone="outline"
                     size="sm"
-                    className="border-horizon-ink/50 text-horizon-ink"
+                    className="border-horizon-ink/50 text-horizon-ink hover:border-horizon-ink hover:text-horizon-ink"
                     disabled={processing}
                     onClick={() => setConfirming(true)}
                 >
