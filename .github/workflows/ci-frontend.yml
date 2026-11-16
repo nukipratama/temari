@@ -8,7 +8,6 @@ permissions:
 
 jobs:
   tests:
-    name: tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 3
     strategy:
