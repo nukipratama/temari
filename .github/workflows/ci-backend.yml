@@ -16,7 +16,6 @@ env:
 
 jobs:
   tests:
-    name: tests (shard ${{ matrix.shard }}/${{ strategy.job-total }})
     if: inputs.full
     runs-on: ubuntu-26.04-arm
     timeout-minutes: 10
