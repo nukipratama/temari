@@ -5,12 +5,17 @@ import type { EditablePlanDay } from '@/lib/plan';
 
 import { defined } from '@/test/defined';
 
-import DayDetail, { DROPPED_WHY, DayHeadline, hasDayDetail } from './DayDetail';
+import DayDetail, {
+    DayHeadline,
+    DROPPED_WHY,
+    HARD_DAY_WHY,
+    hasDayDetail,
+} from './DayDetail';
 
 /** Move and skip sit behind the day panel's "more actions" overflow. */
 function openMoreActions() {
     const more = screen.queryByRole('button', { name: 'more actions' });
-    if (more !== null) {
+    if (more?.getAttribute('aria-expanded') === 'false') {
         fireEvent.click(more);
     }
 }
@@ -753,6 +758,8 @@ describe('DayHeadline and DayDetail', () => {
         expect(
             screen.getByRole('button', { name: /^skip$/i }),
         ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'more actions' }));
+        expect(screen.queryByRole('button', { name: /^skip$/i })).toBeNull();
     });
 
     it('offers move and skip on today when the edit rules allow them', () => {
@@ -1603,6 +1610,22 @@ describe('DayDetail override', () => {
         ).not.toBeVisible();
         fireEvent.click(screen.getByText('why?'));
         expect(screen.getByText(/the weeks closest to a race/)).toBeVisible();
+    });
+
+    it('shows a day the hard-day count made easy as hard → easy, with its one-line why', () => {
+        renderRow({
+            day: day({
+                override: {
+                    kind: 'hard_day_drop',
+                    state: 'locked',
+                    blocker: "this week's bring-back went to monday",
+                    reason: 'r',
+                },
+            }),
+        });
+
+        expect(screen.getByText('hard')).toHaveClass('line-through');
+        expect(screen.getByText(HARD_DAY_WHY)).toBeInTheDocument();
     });
 
     it('keeps move and skip behind the more actions overflow', () => {

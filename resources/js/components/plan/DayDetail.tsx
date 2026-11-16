@@ -124,6 +124,9 @@ function complianceLabel(day: PlanDay): string {
 export const DROPPED_WHY =
     "last week's easy runs went too hard, so this stays easy.";
 
+export const HARD_DAY_WHY =
+    'this week already has two hard days, so this one is easy.';
+
 export function dayChanges(day: PlanDay) {
     const adjustedFrom = volumeAdjustedFrom(day);
     const trimmed = adjustedFrom !== null && adjustedFrom > day.distance_km;
@@ -139,6 +142,11 @@ export function dayChanges(day: PlanDay) {
               }
             : null,
         budgetDelta: budgetChange(day),
+        hardDayDelta:
+            day.override?.kind === 'hard_day_drop' &&
+            day.override.state !== 'taken'
+                ? { from: 'hard', to: 'easy' }
+                : null,
         sessionDelta: day.eased_from
             ? easedFromDelta(day.eased_from, day)
             : null,
@@ -216,8 +224,14 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
     const judged = judgedDayResult(day);
     const pace = judged === null ? targetLabel(day) : null;
     const isRest = day.session_type === 'rest';
-    const { droppedDelta, budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
-        dayChanges(day);
+    const {
+        droppedDelta,
+        budgetDelta,
+        hardDayDelta,
+        sessionDelta,
+        paceDelta,
+        weekFitDelta,
+    } = dayChanges(day);
     // A day excused before it passes is still `planned` server-side until
     // plan:score-compliance runs the next morning; the headline says "skipped" now.
     let status: string = day.skipped ? 'skip' : day.status;
@@ -231,6 +245,7 @@ export function DayHeadline({ day }: Readonly<{ day: PlanDay }>) {
             [
                 droppedDelta !== null ? 'dropped' : null,
                 budgetDelta !== null ? 'budget full' : null,
+                hardDayDelta !== null ? 'two hard days' : null,
                 sessionDelta !== null || paceDelta !== null ? 'eased' : null,
                 weekFitDelta?.tag ?? null,
             ].filter((tag): tag is string => tag !== null),
@@ -308,10 +323,17 @@ export default function DayDetail({
     const [picking, setPicking] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
 
-    const { droppedDelta, budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
-        dayChanges(day);
+    const {
+        droppedDelta,
+        budgetDelta,
+        hardDayDelta,
+        sessionDelta,
+        paceDelta,
+        weekFitDelta,
+    } = dayChanges(day);
     const changed =
         droppedDelta !== null ||
+        hardDayDelta !== null ||
         budgetDelta !== null ||
         sessionDelta !== null ||
         paceDelta !== null ||
@@ -353,9 +375,25 @@ export default function DayDetail({
                     </p>
                 </>
             )}
+            {hardDayDelta && (
+                <>
+                    <ChangeRow
+                        label="work"
+                        from={hardDayDelta.from}
+                        to={hardDayDelta.to}
+                        direction="down"
+                        tag="two hard days"
+                    />
+                    <p className="mt-1 text-xs text-text-2">{HARD_DAY_WHY}</p>
+                </>
+            )}
             {sessionDelta?.typeFrom != null && (
                 <ChangeRow
-                    className={droppedDelta || budgetDelta ? 'mt-2' : undefined}
+                    className={
+                        droppedDelta || hardDayDelta || budgetDelta
+                            ? 'mt-2'
+                            : undefined
+                    }
                     label="type"
                     from={sessionDelta.typeFrom}
                     to={sessionDelta.typeTo}
@@ -381,7 +419,10 @@ export default function DayDetail({
             {paceDelta && (
                 <ChangeRow
                     className={
-                        droppedDelta || budgetDelta || sessionDelta
+                        droppedDelta ||
+                        hardDayDelta ||
+                        budgetDelta ||
+                        sessionDelta
                             ? 'mt-2'
                             : undefined
                     }
@@ -400,7 +441,11 @@ export default function DayDetail({
             {weekFitDelta && (
                 <ChangeRow
                     className={
-                        droppedDelta || budgetDelta || sessionDelta || paceDelta
+                        droppedDelta ||
+                        hardDayDelta ||
+                        budgetDelta ||
+                        sessionDelta ||
+                        paceDelta
                             ? 'mt-2'
                             : undefined
                     }
@@ -546,12 +591,12 @@ export default function DayDetail({
                         </>
                     ) : (
                         <div className="flex flex-wrap items-center gap-3">
-                            {(canMove || canSkip) && !moreOpen && (
+                            {(canMove || canSkip) && (
                                 <button
                                     type="button"
                                     aria-label="more actions"
-                                    aria-expanded={false}
-                                    onClick={() => setMoreOpen(true)}
+                                    aria-expanded={moreOpen}
+                                    onClick={() => setMoreOpen((open) => !open)}
                                     className="pressable focus-ring flex items-center text-horizon-ink"
                                 >
                                     <Icon

@@ -124,14 +124,14 @@ final class QualityOverride
     }
 
     /**
-     * The quality session a ran-too-hard week dropped from this day, while the day still shows something easier.
+     * The quality session a ran-too-hard week dropped from this day, while the day still shows an easy run there.
      *
      * @return array{session_type: string, time_trial: bool}|null
      */
     public static function droppedFrom(PlannedSession $day, SessionType $shownType, ?PlanAdaptation $week): ?array
     {
         $dropped = $week?->dropped_quality;
-        if ($dropped === null || $dropped['date'] !== $day->date->toDateString() || self::isWorkout($shownType)
+        if ($dropped === null || $dropped['date'] !== $day->date->toDateString() || $shownType !== SessionType::Easy
             || $week->reason !== AdaptationReason::RanTooHard || $week->quality_delta >= 0) {
             return null;
         }

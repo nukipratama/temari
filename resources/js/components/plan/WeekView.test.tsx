@@ -22,7 +22,7 @@ import WeekView from './WeekView';
 /** Move and skip sit behind the day panel's "more actions" overflow. */
 function openMoreActions() {
     const more = screen.queryByRole('button', { name: 'more actions' });
-    if (more !== null) {
+    if (more?.getAttribute('aria-expanded') === 'false') {
         fireEvent.click(more);
     }
 }

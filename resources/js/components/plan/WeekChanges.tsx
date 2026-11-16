@@ -16,10 +16,17 @@ type WeekChange = {
 };
 
 function changeOf(day: PlanDay): WeekChange | null {
-    const { droppedDelta, budgetDelta, sessionDelta, paceDelta, weekFitDelta } =
-        dayChanges(day);
+    const {
+        droppedDelta,
+        budgetDelta,
+        hardDayDelta,
+        sessionDelta,
+        paceDelta,
+        weekFitDelta,
+    } = dayChanges(day);
     const pair =
         droppedDelta ??
+        hardDayDelta ??
         (sessionDelta?.typeFrom != null
             ? { from: sessionDelta.typeFrom, to: sessionDelta.typeTo }
             : null) ??

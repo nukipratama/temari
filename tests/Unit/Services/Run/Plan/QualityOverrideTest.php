@@ -150,6 +150,7 @@ it('names no dropped session on another day, once it is back, or on a week that 
 })->with([
     'another day' => ['2026-09-16', SessionType::Easy, []],
     'brought back' => ['2026-09-17', SessionType::Tempo, []],
+    'swapped with the long run' => ['2026-09-17', SessionType::Long, []],
     'week no longer ran too hard' => ['2026-09-17', SessionType::Easy, ['reason' => AdaptationReason::Steady, 'quality_delta' => 0]],
     'nothing recorded' => ['2026-09-17', SessionType::Easy, ['dropped_quality' => null]],
 ]);
