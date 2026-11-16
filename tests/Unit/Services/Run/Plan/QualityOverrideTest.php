@@ -135,22 +135,24 @@ it('offers nothing outside the week the adaptation covers', function (): void {
     expect(overrideFor(overrideDay('2026-09-22', SessionType::Easy), overrideWeek(['restorable_quality' => ['date' => '2026-09-22', 'session_type' => 'tempo', 'time_trial' => false]])))->toBeNull();
 });
 
-it('opens the override to everyone but the demo athlete, outside the weeks before race week', function (bool $demo, ?string $raceDate, bool $open): void {
+it('opens the override to everyone but the demo athlete, outside the pre-race window for the race distance', function (bool $demo, ?string $raceDate, int $distanceM, bool $open): void {
     $user = new User()->forceFill(['is_demo' => $demo]);
-    $race = $raceDate === null ? null : new RaceGoal()->forceFill(['race_date' => $raceDate]);
+    $race = $raceDate === null ? null : new RaceGoal()->forceFill(['race_date' => $raceDate, 'distance_m' => $distanceM]);
     $week = overrideWeek();
 
     expect(QualityOverride::openWeek($user, $week, $race))->toBe($open ? $week : null);
 })->with([
-    'no race' => [false, null, true],
-    'race well ahead' => [false, '2026-10-11', true],
-    'two weeks before race week' => [false, '2026-10-04', false],
-    'demo athlete' => [true, null, false],
+    'no race' => [false, null, 21097, true],
+    'race well ahead' => [false, '2026-10-11', 21097, true],
+    'half, two weeks before race week' => [false, '2026-10-04', 21097, false],
+    '10K, two weeks before race week' => [false, '2026-10-04', 10000, true],
+    '10K, race week' => [false, '2026-09-19', 10000, false],
+    'demo athlete' => [true, null, 21097, false],
 ]);
 
 it('keeps a taken override, its note and its undo once the week falls before race week, offering nothing new there', function (): void {
     $user = new User()->forceFill(['is_demo' => false]);
-    $race = new RaceGoal()->forceFill(['race_date' => '2026-10-04']);
+    $race = new RaceGoal()->forceFill(['race_date' => '2026-10-04', 'distance_m' => 21097]);
     $week = overrideWeek(['override_kind' => PlanOverrideKind::WeeklyDrop, 'override_date' => '2026-09-17']);
 
     $open = QualityOverride::openWeek($user, $week, $race);
