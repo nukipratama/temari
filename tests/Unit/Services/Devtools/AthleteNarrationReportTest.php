@@ -93,11 +93,11 @@ describe('header', function (): void {
             ->and($header['athlete'])->toBe(['id' => $user->id, 'name' => $user->name, 'is_demo' => false, 'strava_athlete_id' => null, 'last_seen_at' => $user->last_seen_at?->toIso8601String(), 'away' => false]);
     });
 
-    it('carries the athlete\'s Strava id when a connection exists', function (): void {
+    it('carries the athlete\'s Strava id as a string so a 64-bit id survives JavaScript', function (): void {
         $user = User::factory()->create();
-        StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 555_444]);
+        StravaConnection::factory()->for($user)->create(['strava_athlete_id' => 9_007_199_254_740_993]);
 
-        expect(athleteReport()->header($user)['athlete']['strava_athlete_id'])->toBe(555_444);
+        expect(athleteReport()->header($user)['athlete']['strava_athlete_id'])->toBe('9007199254740993');
     });
 
     it('labels the ceiling as an override when one is set for today', function (): void {

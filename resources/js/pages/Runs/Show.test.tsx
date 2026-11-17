@@ -147,7 +147,7 @@ function renderShow(
             activity={{
                 id: 99,
                 user_id: 1,
-                strava_external_id: 4821,
+                strava_external_id: '4821',
                 analyzed_at: '2026-05-10',
             }}
             detail={detail}

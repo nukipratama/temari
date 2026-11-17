@@ -45,7 +45,7 @@ class AthleteNarrationReport
 
     /**
      * @return array{
-     *     athlete: array{id:int, name:string, is_demo:bool, strava_athlete_id:int|null, last_seen_at:string|null, away:bool},
+     *     athlete: array{id:int, name:string, is_demo:bool, strava_athlete_id:string|null, last_seen_at:string|null, away:bool},
      *     currency: string,
      *     today_spend: float,
      *     ceiling: array{value: float|null, source: string},
@@ -67,7 +67,7 @@ class AthleteNarrationReport
                 'id' => $athlete->id,
                 'name' => $athlete->name,
                 'is_demo' => $athlete->is_demo,
-                'strava_athlete_id' => $athlete->stravaConnection?->strava_athlete_id,
+                'strava_athlete_id' => $athlete->stravaConnection === null ? null : (string) $athlete->stravaConnection->strava_athlete_id,
                 'last_seen_at' => $athlete->last_seen_at?->toIso8601String(),
                 'away' => ! $athlete->is_demo && ! $this->activeUsers->includes($athlete),
             ],
