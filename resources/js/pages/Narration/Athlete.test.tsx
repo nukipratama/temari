@@ -18,7 +18,7 @@ function props(overrides: Partial<AthletePageProps> = {}): AthletePageProps {
                 id: 7,
                 name: 'Dina',
                 is_demo: false,
-                strava_athlete_id: 555_444,
+                strava_athlete_id: '555444',
                 last_seen_at: null,
                 away: true,
             },

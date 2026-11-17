@@ -27,6 +27,13 @@ it('casts timestamps and counters', function (): void {
         ->and($activity->strava_external_id)->toBe(9876543210);
 });
 
+it('round-trips a 64-bit Strava id and serializes it as a string', function (): void {
+    $activity = Activity::factory()->create(['strava_external_id' => 9_223_372_036_854_775_807]);
+
+    expect(nonNull($activity->fresh())->strava_external_id)->toBe(9_223_372_036_854_775_807)
+        ->and(data_get($activity->toArray(), 'strava_external_id'))->toBe('9223372036854775807');
+});
+
 it('belongs to a user', function (): void {
     $user = User::factory()->create();
     $activity = Activity::factory()->for($user)->create();

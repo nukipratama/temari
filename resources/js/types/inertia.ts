@@ -414,7 +414,7 @@ export interface Activity {
     id: number;
     user_id: number;
     /** Strava's own id for the run — the provenance number in the page footer. */
-    strava_external_id?: number;
+    strava_external_id?: string;
     name?: string;
     analyzed_at: string | null;
     ingest_state?: 'summary' | 'detailed';

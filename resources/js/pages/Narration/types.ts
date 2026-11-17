@@ -235,7 +235,7 @@ export interface AthleteHeaderData {
         id: number;
         name: string;
         is_demo: boolean;
-        strava_athlete_id: number | null;
+        strava_athlete_id: string | null;
         last_seen_at: string | null;
         away: boolean;
     };

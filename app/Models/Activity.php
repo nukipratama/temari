@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\StringSerializedInteger;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use App\Actions\Run\Story\ResolveLastRunStartAction;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -252,7 +253,7 @@ class Activity extends Model
     {
         return [
             'user_id' => 'integer',
-            'strava_external_id' => 'integer',
+            'strava_external_id' => StringSerializedInteger::class,
             'ingest_state' => IngestState::class,
             'fetched_at' => 'datetime',
             'analyzed_at' => 'datetime',
