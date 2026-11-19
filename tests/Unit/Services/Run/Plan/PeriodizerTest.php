@@ -683,7 +683,8 @@ it('keeps a pinned hard-day bring-back out of the weekly hard-day count', functi
     ]]);
     $dose = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['prescribed_hard_minutes']], array_diff_key($rows, ['2026-09-03' => true]));
 
-    expect($brought['2026-09-06']['prescribed_hard_minutes'])->toBeGreaterThan(0)
+    expect($brought['2026-09-03']['prescribed_hard_minutes'])->toBeGreaterThan(0)
+        ->and($brought['2026-09-06']['prescribed_hard_minutes'])->toBeGreaterThan(0)
         ->and($dose($pinned))->toBe($dose($brought));
 });
 
