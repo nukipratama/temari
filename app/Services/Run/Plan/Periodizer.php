@@ -920,13 +920,14 @@ final readonly class Periodizer
             }
         }
 
+        $countedHardDays = count(array_diff($fixedHardOffsets, [(string) $countExempt]));
         $generatedHardLongDates = array_keys(array_filter($rows, static fn (array $row): bool =>
             $row['session_type'] === SessionType::Long
             && $row['prescribed_pace_band'] === PaceBand::Marathon
             && $row['prescribed_hard_minutes'] > 0));
         foreach ($generatedHardLongDates as $date) {
             $tooCloseToHardDay = array_any($longOffsets, static fn (string $other): bool => $other !== $date && self::daysApart($date, $other) < 2);
-            if ((count($fixedHardOffsets) >= 2 && $date !== $countExempt) || $tooCloseToHardDay) {
+            if (($countedHardDays >= 2 && $date !== $countExempt) || $tooCloseToHardDay) {
                 $rows[$date] = [
                     ...$rows[$date],
                     'prescribed_hard_minutes' => 0,
@@ -957,7 +958,7 @@ final readonly class Periodizer
             $qualityDates = [...array_diff($qualityDates, [$countExempt]), $countExempt];
         }
 
-        $qualityLimit = max(0, 2 - count($fixedHardOffsets) - count(array_diff($generatedHardLongDates, [$countExempt])));
+        $qualityLimit = max(0, 2 - $countedHardDays - count(array_diff($generatedHardLongDates, [$countExempt])));
         $keptHardOffsets = [];
         $keptQualityCount = 0;
         foreach ($qualityDates as $date) {

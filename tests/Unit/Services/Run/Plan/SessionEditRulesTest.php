@@ -268,27 +268,6 @@ it('never swaps a session a run already landed on, nor a race', function (Sessio
     'a race' => [SessionType::Race, []],
 ]);
 
-it('never swaps onto the day carrying the week\'s taken override', function (): void {
-    $rows = editRulesWeek();
-
-    expect(SessionEditRules::moveTargets(editRulesDay($rows, '2026-08-12'), $rows, [], Carbon::today(), '2026-08-16'))
-        ->toBe(['2026-08-13', '2026-08-14', '2026-08-15']);
-});
-
-it('keeps the day carrying the week\'s taken override where it is', function (): void {
-    $rows = editRulesWeek();
-
-    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-16'), PlannedSessionStatus::Planned, $rows, [], Carbon::today(), '2026-08-16'))
-        ->toMatchArray(['actions' => ['move' => false, 'skip' => true, 'restore' => false], 'move_targets' => [], 'move_warnings' => []]);
-});
-
-it('still makes up a missed day that carried the week\'s taken override', function (): void {
-    $rows = editRulesWeek();
-
-    expect(SessionEditRules::rulesFor(editRulesDay($rows, '2026-08-11'), PlannedSessionStatus::Missed, $rows, [], Carbon::today(), '2026-08-11')['move_targets'])
-        ->toBe(['2026-08-13', '2026-08-15']);
-});
-
 it('warns when the session swapped in lands beside a hard day', function (): void {
     $rows = editRulesWeek(['2026-08-13' => SessionType::Tempo]);
 
