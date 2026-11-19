@@ -220,9 +220,8 @@ class PlanController extends Controller
     }
 
     /**
-     * The week's override is stored by date, so it follows its session when an
-     * open override day is swapped, except a readiness ease, which judged that
-     * one day and is handed back instead.
+     * Moves an open override to the day its session lands on, or clears it for
+     * a readiness ease.
      */
     private function carryOverride(User $user, PlannedSession $from, PlannedSession $to, Carbon $today): void
     {
