@@ -35,10 +35,10 @@ final class SessionEditRules
      * @param  list<string>  $ranDates  Y-m-d of every day in that window a run landed on
      * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>, move_warnings: array<string, array{beside: string, session_type: string}>}
      */
-    public static function rulesFor(PlannedSession $day, PlannedSessionStatus $status, Collection $rows, array $ranDates, Carbon $today, ?string $overrideDate = null): array
+    public static function rulesFor(PlannedSession $day, PlannedSessionStatus $status, Collection $rows, array $ranDates, Carbon $today): array
     {
         $toggles = self::canToggleSkip($day, $status, $today);
-        $moves = self::canMoveFrom($day, $status, $today) ? self::moves($day, $rows, $ranDates, $today, $overrideDate) : ['targets' => [], 'warnings' => []];
+        $moves = self::canMoveFrom($day, $status, $today) ? self::moves($day, $rows, $ranDates, $today) : ['targets' => [], 'warnings' => []];
 
         return [
             'actions' => [
@@ -78,30 +78,25 @@ final class SessionEditRules
      * @param  list<string>  $ranDates
      * @return list<string>
      */
-    public static function moveTargets(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today, ?string $overrideDate = null): array
+    public static function moveTargets(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today): array
     {
-        return self::moves($source, $rows, $ranDates, $today, $overrideDate)['targets'];
+        return self::moves($source, $rows, $ranDates, $today)['targets'];
     }
 
     /**
      * Rest days of the session's own week from today on, and earlier ones only
      * where a run landed. From today on, an unrun session also swaps with
-     * another unrun training day of its week. The day carrying the week's taken
-     * override is never swapped onto, and moves only as a make-up once it has
-     * passed. A target that leaves a hard session beside another hard day
-     * stays offered, with a warning naming it.
+     * another unrun training day of its week. A target that leaves a hard
+     * session beside another hard day stays offered, with a warning naming it.
      *
      * @param  Collection<int, PlannedSession>  $rows  the source's {@see self::window()}
      * @param  list<string>  $ranDates
      * @return array{targets: list<string>, warnings: array<string, array{beside: string, session_type: string}>}
      */
-    private static function moves(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today, ?string $overrideDate): array
+    private static function moves(PlannedSession $source, Collection $rows, array $ranDates, Carbon $today): array
     {
         $sourceDate = $source->date->toDateString();
         $todayKey = $today->toDateString();
-        if ($sourceDate === $overrideDate && $sourceDate >= $todayKey) {
-            return ['targets' => [], 'warnings' => []];
-        }
         [$windowStart, $windowEnd] = self::window($source->date);
         $weekStart = $windowStart->copy()->addDay()->toDateString();
         $weekEnd = $windowEnd->copy()->subDay()->toDateString();
@@ -116,7 +111,7 @@ final class SessionEditRules
             }
             $offered = $row->session_type === SessionType::Rest
                 ? $date >= $todayKey || in_array($date, $ranDates, true)
-                : $swappable && $date !== $overrideDate && self::isSwappable($row, $date, $ranDates, $todayKey);
+                : $swappable && self::isSwappable($row, $date, $ranDates, $todayKey);
             if (! $offered) {
                 continue;
             }

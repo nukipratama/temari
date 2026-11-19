@@ -413,7 +413,7 @@ final class PlanPageAssembler
                     overrideWeek: $overrideWeek,
                     overrideTakenOn: $overrideTakenOn,
                     overrideRaceBlocker: $overrideRaceBlocker,
-                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today, $currentWeekAdaptation?->override_date?->toDateString()), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
+                ), ...$this->editRules($s, $fallbackVerdicts[$s->date->toDateString()]['status'] ?? $s->status, $ruleRowsByDate, $ranDates, $today), 'made_up_on' => $s->made_up_on?->toDateString()])->all(),
             ];
         }
 
@@ -425,14 +425,14 @@ final class PlanPageAssembler
      * @param  list<string>  $ranDates
      * @return array{actions: array{move: bool, skip: bool, restore: bool}, move_targets: list<string>, move_warnings: array<string, array{beside: string, session_type: string}>}
      */
-    private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRowsByDate, array $ranDates, Carbon $today, ?string $overrideDate): array
+    private function editRules(PlannedSession $day, PlannedSessionStatus $status, Collection $ruleRowsByDate, array $ranDates, Carbon $today): array
     {
         [$from, $to] = SessionEditRules::window($day->date);
         $fromKey = $from->toDateString();
         $toKey = $to->toDateString();
         $window = $ruleRowsByDate->filter(fn (PlannedSession $row, string $date): bool => $date >= $fromKey && $date <= $toKey)->values();
 
-        return SessionEditRules::rulesFor($day, $status, $window, $ranDates, $today, $overrideDate);
+        return SessionEditRules::rulesFor($day, $status, $window, $ranDates, $today);
     }
 
     /**

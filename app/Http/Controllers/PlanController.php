@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\PlanRegenerationReason;
 use App\Actions\AI\RenarrateAfterMakeUp;
+use App\Enums\PlanOverrideKind;
 use App\Http\Requests\UpdatePlannedSessionRequest;
 use App\Models\PlanAdaptation;
 use App\Models\PlannedSession;
@@ -143,6 +144,7 @@ class PlanController extends Controller
                     if (isset($attributes['date'])) {
                         [$occupant, $madeUp] = $this->moveTarget($user, $session, Carbon::parse($attributes['date']), $today, $sessionMatcher);
                         $this->swapSessions($session, $occupant);
+                        $this->carryOverride($user, $session, $occupant, $today);
                         unset($attributes['date']);
                         $makeUpTarget = $madeUp ? $occupant : null;
                     }
@@ -192,14 +194,10 @@ class PlanController extends Controller
             ->get();
         $ranDates = array_map(strval(...), array_keys($sessionMatcher->activityByDate($user, $from, $to)));
         $target = $rows->first(static fn (PlannedSession $row): bool => $row->date->isSameDay($toDate));
-        $overrideDate = PlanAdaptation::query()
-            ->where('user_id', $user->id)
-            ->where('week_start', $session->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
-            ->first()?->override_date?->toDateString();
 
         if ($target === null
             || ! SessionEditRules::canMoveFrom($session, $session->status, $today)
-            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today, $overrideDate), true)) {
+            || ! in_array($target->date->toDateString(), SessionEditRules::moveTargets($session, $rows, $ranDates, $today), true)) {
             throw ValidationException::withMessages(['date' => "this session can't move to that day."]);
         }
 
@@ -219,6 +217,37 @@ class PlanController extends Controller
 
         $to->update([...$fromWorkout, ...$clampReset, 'pinned' => true]);
         $from->update([...$toWorkout, ...$clampReset, 'pinned' => true]);
+    }
+
+    /**
+     * The week's override is stored by date, so it follows its session when an
+     * open override day is swapped, except a readiness ease, which judged that
+     * one day and is handed back instead.
+     */
+    private function carryOverride(User $user, PlannedSession $from, PlannedSession $to, Carbon $today): void
+    {
+        $week = PlanAdaptation::query()
+            ->where('user_id', $user->id)
+            ->where('week_start', $from->date->copy()->startOfWeek(Carbon::MONDAY)->toDateString())
+            ->lockForUpdate()
+            ->first();
+        $overrideDate = $week?->override_date;
+        if ($week === null || $overrideDate === null || $overrideDate->lt($today)) {
+            return;
+        }
+
+        $landsOn = match (true) {
+            $overrideDate->isSameDay($from->date) => $to->date,
+            $overrideDate->isSameDay($to->date) => $from->date,
+            default => null,
+        };
+        if ($landsOn === null) {
+            return;
+        }
+
+        $week->update($week->override_kind === PlanOverrideKind::ReadinessEase
+            ? ['override_kind' => null, 'override_date' => null, 'overridden_at' => null]
+            : ['override_date' => $landsOn->toDateString()]);
     }
 
     private function authorizeOwner(Request $request, PlannedSession $plannedSession): void

@@ -689,25 +689,52 @@ it('leaves today\'s recorded ease behind when a swap brings another session onto
         ->and($today->readiness_assessment)->toBeNull();
 });
 
-it('refuses to move the day carrying the week\'s taken override, even onto a rest day', function (): void {
-    Carbon::setTestNow('2026-11-11 08:00:00');
+it('carries a brought-back session\'s override to the day it moves to', function (PlanOverrideKind $kind): void {
+    Carbon::setTestNow('2026-11-12 08:00:00');
     $user = User::factory()->create();
     $rows = planWeekRows($user, [
         '2026-11-12' => 'tempo',
         '2026-11-13' => 'rest',
     ]);
-    PlanAdaptation::factory()->for($user)->create([
+    $week = PlanAdaptation::factory()->for($user)->create([
         'week_start' => '2026-11-09',
-        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_kind' => $kind,
         'override_date' => '2026-11-12',
     ]);
 
     $this->actingAs($user)
         ->patch("/plan/sessions/{$rows['2026-11-12']->id}", ['date' => '2026-11-13'])
-        ->assertSessionHasErrors('date');
+        ->assertSessionHasNoErrors();
 
-    expect($rows['2026-11-12']->refresh()->session_type)->toBe(SessionType::Tempo)
-        ->and($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Rest);
+    expect($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($rows['2026-11-12']->refresh()->session_type)->toBe(SessionType::Rest)
+        ->and($week->refresh()->override_kind)->toBe($kind)
+        ->and($week->override_date?->toDateString())->toBe('2026-11-13');
+})->with([PlanOverrideKind::WeeklyDrop, PlanOverrideKind::BudgetDrop, PlanOverrideKind::HardDayDrop]);
+
+it('hands the week\'s readiness override back when its session moves', function (): void {
+    Carbon::setTestNow('2026-11-12 08:00:00');
+    $user = User::factory()->create();
+    $rows = planWeekRows($user, [
+        '2026-11-12' => 'tempo',
+        '2026-11-13' => 'rest',
+    ]);
+    $week = PlanAdaptation::factory()->for($user)->create([
+        'week_start' => '2026-11-09',
+        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_date' => '2026-11-12',
+        'overridden_at' => '2026-11-12 01:00:00',
+    ]);
+
+    $this->actingAs($user)
+        ->patch("/plan/sessions/{$rows['2026-11-12']->id}", ['date' => '2026-11-13'])
+        ->assertSessionHasNoErrors();
+
+    $week->refresh();
+    expect($rows['2026-11-13']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($week->override_kind)->toBeNull()
+        ->and($week->override_date)->toBeNull()
+        ->and($week->overridden_at)->toBeNull();
 });
 
 it('makes up a missed session that carried the week\'s taken override onto a rest day', function (): void {
@@ -717,7 +744,7 @@ it('makes up a missed session that carried the week\'s taken override onto a res
         '2026-11-10' => 'tempo',
         '2026-11-12' => 'rest',
     ], ['2026-11-10' => ['status' => PlannedSessionStatus::Missed]]);
-    PlanAdaptation::factory()->for($user)->create([
+    $week = PlanAdaptation::factory()->for($user)->create([
         'week_start' => '2026-11-09',
         'override_kind' => PlanOverrideKind::ReadinessEase,
         'override_date' => '2026-11-10',
@@ -728,10 +755,11 @@ it('makes up a missed session that carried the week\'s taken override onto a res
         ->assertSessionHasNoErrors();
 
     expect($rows['2026-11-12']->refresh()->session_type)->toBe(SessionType::Tempo)
-        ->and($rows['2026-11-10']->refresh()->session_type)->toBe(SessionType::Rest);
+        ->and($rows['2026-11-10']->refresh()->session_type)->toBe(SessionType::Rest)
+        ->and($week->refresh()->override_date?->toDateString())->toBe('2026-11-10');
 });
 
-it('refuses to swap a session onto the day carrying the week\'s taken override', function (): void {
+it('carries the override with its session when another session swaps onto its day', function (): void {
     Carbon::setTestNow('2026-11-13 08:00:00');
     $user = User::factory()->create();
     $rows = planWeekRows($user, [
@@ -739,18 +767,19 @@ it('refuses to swap a session onto the day carrying the week\'s taken override',
         '2026-11-14' => 'tempo',
         '2026-11-15' => 'long',
     ]);
-    PlanAdaptation::factory()->for($user)->create([
+    $week = PlanAdaptation::factory()->for($user)->create([
         'week_start' => '2026-11-09',
-        'override_kind' => PlanOverrideKind::ReadinessEase,
+        'override_kind' => PlanOverrideKind::WeeklyDrop,
         'override_date' => '2026-11-14',
     ]);
 
     $this->actingAs($user)
         ->patch("/plan/sessions/{$rows['2026-11-15']->id}", ['date' => '2026-11-14'])
-        ->assertSessionHasErrors('date');
+        ->assertSessionHasNoErrors();
 
-    expect($rows['2026-11-14']->refresh()->session_type)->toBe(SessionType::Tempo)
-        ->and($rows['2026-11-15']->refresh()->session_type)->toBe(SessionType::Long);
+    expect($rows['2026-11-14']->refresh()->session_type)->toBe(SessionType::Long)
+        ->and($rows['2026-11-15']->refresh()->session_type)->toBe(SessionType::Tempo)
+        ->and($week->refresh()->override_date?->toDateString())->toBe('2026-11-15');
 });
 
 /**

@@ -15,6 +15,8 @@ code_refs:
 
 **Status:** Accepted (2026-11-13). Built in #2455.
 
+> **Superseded in part, 2026-11-19.** The override day now moves, carrying its override with it: [[the-override-follows-its-session-on-a-move]].
+
 A move used to refuse any rest day that would leave a Long, Tempo, Interval or Race session beside another of those, and a session could only land on a rest day. Putting a weekend long run on the other weekend day took up to three moves, and moving it next to a hard session was impossible even when the athlete meant it.
 
 - **Training days swap directly.** From today on, an unrun session swaps with another unrun training day of its week in one edit ([SessionEditRules::moves()](app/Services/Run/Plan/SessionEditRules.php)). Race days, made-up days, days a run landed on and past days never swap; past days keep the make-up flow. From today on, the day carrying the week's taken override does not move at all, by swap or onto a rest day: an override is stored by date on the week's adaptation, so moving its session would leave the override on whatever lands on that date. Undoing the override frees the day. Once that day has passed unrun, it can no longer be undone, so it is made up onto a rest day like any missed session, and both the Plan page's taken note ([QualityOverride::takenOn()](app/Services/Run/Plan/QualityOverride.php), no longer undoable there) and the coach's `overridden` flag ([PlanContextTool](app/Services/AI/Agent/Tools/PlanContextTool.php)) follow it to the day it was made up on.
