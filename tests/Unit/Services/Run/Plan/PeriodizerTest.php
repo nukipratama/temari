@@ -661,6 +661,57 @@ it('marks a tempo the weekly hard-day count dropped as one the athlete can bring
         ->and($dose($brought))->toBe($dose($dropped));
 });
 
+it('keeps a pinned hard-day bring-back out of the weekly hard-day count', function (): void {
+    $overrides = [
+        'sessionsPerWeek' => 6,
+        'projectedRaceSeconds' => 12_000.0,
+        'raceGoalTimeSec' => 12_000,
+        'raceDistanceM' => 42_195.0,
+        'volumeFloorKm' => 60.0,
+        'longRunBaselineKm' => 30.0,
+        'longRunCapKm' => 30.0,
+        'longRunProgressionCapKm' => 11.0,
+        'raceAmbitionState' => RaceAmbitionState::Unknown,
+        'actualSessions' => [['date' => '2026-09-01', 'duration_minutes' => 60, 'hard_minutes' => 20.0, 'demanding' => true]],
+        'hardDayOverrideDate' => '2026-09-03',
+    ];
+    $settledTempo = ['session_type' => SessionType::Tempo, 'prescribed_hard_minutes' => 20, 'prescribed_pace_band' => PaceBand::Threshold, 'hard_minutes' => null];
+    $brought = periodizerRows('2026-09-03', '2026-09-28', [...$overrides, 'fixedSessions' => ['2026-09-01' => $settledTempo]]);
+    $pinned = periodizerRows('2026-09-03', '2026-09-28', [...$overrides, 'fixedSessions' => [
+        '2026-09-01' => $settledTempo,
+        '2026-09-03' => ['session_type' => $brought['2026-09-03']['session_type'], 'prescribed_hard_minutes' => $brought['2026-09-03']['prescribed_hard_minutes'], 'prescribed_pace_band' => $brought['2026-09-03']['prescribed_pace_band']],
+    ]]);
+    $dose = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['prescribed_hard_minutes']], array_diff_key($rows, ['2026-09-03' => true]));
+
+    expect($brought['2026-09-06']['prescribed_hard_minutes'])->toBeGreaterThan(0)
+        ->and($dose($pinned))->toBe($dose($brought));
+});
+
+it('trims nothing else to pay for a pinned budget bring-back', function (): void {
+    $inputs = planInputsWith(arcInputs(today: '2026-09-21'), [
+        'sessionsPerWeek' => 5,
+        'runDays' => null,
+        'longRunDay' => null,
+        'paces' => ['easy' => 360, 'marathon' => 300, 'threshold' => 270, 'interval' => 240],
+        'longRunBaselineKm' => 12.0,
+        'lockedHardCapMinutes' => 25,
+        'budgetOverrideDate' => '2026-09-24',
+        'restoredDayOpen' => true,
+    ]);
+    $brought = periodizer()->rowsFor($inputs);
+    $day = $brought['2026-09-24'];
+    $pinned = periodizer()->rowsFor(planInputsWith($inputs, ['fixedSessions' => ['2026-09-24' => [
+        'session_type' => $day['session_type'],
+        'prescribed_hard_minutes' => $day['prescribed_hard_minutes'],
+        'prescribed_pace_band' => $day['prescribed_pace_band'],
+        'duration_minutes' => 60.0,
+    ]]]));
+    $dose = static fn (array $rows): array => array_map(static fn (array $row): array => [$row['session_type'], $row['prescribed_hard_minutes']], array_diff_key($rows, ['2026-09-24' => true]));
+
+    expect($day['prescribed_hard_minutes'])->toBeGreaterThan(0)
+        ->and($dose($pinned))->toBe($dose($brought));
+});
+
 it('reserves unknown pinned quality without inventing a remaining hard-minute allowance', function (): void {
     $rows = periodizerRows('2026-08-10', '2026-10-05', [
         'sessionsPerWeek' => 6, 'projectedRaceSeconds' => 10_800.0, 'raceGoalTimeSec' => 10_800, 'raceDistanceM' => 42_195.0, 'volumeFloorKm' => 60.0, 'longRunBaselineKm' => 28.0, 'longRunCapKm' => 30.0, 'longRunProgressionCapKm' => 5.3, 'raceAmbitionState' => RaceAmbitionState::Unknown,

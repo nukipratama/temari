@@ -8,6 +8,7 @@ code_refs:
   - app/Http/Controllers/PlanController.php
   - app/Services/Run/Plan/SessionEditRules.php
   - app/Services/Run/Plan/PlanInputsGatherer.php
+  - app/Services/Run/Plan/Periodizer.php
 ---
 
 # The override follows its session on a move
@@ -22,6 +23,7 @@ The week's one override ([[an-athlete-can-override-an-eased-quality-session]]) i
 
 - **The override day moves like any other day.** [SessionEditRules::moves()](app/Services/Run/Plan/SessionEditRules.php) no longer reads the override: the day takes rest-day moves and swaps, and other days swap onto it, under the usual rules and hard-neighbour warning.
 - **A drop override follows its session.** When a move or swap touches an open override day (today or later), [PlanController::carryOverride()](app/Http/Controllers/PlanController.php) moves `override_date` to the day the session lands on, in the swap's transaction. A weekly, budget or hard-day drop override is a claim on the session, so the brought-back session stays protected there and its undo shows there. Which side of the swap started the edit makes no difference.
+- **A pinned bring-back stays exempt.** A move pins both days, so the brought-back session reaches the periodizer as a fixed day. `Periodizer::capQualityAroundWeeklyHardDays()` leaves a fixed day on the hard-day override's date out of the weekly two-hard-day count, as it already did for a generated one; it still protects its neighbours' spacing. A budget bring-back needed no change: a pinned day keeps its generated row, which `Periodizer::hardBudget()` already exempts.
 - **A readiness override is handed back.** It judged one day's readiness, so a move clears it and the week's override is free again. The new day's own readiness decides whether to ease the session.
 - **A passed override day is unchanged.** It can no longer be undone and is made up like any missed session; the override row stays as it was.
 
