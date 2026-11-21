@@ -11,7 +11,6 @@ use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\RecommendationHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -38,7 +37,7 @@ it('persists the current snapshot it was shown', function (): void {
     $user = viewedPlanAthlete();
     $tomorrow = Carbon::today()->addDay()->toDateString();
     $token = currentRecommendationToken($user, $tomorrow);
-    $advice = arrayOf(json_decode(Crypt::decryptString($token), true, flags: JSON_THROW_ON_ERROR));
+    $advice = app(RecommendationHistory::class)->advice($token);
 
     $this->actingAs($user)->postJson(route('plan.recommendations.shown'), ['token' => $token, 'observation_id' => (string) Str::uuid()])->assertNoContent();
 
