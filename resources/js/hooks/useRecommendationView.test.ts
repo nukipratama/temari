@@ -1,4 +1,5 @@
-import { act, renderHook } from '@testing-library/react';
+import { router } from '@inertiajs/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, expect, it, vi } from 'vitest';
 
@@ -59,4 +60,49 @@ it('does not acknowledge a fetched row without a rendered panel', () => {
     const ref = createRef<HTMLDivElement>();
     renderHook(() => useRecommendationView(ref, 'fetched-only'));
     expect(postJson).not.toHaveBeenCalled();
+});
+
+function intersectingView(token: string) {
+    let callback: IntersectionObserverCallback = () => undefined;
+    vi.stubGlobal(
+        'IntersectionObserver',
+        class {
+            constructor(cb: IntersectionObserverCallback) {
+                callback = cb;
+            }
+            observe() {}
+            disconnect() {}
+        },
+    );
+    const ref = createRef<HTMLDivElement>();
+    ref.current = document.createElement('div');
+    const hook = renderHook(() => useRecommendationView(ref, token));
+    act(() =>
+        callback(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+        ),
+    );
+
+    return hook;
+}
+
+it('reloads the page once a minute at most while the server calls the shown advice stale', async () => {
+    vi.mocked(postJson).mockResolvedValue({ status: 409 } as Response);
+
+    intersectingView('stale-advice').unmount();
+    await waitFor(() => expect(router.reload).toHaveBeenCalledOnce());
+    intersectingView('re-rendered-stale-advice').unmount();
+    await waitFor(() => expect(postJson).toHaveBeenCalledTimes(2));
+
+    expect(router.reload).toHaveBeenCalledOnce();
+});
+
+it('leaves the page alone when the view is recorded', async () => {
+    vi.mocked(postJson).mockResolvedValue({ status: 204 } as Response);
+
+    intersectingView('current-advice');
+    await waitFor(() => expect(postJson).toHaveBeenCalledOnce());
+
+    expect(router.reload).not.toHaveBeenCalled();
 });

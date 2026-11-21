@@ -316,7 +316,7 @@ final class PlanPageAssembler
 
         $race = ($this->activeRace)($user->id);
         $baselineData = $this->baseline->forUser($user, $today);
-        $vdot = $this->vdotEstimator->estimate($user);
+        $vdot = $this->vdotEstimator->estimate($user, $today);
         $paces = $this->paceCalculator->fromVdotResult($vdot);
         $easySlowEnd = $this->paceCalculator->easySlowEndFromVdotResult($vdot);
         $briefingContext = $this->briefing->forUser($user, $today, $sessionsByWeek->get($currentWeekKey), $baselineData);
