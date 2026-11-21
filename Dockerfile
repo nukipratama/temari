@@ -10,7 +10,7 @@ FROM dunglas/frankenphp:1.13.6-php8.5-alpine@sha256:0b064e00fd2cc0c72546da62f02d
 # assets build, so dev/CI/prod all run the same Node.
 # Refresh after a version bump with:
 #   docker buildx imagetools inspect node:<ver>-alpine --format '{{.Manifest.Digest}}'
-FROM node:26.13.0-alpine@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS node-src
+FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS node-src
 
 # Single pinned Composer, copied into the dev stage and built on by the vendor stage.
 # = composer:2.11.1. Refresh after a bump with:
