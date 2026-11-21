@@ -1,6 +1,9 @@
+import { router } from '@inertiajs/react';
 import { useEffect, type RefObject } from 'react';
 
 import { postJson } from '@/lib/http';
+
+const reloadedForStale = new Set<string>();
 
 export function useRecommendationView(
     ref: RefObject<HTMLElement | null>,
@@ -22,7 +25,17 @@ export function useRecommendationView(
             void postJson('/plan/recommendations/shown', {
                 token,
                 observation_id: observationId,
-            }).catch(() => undefined);
+            })
+                .then((response) => {
+                    if (
+                        response.status === 409 &&
+                        !reloadedForStale.has(token)
+                    ) {
+                        reloadedForStale.add(token);
+                        router.reload();
+                    }
+                })
+                .catch(() => undefined);
         };
         const observer = new IntersectionObserver((entries) => {
             intersects = entries.some((entry) => entry.isIntersecting);

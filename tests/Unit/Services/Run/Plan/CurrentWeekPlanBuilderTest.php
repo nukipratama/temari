@@ -25,6 +25,7 @@ use App\Services\Run\Plan\CurrentWeekPlanBuilder;
 use App\Services\Run\Plan\PlanPageAssembler;
 use App\Services\Run\Plan\Periodizer;
 use App\Services\Run\Plan\PlanRenderer;
+use App\Services\Run\Plan\RecommendationHistory;
 use App\Services\Run\Plan\SegmentGenerator;
 use App\Services\Run\Plan\TrainingBaseline;
 use App\Support\Numeric;
@@ -738,6 +739,22 @@ it('renders the week plan payload its fixture records', function (bool $clampDay
 })->with([
     'normal day' => [false, 'normal-day'],
     'clamp day' => [true, 'clamp-day'],
+]);
+
+it('hands today the advice the plan page holds as current, so its view is never refused as stale', function (bool $clampDay): void {
+    Carbon::setTestNow('2026-08-12 08:00:00');
+    $user = weekPlanCharacterizationUser($clampDay);
+    $history = app(RecommendationHistory::class);
+
+    $homeToken = weekPlanDay(weekPlanHome($user)['days'], '2026-08-12')['recommendation_token'];
+    $current = app(PlanPageAssembler::class)->recommendationToken($user, Carbon::today(), '2026-08-12');
+
+    expect(RecommendationHistory::sameAdvice($history->advice(is_string($homeToken) ? $homeToken : ''), $history->advice((string) $current)))->toBeTrue();
+
+    Carbon::setTestNow();
+})->with([
+    'normal day' => [false],
+    'clamp day' => [true],
 ]);
 
 it('builds the readiness context once on a live clamp day', function (): void {

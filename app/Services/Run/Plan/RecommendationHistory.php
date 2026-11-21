@@ -24,13 +24,31 @@ final class RecommendationHistory
         return RecommendationRevision::query()->firstOrCreate([
             'user_id' => $userId,
             'date' => $date,
-            'fingerprint' => hash('sha256', json_encode([$policyVersion, $original, self::withoutReadinessInputs($effective)], JSON_THROW_ON_ERROR)),
+            'fingerprint' => self::fingerprint($policyVersion, $original, $effective),
         ], [
             'policy_version' => $policyVersion,
             'original' => $original,
             'effective' => $effective,
             'created_at' => Carbon::now('UTC'),
         ]);
+    }
+
+    /**
+     * @param  array{policy_version: int, original: array<string, mixed>, effective: array<string, mixed>}  $advice
+     * @param  array{policy_version: int, original: array<string, mixed>, effective: array<string, mixed>}  $other
+     */
+    public static function sameAdvice(array $advice, array $other): bool
+    {
+        return self::fingerprint($advice['policy_version'], $advice['original'], $advice['effective'])
+            === self::fingerprint($other['policy_version'], $other['original'], $other['effective']);
+    }
+
+    /** @param array<string, mixed> $original
+     * @param array<string, mixed> $effective
+     */
+    private static function fingerprint(int $policyVersion, array $original, array $effective): string
+    {
+        return hash('sha256', json_encode([$policyVersion, $original, self::withoutReadinessInputs($effective)], JSON_THROW_ON_ERROR));
     }
 
     /**
