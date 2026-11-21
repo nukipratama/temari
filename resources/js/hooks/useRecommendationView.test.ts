@@ -87,12 +87,12 @@ function intersectingView(token: string) {
     return hook;
 }
 
-it('reloads the page once when the server says the shown advice is stale', async () => {
+it('reloads the page once a minute at most while the server calls the shown advice stale', async () => {
     vi.mocked(postJson).mockResolvedValue({ status: 409 } as Response);
 
     intersectingView('stale-advice').unmount();
     await waitFor(() => expect(router.reload).toHaveBeenCalledOnce());
-    intersectingView('stale-advice').unmount();
+    intersectingView('re-rendered-stale-advice').unmount();
     await waitFor(() => expect(postJson).toHaveBeenCalledTimes(2));
 
     expect(router.reload).toHaveBeenCalledOnce();

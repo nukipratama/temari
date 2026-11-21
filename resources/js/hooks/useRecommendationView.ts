@@ -3,7 +3,8 @@ import { useEffect, type RefObject } from 'react';
 
 import { postJson } from '@/lib/http';
 
-const reloadedForStale = new Set<string>();
+const STALE_RELOAD_COOLDOWN_MS = 60_000;
+let lastStaleReloadAt = -Infinity;
 
 export function useRecommendationView(
     ref: RefObject<HTMLElement | null>,
@@ -29,9 +30,10 @@ export function useRecommendationView(
                 .then((response) => {
                     if (
                         response.status === 409 &&
-                        !reloadedForStale.has(token)
+                        Date.now() - lastStaleReloadAt >=
+                            STALE_RELOAD_COOLDOWN_MS
                     ) {
-                        reloadedForStale.add(token);
+                        lastStaleReloadAt = Date.now();
                         router.reload();
                     }
                 })
