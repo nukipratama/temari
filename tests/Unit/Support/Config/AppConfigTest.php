@@ -94,14 +94,14 @@ it('keeps a successful MySQL write when the cache write fails', function (): voi
 it('serves the last known cached value without consulting MySQL', function (): void {
     $config = new AppConfig();
     $config->set(AppConfigKey::MaintenanceEnabled, true);
-    DB::shouldReceive('table')->never();
+    DB::partialMock()->shouldReceive('table')->never();
 
     expect(new AppConfig()->boolean(AppConfigKey::MaintenanceEnabled))->toBeTrue();
 });
 
 it('surfaces a MySQL failure when the cache is also unavailable', function (): void {
     Cache::shouldReceive('get')->once()->andThrow(new RuntimeException('redis down'));
-    DB::shouldReceive('table')
+    DB::partialMock()->shouldReceive('table')
         ->once()
         ->with('app_config')
         ->andThrow(new QueryException('mysql', 'select value from app_config', [], new PDOException('mysql down')));
