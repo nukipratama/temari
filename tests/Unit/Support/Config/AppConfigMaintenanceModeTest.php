@@ -46,7 +46,7 @@ it('sees a write-through flip made by another container even after the same proc
 it('keeps maintenance active from the cached last-known value without consulting MySQL', function (): void {
     $driver = new AppConfigMaintenanceMode();
     $driver->activate([]);
-    DB::shouldReceive('table')->never();
+    DB::partialMock()->shouldReceive('table')->never();
 
     expect($driver->active())->toBeTrue();
 });
@@ -57,7 +57,7 @@ it('fails closed when neither Redis nor MySQL can answer', function (): void {
         ->once()
         ->with(AppConfigKey::MaintenanceEnabled->cacheKey())
         ->andThrow(new RuntimeException('redis down'));
-    DB::shouldReceive('table')
+    DB::partialMock()->shouldReceive('table')
         ->once()
         ->with('app_config')
         ->andThrow(new QueryException('mysql', 'select value from app_config', [], new PDOException('mysql down')));

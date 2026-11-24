@@ -49,7 +49,7 @@ it('throws when the redis write-probe reads back the wrong value (server loading
 });
 
 it('throws when mysql is unreachable', function (): void {
-    DB::shouldReceive('connection')->andThrow(new RuntimeException('down'));
+    DB::partialMock()->shouldReceive('connection')->andThrow(new RuntimeException('down'));
 
     expect(fn () => app(VerifyDependencies::class)->handle(new DiagnosingHealth()))
         ->toThrow(RuntimeException::class, 'health: mysql unreachable');

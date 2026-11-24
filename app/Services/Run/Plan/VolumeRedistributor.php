@@ -23,10 +23,6 @@ final class VolumeRedistributor
         }
 
         $originalTotalKm = array_sum($trainingDaysKm);
-        if ($originalTotalKm <= 0.0) {
-            return [];
-        }
-
         $scale = min(self::MAX_SCALE, max(self::MIN_SCALE, max(0.0, $remainingTargetKm) / $originalTotalKm));
 
         return array_fill_keys(array_keys($trainingDaysKm), $scale);

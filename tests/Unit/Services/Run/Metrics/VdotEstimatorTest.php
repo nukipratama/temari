@@ -161,12 +161,12 @@ it('interpolates between the efforts either side of the race distance, weighted 
     $user = User::factory()->create();
     recordRun($user, '2026-09-01', 5_000, 1_650);
     recordRun($user, '2026-09-10', 15_000, 5_700);
-    $k = FallOffExponent::fit([
+    $k = nonNull(FallOffExponent::fit([
         ['date' => Carbon::parse('2026-09-01'), 'distance_m' => 5_000.0, 'time_sec' => 1_650.0],
         ['date' => Carbon::parse('2026-09-10'), 'distance_m' => 15_000.0, 'time_sec' => 5_700.0],
-    ]);
-    $fromFive = max(1_650 * 2 ** $k, vdotEstimator()->raceTimeForVdot(nonNull(vdotEstimator()->vdotFromTimeAndDistance(1_650, 5_000)), 10_000));
-    $fromFifteen = max(5_700 * (10 / 15) ** $k, vdotEstimator()->raceTimeForVdot(nonNull(vdotEstimator()->vdotFromTimeAndDistance(5_700, 15_000)), 10_000));
+    ]));
+    $fromFive = max(1_650 * 2 ** $k, nonNull(vdotEstimator()->raceTimeForVdot(nonNull(vdotEstimator()->vdotFromTimeAndDistance(1_650, 5_000)), 10_000)));
+    $fromFifteen = max(5_700 * (10 / 15) ** $k, nonNull(vdotEstimator()->raceTimeForVdot(nonNull(vdotEstimator()->vdotFromTimeAndDistance(5_700, 15_000)), 10_000)));
     $belowWeight = log(1.5) / (log(2) + log(1.5));
     $expected = exp($belowWeight * log($fromFive) + (1 - $belowWeight) * log($fromFifteen));
 
