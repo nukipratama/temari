@@ -4,6 +4,16 @@ import { defined } from '@/test/defined';
 
 import { csrfToken, getJson, postJson, sendJson } from './http';
 
+type JsonFetch = (
+    url: string,
+    init: {
+        method: string;
+        body?: string;
+        credentials: string;
+        headers: Record<string, string>;
+    },
+) => Promise<Response>;
+
 afterEach(() => {
     document.head.innerHTML = '';
     vi.unstubAllGlobals();
@@ -39,7 +49,7 @@ describe('postJson', () => {
         meta.content = 'tok-xyz';
         document.head.appendChild(meta);
         const fetchMock = vi
-            .fn()
+            .fn<JsonFetch>()
             .mockResolvedValue(new Response('{"ok":true}'));
         vi.stubGlobal('fetch', fetchMock);
 
@@ -74,7 +84,9 @@ describe('postJson', () => {
     });
 
     it('serialises a supplied body instead of the empty-object default', async () => {
-        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        const fetchMock = vi
+            .fn<JsonFetch>()
+            .mockResolvedValue(new Response('{}'));
         vi.stubGlobal('fetch', fetchMock);
 
         await postJson('/api/x', { question: 'why did my HR drift?' });
@@ -87,7 +99,9 @@ describe('postJson', () => {
 
 describe('getJson', () => {
     it('GETs the url with the AJAX headers and same-origin credentials', async () => {
-        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        const fetchMock = vi
+            .fn<JsonFetch>()
+            .mockResolvedValue(new Response('{}'));
         vi.stubGlobal('fetch', fetchMock);
 
         await getJson('/api/activities/9/questions');
@@ -137,7 +151,9 @@ describe('sendJson', () => {
     });
 
     it('sends no body when none is given', async () => {
-        const fetchMock = vi.fn().mockResolvedValue(new Response('{}'));
+        const fetchMock = vi
+            .fn<JsonFetch>()
+            .mockResolvedValue(new Response('{}'));
         vi.stubGlobal('fetch', fetchMock);
 
         await sendJson('POST', '/x');

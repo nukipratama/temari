@@ -36,12 +36,18 @@ function deferredFetch() {
     return {
         fetchMock,
         resolve: async (call: number, response: Response) => {
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 defined(resolvers[call])(response);
             });
         },
     };
 }
+
+type QuestionsFetch = (
+    url: string,
+    init: { method: string; body?: string },
+) => Promise<Response>;
 
 describe('useRunQuestions', () => {
     it('loads the thread and this run’s suggestions on mount', async () => {
@@ -123,7 +129,7 @@ describe('useRunQuestions', () => {
 
     it('appends the queued row on a 201 and reports it as awaiting an answer', async () => {
         const fetchMock = vi
-            .fn()
+            .fn<QuestionsFetch>()
             .mockResolvedValueOnce(
                 jsonResponse({ questions: [], suggestions: [] }),
             )
@@ -184,7 +190,7 @@ describe('useRunQuestions', () => {
 
     it('trims the question before sending it', async () => {
         const fetchMock = vi
-            .fn()
+            .fn<QuestionsFetch>()
             .mockResolvedValueOnce(
                 jsonResponse({ questions: [], suggestions: [] }),
             )
@@ -376,6 +382,7 @@ describe('useRunQuestions', () => {
         });
         expect(fetchMock.mock.calls.length).toBe(callsWhenStalled);
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             result.current.checkAgain();
         });

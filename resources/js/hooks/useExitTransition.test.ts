@@ -37,10 +37,14 @@ describe('useExitTransition', () => {
         act(() => rerender({ open: false }));
         expect(result.current).toEqual({ rendered: true, closing: true });
 
-        act(() => vi.advanceTimersByTime(299));
+        act(() => {
+            vi.advanceTimersByTime(299);
+        });
         expect(result.current.rendered).toBe(true);
 
-        act(() => vi.advanceTimersByTime(1));
+        act(() => {
+            vi.advanceTimersByTime(1);
+        });
         expect(result.current).toEqual({ rendered: false, closing: false });
     });
 
@@ -51,9 +55,13 @@ describe('useExitTransition', () => {
         );
 
         act(() => rerender({ open: false }));
-        act(() => vi.advanceTimersByTime(150));
+        act(() => {
+            vi.advanceTimersByTime(150);
+        });
         act(() => rerender({ open: true }));
-        act(() => vi.advanceTimersByTime(300));
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
 
         expect(result.current).toEqual({ rendered: true, closing: false });
     });

@@ -301,7 +301,9 @@ describe('ShareCardModal', () => {
     });
 
     it('shares the print itself as a file when the sheet takes one', async () => {
-        const share = vi.fn().mockResolvedValue(undefined);
+        const share = vi
+            .fn<(data: ShareData) => Promise<void>>()
+            .mockResolvedValue(undefined);
         Object.defineProperty(navigator, 'share', {
             value: share,
             configurable: true,
@@ -321,7 +323,9 @@ describe('ShareCardModal', () => {
     });
 
     it('falls back to the run link when the sheet will not take a file', async () => {
-        const share = vi.fn().mockResolvedValue(undefined);
+        const share = vi
+            .fn<(data: ShareData) => Promise<void>>()
+            .mockResolvedValue(undefined);
         Object.defineProperty(navigator, 'share', {
             value: share,
             configurable: true,
@@ -427,7 +431,7 @@ describe('ShareCardModal', () => {
         expect(anchor.download).toBe('counter-kick-broadsheet.png');
     });
 
-    it('closes on the close button', async () => {
+    it('closes on the close button', () => {
         const onClose = vi.fn();
         render(<ShareCardModal open card={card} onClose={onClose} />);
 

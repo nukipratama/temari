@@ -137,7 +137,7 @@ describe('HrZonesDisclosure', () => {
         expect(
             (['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const).map((zone) =>
                 Number(
-                    (screen.getByTestId(`zone-${zone}-lo`) as HTMLInputElement)
+                    screen.getByTestId<HTMLInputElement>(`zone-${zone}-lo`)
                         .value,
                 ),
             ),
@@ -245,7 +245,7 @@ describe('HrZonesDisclosure', () => {
         fireEvent.click(screen.getByRole('button', { name: /save zones/ }));
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-        const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
+        const [, , options] = vi.mocked(router).patch.mock.calls[0] as [
             string,
             unknown,
             {
@@ -335,10 +335,12 @@ describe('HrZonesDisclosure', () => {
         expect(router.post).toHaveBeenCalledWith(
             '/settings/zones/resync-strava',
             {},
-            expect.objectContaining({ onSuccess: expect.any(Function) }),
+            expect.objectContaining({
+                onSuccess: expect.any(Function) as unknown,
+            }),
         );
 
-        const [, , options] = vi.mocked(router.post).mock.calls[0] as [
+        const [, , options] = vi.mocked(router).post.mock.calls[0] as [
             string,
             unknown,
             { onSuccess?: () => void },
@@ -417,11 +419,13 @@ describe('HrZonesDisclosure', () => {
         expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith(
             '/settings/zones',
-            expect.objectContaining({ onSuccess: expect.any(Function) }),
+            expect.objectContaining({
+                onSuccess: expect.any(Function) as unknown,
+            }),
         );
 
         // Simulate the server round-trip completing.
-        const [, options] = vi.mocked(router.delete).mock.calls[0] as [
+        const [, options] = vi.mocked(router).delete.mock.calls[0] as [
             string,
             { onSuccess?: () => void },
         ];

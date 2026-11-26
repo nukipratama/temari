@@ -176,7 +176,7 @@ describe('FitnessPanel', () => {
         );
     });
 
-    it('mentions the current long-term load reading in the accessible summary', async () => {
+    it('mentions the current long-term load reading in the accessible summary', () => {
         const trend = pointsOverDays(10);
         render(<FitnessPanel trend={trend} />);
 

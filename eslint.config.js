@@ -4,6 +4,7 @@ import eslintReact from '@eslint-react/eslint-plugin';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import perfectionist from 'eslint-plugin-perfectionist';
+import vitest from '@vitest/eslint-plugin';
 
 export default defineConfig(
     { ignores: ['public/**', 'vendor/**', 'node_modules/**', 'bootstrap/**'] },
@@ -11,10 +12,17 @@ export default defineConfig(
     {
         files: ['resources/js/**/*.{ts,tsx}'],
         extends: [
+            tseslint.configs.recommendedTypeChecked,
             eslintReact.configs['recommended-typescript'],
             reactHooks.configs.flat['recommended-latest'],
             jsxA11y.flatConfigs.recommended,
         ],
+        languageOptions: {
+            parserOptions: {
+                projectService: { EXPERIMENTAL_backend: 'tsgo' },
+                tsconfigRootDir: import.meta.dirname,
+            },
+        },
         plugins: {
             perfectionist,
         },
@@ -100,6 +108,14 @@ export default defineConfig(
                     message: 'Mixed Tailwind + hardcoded px stair-step. Use a text-display-* / text-headline-* token instead.',
                 },
             ],
+        },
+    },
+    {
+        files: ['resources/js/**/*.test.{ts,tsx}'],
+        plugins: { vitest },
+        rules: {
+            '@typescript-eslint/unbound-method': 'off',
+            'vitest/unbound-method': 'error',
         },
     },
 );

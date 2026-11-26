@@ -53,13 +53,13 @@ function fakeViewTransitions(): FakeTransition[] {
             updateCallbackDone: Promise.resolve(),
             skipTransition: entry.skipTransition,
         } as unknown as ViewTransition;
-    }) as unknown as typeof document.startViewTransition;
+    });
 
     return started;
 }
 
 function handlerFor(name: 'navigate' | 'start') {
-    const call = [...vi.mocked(router.on).mock.calls]
+    const call = [...vi.mocked(router).on.mock.calls]
         .reverse()
         .find(([event]) => event === name);
     if (!call) {
@@ -239,9 +239,13 @@ describe('slideHistoryTraversals', () => {
     function popTo(
         path: string,
         {
-            state = ENCRYPTED as unknown,
-            index = null as number | null,
+            state = ENCRYPTED,
+            index = null,
             animatedByBrowser = false,
+        }: {
+            state?: unknown;
+            index?: number | null;
+            animatedByBrowser?: boolean;
         } = {},
     ) {
         window.history.replaceState(null, '', path);

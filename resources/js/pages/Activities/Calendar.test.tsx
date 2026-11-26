@@ -245,10 +245,10 @@ describe('calendar', () => {
                 monthlyRecap={makeRecap()}
             />,
         );
-        const startCall = [...vi.mocked(router.on).mock.calls]
+        const startCall = [...vi.mocked(router).on.mock.calls]
             .reverse()
             .find(([event]) => event === 'start')!;
-        const finishCall = [...vi.mocked(router.on).mock.calls]
+        const finishCall = [...vi.mocked(router).on.mock.calls]
             .reverse()
             .find(([event]) => event === 'finish')!;
         const monthVisit = {

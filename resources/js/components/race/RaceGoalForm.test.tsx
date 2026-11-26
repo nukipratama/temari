@@ -80,7 +80,7 @@ describe('RaceGoalForm', () => {
                 onSaved={() => {}}
             />,
         );
-        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+        const minutes = screen.getByLabelText<HTMLInputElement>('Minutes');
 
         fireEvent.change(minutes, { target: { value: '' } });
         expect(minutes.value).toBe('');
@@ -411,16 +411,15 @@ describe('RaceGoalForm', () => {
             />,
         );
 
+        expect(screen.getByLabelText<HTMLInputElement>('Race day').value).toBe(
+            '2026-12-06',
+        );
         expect(
-            (screen.getByLabelText('Race day') as HTMLInputElement).value,
-        ).toBe('2026-12-06');
-        expect(
-            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
-                .value,
+            screen.getByLabelText<HTMLInputElement>('Name (optional)').value,
         ).toBe('Jakarta 10K');
-        expect(
-            (screen.getByLabelText('Minutes') as HTMLInputElement).value,
-        ).toBe('50');
+        expect(screen.getByLabelText<HTMLInputElement>('Minutes').value).toBe(
+            '50',
+        );
     });
 
     it('offers no choice of intent when there is no race to update', () => {
@@ -488,12 +487,11 @@ describe('RaceGoalForm', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'add a new race' }));
 
+        expect(screen.getByLabelText<HTMLInputElement>('Race day').value).toBe(
+            '',
+        );
         expect(
-            (screen.getByLabelText('Race day') as HTMLInputElement).value,
-        ).toBe('');
-        expect(
-            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
-                .value,
+            screen.getByLabelText<HTMLInputElement>('Name (optional)').value,
         ).toBe('');
         expect(screen.getByRole('button', { name: '5K' })).not.toBeDisabled();
 
@@ -576,9 +574,9 @@ describe('RaceGoalForm', () => {
             screen.getByRole('button', { name: 'update this race' }),
         );
 
-        expect(
-            (screen.getByLabelText('Race day') as HTMLInputElement).value,
-        ).toBe('2026-12-06');
+        expect(screen.getByLabelText<HTMLInputElement>('Race day').value).toBe(
+            '2026-12-06',
+        );
         expect(
             screen.getByRole('button', { name: 'update race' }),
         ).toBeVisible();
@@ -618,16 +616,15 @@ describe('RaceGoalForm', () => {
             screen.getByRole('button', { name: 'update this race' }),
         ).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: '5K' })).toBeDisabled();
+        expect(screen.getByLabelText<HTMLInputElement>('Minutes').value).toBe(
+            '45',
+        );
         expect(
-            (screen.getByLabelText('Minutes') as HTMLInputElement).value,
-        ).toBe('45');
-        expect(
-            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
-                .value,
+            screen.getByLabelText<HTMLInputElement>('Name (optional)').value,
         ).toBe('Typed name');
-        expect(
-            (screen.getByLabelText('Race day') as HTMLInputElement).value,
-        ).toBe('2026-12-06');
+        expect(screen.getByLabelText<HTMLInputElement>('Race day').value).toBe(
+            '2026-12-06',
+        );
     });
 
     it('keeps the typed values when "update this race" is chosen mid-reload', () => {
@@ -657,8 +654,7 @@ describe('RaceGoalForm', () => {
         );
 
         expect(
-            (screen.getByLabelText('Name (optional)') as HTMLInputElement)
-                .value,
+            screen.getByLabelText<HTMLInputElement>('Name (optional)').value,
         ).toBe('Typed name');
     });
 

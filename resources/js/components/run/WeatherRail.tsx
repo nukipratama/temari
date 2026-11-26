@@ -92,10 +92,10 @@ export function railMarkers(
     const values = shown.map((m) => m.value);
     const low = Math.floor((Math.min(...values) - 2) / 5) * 5;
     const high = Math.ceil((Math.max(...values) + 2) / 5) * 5;
-    const markers = shown.map((m) => ({
+    const markers = shown.map((m): Marker => ({
         ...m,
         pct: ((m.value - low) / (high - low)) * 100,
-        tier: 0 as 0 | 1,
+        tier: 0,
     }));
 
     for (const above of [true, false]) {

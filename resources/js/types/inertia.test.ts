@@ -47,9 +47,8 @@ const sharedFixtures = fixtureFiles(
 const components = [...new Set(pageFixtures.map(componentOf))];
 const baseline = readJson<Record<string, string[]>>(BASELINE);
 
-const config = ts.readConfigFile(
-    path.join(ROOT, 'tsconfig.json'),
-    ts.sys.readFile,
+const config = ts.readConfigFile(path.join(ROOT, 'tsconfig.json'), (file) =>
+    ts.sys.readFile(file),
 );
 const { options } = ts.parseJsonConfigFileContent(config.config, ts.sys, ROOT);
 const program = ts.createProgram(

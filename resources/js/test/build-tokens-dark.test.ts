@@ -26,9 +26,9 @@ describe('dark-ground token derivation (build-tokens.mjs)', () => {
 
     it('darkGrounds() returns exactly the Sky family', () => {
         expect(darkGrounds()).toEqual({
-            'sky-deep': expect.stringMatching(/^#[0-9a-f]{6}$/),
-            sky: expect.stringMatching(/^#[0-9a-f]{6}$/),
-            'sky-2': expect.stringMatching(/^#[0-9a-f]{6}$/),
+            'sky-deep': expect.stringMatching(/^#[0-9a-f]{6}$/) as unknown,
+            sky: expect.stringMatching(/^#[0-9a-f]{6}$/) as unknown,
+            'sky-2': expect.stringMatching(/^#[0-9a-f]{6}$/) as unknown,
         });
     });
 

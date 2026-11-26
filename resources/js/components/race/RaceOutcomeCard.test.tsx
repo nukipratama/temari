@@ -97,9 +97,8 @@ describe('RaceOutcomeCard', () => {
 
     it('keeps an emptied finish field empty while typing and counts it as 0', () => {
         render(<RaceOutcomeCard race={pastRace()} />);
-        const minutes = screen.getByLabelText(
-            'Finish minutes',
-        ) as HTMLInputElement;
+        const minutes =
+            screen.getByLabelText<HTMLInputElement>('Finish minutes');
         fireEvent.change(minutes, { target: { value: '51' } });
 
         fireEvent.change(minutes, { target: { value: '' } });
@@ -178,6 +177,7 @@ describe('RaceOutcomeCard', () => {
         ).toBeInTheDocument();
         const options = lastPostCall()?.[2];
         expect(options).toBeDefined();
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             options?.onStart?.({} as never);
             options?.onSuccess?.({} as never);

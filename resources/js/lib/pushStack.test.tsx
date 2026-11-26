@@ -50,7 +50,7 @@ function fakeSlide() {
             finished: new Promise(() => undefined),
             skipTransition: slide.skipTransition,
         } as unknown as ViewTransition;
-    }) as unknown as typeof document.startViewTransition;
+    });
 
     return slide;
 }

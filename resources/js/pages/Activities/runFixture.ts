@@ -1,5 +1,3 @@
-import type { ActivityDetail } from '@/types/inertia';
-
 import type { RunWithDetail } from './weekBuckets';
 
 export function run(
@@ -20,6 +18,6 @@ export function run(
             elapsed_time: 1800,
             trimp_edwards: 50,
             average_heartrate: 145,
-        } as ActivityDetail,
+        },
     };
 }

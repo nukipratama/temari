@@ -694,6 +694,7 @@ describe('WeekView', () => {
             expect(getJson).toHaveBeenLastCalledWith(
                 '/plan/days/2026-06-18/recommendation',
             );
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => undefined);
         });
     });

@@ -23,7 +23,7 @@ describe('InstallAppSection', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('opens the browser install prompt from the install button, then hides', async () => {
+    it('opens the browser install prompt from the install button, then hides', () => {
         render(<InstallAppSection />);
         const prompt = offerInstall();
 

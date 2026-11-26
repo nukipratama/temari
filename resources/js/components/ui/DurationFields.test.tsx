@@ -65,7 +65,7 @@ describe('DurationFields', () => {
     it('keeps an emptied field empty, reads it as 0, and shows 0 after blur', () => {
         const onValue = vi.fn();
         render(<Harness onValue={onValue} />);
-        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+        const minutes = screen.getByLabelText<HTMLInputElement>('Minutes');
 
         fireEvent.change(minutes, { target: { value: '' } });
 
@@ -82,7 +82,7 @@ describe('DurationFields', () => {
 
     it('shows what is typed after an emptied field is refilled', () => {
         render(<Harness />);
-        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+        const minutes = screen.getByLabelText<HTMLInputElement>('Minutes');
 
         fireEvent.change(minutes, { target: { value: '' } });
         fireEvent.change(minutes, { target: { value: '7' } });

@@ -11,12 +11,12 @@ export function useDemoGuard() {
     const isDemo = useSharedProps().auth.user?.is_demo ?? false;
     const [open, setOpen] = useState(false);
 
-    const guard = (action: () => void) => {
+    const guard = (action: () => void | Promise<void>) => {
         if (isDemo) {
             setOpen(true);
             return;
         }
-        action();
+        void action();
     };
 
     return { isDemo, open, setOpen, guard };

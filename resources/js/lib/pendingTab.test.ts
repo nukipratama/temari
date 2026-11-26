@@ -12,7 +12,7 @@ import {
 } from './pendingTab';
 
 function handler<T extends 'start' | 'finish'>(name: T) {
-    const call = [...vi.mocked(router.on).mock.calls]
+    const call = [...vi.mocked(router).on.mock.calls]
         .reverse()
         .find(([event]) => event === name);
     if (!call) {
@@ -53,7 +53,7 @@ describe('pendingTab', () => {
     afterEach(() => {
         const left = pendingTabSnapshot();
         if (left !== null) {
-            finish(left.visit as PendingVisit);
+            finish(left.visit);
         }
         start(visit('/settings'));
         untrack();

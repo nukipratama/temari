@@ -192,8 +192,8 @@ describe('WeekPlanWidget', () => {
         const days = MON_TO_SUN.map((date, i) =>
             day({
                 date,
-                session_type: (['tempo', 'easy', 'long', 'rest'][i % 4] ??
-                    'easy') as string,
+                session_type:
+                    ['tempo', 'easy', 'long', 'rest'][i % 4] ?? 'easy',
             }),
         );
         const { container } = render(
@@ -383,8 +383,8 @@ describe('WeekPlanWidget', () => {
         const days = MON_TO_SUN.map((date, i) =>
             day({
                 date,
-                session_type: (['tempo', 'easy', 'rest', 'long'][i % 4] ??
-                    'easy') as string,
+                session_type:
+                    ['tempo', 'easy', 'rest', 'long'][i % 4] ?? 'easy',
             }),
         );
         const { container } = render(

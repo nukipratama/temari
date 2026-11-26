@@ -12,7 +12,7 @@ import { installOverlayHistory } from '@/hooks/useOverlayHistory';
 // stops a frame firing after a test file's jsdom env is torn down. Tests that
 // care override it per-file.
 if (typeof window !== 'undefined' && !window.matchMedia) {
-    window.matchMedia = ((query: string) => ({
+    window.matchMedia = (query: string) => ({
         matches: query.includes('prefers-reduced-motion'),
         media: query,
         onchange: null,
@@ -21,7 +21,7 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
         dispatchEvent: vi.fn(),
-    })) as unknown as typeof window.matchMedia;
+    });
 }
 
 const DEFAULT_PAGE_PROPS: Record<string, unknown> = {
@@ -129,10 +129,14 @@ export function stubNarrationLayout(height: number) {
                     if (property === 'lineHeight') {
                         return `${NARRATION_LINE_HEIGHT}px`;
                     }
-                    const value = Reflect.get(target, property, target);
+                    const value: unknown = Reflect.get(
+                        target,
+                        property,
+                        target,
+                    );
 
                     return typeof value === 'function'
-                        ? value.bind(target)
+                        ? (value as () => unknown).bind(target)
                         : value;
                 },
             });
@@ -166,7 +170,7 @@ afterEach(() => {
     resetFormMock();
 });
 
-vi.mock('@inertiajs/react', async () => {
+vi.mock('@inertiajs/react', () => {
     // Inertia-specific props that React would warn about if they leaked onto a
     // raw <a>. Keep this aligned with @inertiajs/react Link's public surface.
     const INERTIA_LINK_PROPS = new Set([

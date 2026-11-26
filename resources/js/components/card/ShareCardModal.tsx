@@ -369,13 +369,13 @@ export default function ShareCardModal({
                     label="share"
                     primary
                     disabled={!ready}
-                    onClick={handleShare}
+                    onClick={() => void handleShare()}
                 />
                 <ActionTile
                     icon={Copy}
                     label="copy"
                     disabled={!ready}
-                    onClick={handleCopy}
+                    onClick={() => void handleCopy()}
                 />
                 <ActionTile
                     icon={Download}
