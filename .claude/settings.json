@@ -12,7 +12,7 @@
       "Bash(./vendor/bin/sail npm run test)",
       "Bash(./vendor/bin/sail npm run typecheck)",
       "Bash(./vendor/bin/sail npm run lint)",
-      "Bash(./vendor/bin/sail npx tsc *)",
+      "Bash(./vendor/bin/sail npm run typecheck -- *)",
       "Bash(./vendor/bin/sail artisan route:list)",
       "Bash(./vendor/bin/sail artisan route:list *)",
       "Bash(./vendor/bin/sail artisan list)",
