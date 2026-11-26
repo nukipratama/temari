@@ -79,7 +79,7 @@ describe('Onboarding/GoalStep', () => {
 
     it('keeps an emptied goal-time field empty while typing', () => {
         const dispatch = renderStep();
-        const minutes = screen.getByLabelText('Minutes') as HTMLInputElement;
+        const minutes = screen.getByLabelText<HTMLInputElement>('Minutes');
 
         fireEvent.change(minutes, { target: { value: '' } });
 

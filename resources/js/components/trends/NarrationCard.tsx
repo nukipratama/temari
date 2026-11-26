@@ -110,7 +110,7 @@ export default function NarrationCard({
                 </Eyebrow>
                 <button
                     type="button"
-                    onClick={trigger}
+                    onClick={() => void trigger()}
                     disabled={pending || cooling}
                     className={cn(TRIGGER_CLASS, TRIGGER_TONE)}
                 >

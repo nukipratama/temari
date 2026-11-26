@@ -25,7 +25,7 @@ function payload(overrides: Partial<AnalysisPayload> = {}): AnalysisPayload {
 }
 
 beforeEach(() => {
-    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
     fetchMock.mockReset();
     vi.mocked(router.reload).mockReset();
     document.head.innerHTML = '<meta name="csrf-token" content="test-token" />';
@@ -40,7 +40,7 @@ describe('useAnalysisTrigger', () => {
     it('optimistically flips status to queued and updates from response', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued', id: 42 }),
+            json: () => Promise.resolve(payload({ status: 'queued', id: 42 })),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -58,7 +58,7 @@ describe('useAnalysisTrigger', () => {
     it('encodes discriminator into query string', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
 
         const { result } = renderHook(() =>
@@ -75,7 +75,7 @@ describe('useAnalysisTrigger', () => {
         fetchMock.mockResolvedValue({
             ok: false,
             status: 500,
-            json: async () => ({}),
+            json: () => Promise.resolve({}),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -90,7 +90,7 @@ describe('useAnalysisTrigger', () => {
         fetchMock.mockResolvedValue({
             ok: false,
             status: 409,
-            json: async () => payload(),
+            json: () => Promise.resolve(payload()),
         });
 
         const { result } = renderHook(() =>
@@ -112,7 +112,7 @@ describe('useAnalysisTrigger', () => {
     it('reloads inertia props when reload list is provided', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
 
         const { result } = renderHook(() =>
@@ -139,7 +139,7 @@ describe('useAnalysisTrigger', () => {
     it('fails gracefully (no crash) on a malformed response body', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => ({ unexpected: 'shape' }),
+            json: () => Promise.resolve({ unexpected: 'shape' }),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -154,10 +154,11 @@ describe('useAnalysisTrigger', () => {
     it('rejects a body whose retry_after_seconds is the wrong type', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => ({
-                status: 'queued',
-                retry_after_seconds: 'soon',
-            }),
+            json: () =>
+                Promise.resolve({
+                    status: 'queued',
+                    retry_after_seconds: 'soon',
+                }),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -171,7 +172,7 @@ describe('useAnalysisTrigger', () => {
     it('rejects a body missing the fields consumers read', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => ({ status: 'done' }),
+            json: () => Promise.resolve({ status: 'done' }),
         });
 
         const onUpdate = vi.fn();
@@ -189,7 +190,7 @@ describe('useAnalysisTrigger', () => {
         document.head.innerHTML = '';
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
 
         const { result } = renderHook(() => useAnalysisTrigger(payload(), []));
@@ -211,12 +212,14 @@ describe('useAnalysisTrigger', () => {
         );
 
         // First tick fires at the initial delay (3s).
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(3000);
         });
         expect(router.reload).toHaveBeenCalledTimes(1);
 
         // After backoff, second tick lands later than 3s — advance a generous window.
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(10_000);
         });
@@ -224,8 +227,9 @@ describe('useAnalysisTrigger', () => {
 
         // Re-rendering with status=done removes the subscriber → no further polls.
         rerender({ p: payload({ status: 'done', content: 'ok' }) });
-        const callsBeforeFinalAdvance = vi.mocked(router.reload).mock.calls
-            .length;
+        const callsBeforeFinalAdvance =
+            vi.mocked(router).reload.mock.calls.length;
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(60_000);
         });
@@ -235,6 +239,7 @@ describe('useAnalysisTrigger', () => {
     it('does not poll when reload props is empty', async () => {
         vi.useFakeTimers();
         renderHook(() => useAnalysisTrigger(payload({ status: 'queued' }), []));
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(9000);
         });
@@ -248,6 +253,7 @@ describe('useAnalysisTrigger', () => {
         );
         expect(result.current.status).toBe('queued');
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             rerender({ p: payload({ status: 'done', content: 'fresh' }) });
         });
@@ -262,12 +268,14 @@ describe('useAnalysisTrigger', () => {
 
         // With backoff capped at 15s, 30 ticks fit well under 10 minutes — advance
         // a generous window past the cap, then assert no further polls land.
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(20 * 60 * 1000);
         });
-        const callsAfterCap = vi.mocked(router.reload).mock.calls.length;
+        const callsAfterCap = vi.mocked(router).reload.mock.calls.length;
         expect(callsAfterCap).toBeGreaterThan(0);
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(60_000);
         });
@@ -284,6 +292,7 @@ describe('useAnalysisTrigger', () => {
         expect(result.current.pollingRetired).toBe(false);
 
         // Advance well past the 30-attempt cap (backoff maxes at 15s).
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(20 * 60 * 1000);
         });
@@ -300,6 +309,7 @@ describe('useAnalysisTrigger', () => {
                 'briefing',
             ]),
         );
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(20 * 60 * 1000);
         });
@@ -325,6 +335,7 @@ describe('useAnalysisTrigger', () => {
         );
 
         vi.mocked(router.reload).mockClear();
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(20 * 60 * 1000);
         });
@@ -357,6 +368,7 @@ describe('useAnalysisTrigger', () => {
         );
 
         // One shared slot fires once per tick, not three.
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(3000);
         });
@@ -365,8 +377,9 @@ describe('useAnalysisTrigger', () => {
         // Unmount two of the three subscribers — slot still polls for the survivor.
         unmountA();
         unmountB();
-        const callsBeforeSurvivorTick = vi.mocked(router.reload).mock.calls
-            .length;
+        const callsBeforeSurvivorTick =
+            vi.mocked(router).reload.mock.calls.length;
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(20_000);
         });
@@ -376,7 +389,8 @@ describe('useAnalysisTrigger', () => {
 
         // All unmounted → slot retires, no further polls.
         unmountC();
-        const callsAfterAllUnmount = vi.mocked(router.reload).mock.calls.length;
+        const callsAfterAllUnmount = vi.mocked(router).reload.mock.calls.length;
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             vi.advanceTimersByTime(60_000);
         });
@@ -400,12 +414,14 @@ describe('useAnalysisTrigger', () => {
     it('updates retryAfterSeconds from the POST response without waiting for a prop sync', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () =>
-                payload({
-                    status: 'done',
-                    content: 'x',
-                    retry_after_seconds: 270,
-                }),
+            json: () =>
+                Promise.resolve(
+                    payload({
+                        status: 'done',
+                        content: 'x',
+                        retry_after_seconds: 270,
+                    }),
+                ),
         });
 
         const { result } = renderHook(() =>
@@ -427,6 +443,7 @@ describe('useAnalysisTrigger', () => {
         );
         expect(result.current.retryAfterSeconds).toBeNull();
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             rerender({
                 p: payload({
@@ -455,6 +472,7 @@ describe('useAnalysisTrigger', () => {
         );
         expect(result.current.retryAfterSeconds).toBe(60);
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             rerender({
                 p: payload({
@@ -471,7 +489,7 @@ describe('useAnalysisTrigger', () => {
     it('debounces rapid trigger() calls within 2s window', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
 
         const { result } = renderHook(() =>
@@ -506,12 +524,14 @@ describe('useAnalysisTrigger', () => {
                 useAnalysisTrigger(payload({ status: 'queued' }), ['briefing']),
             );
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 vi.advanceTimersByTime(3000);
             });
             expect(router.reload).toHaveBeenCalledTimes(1);
 
             hidden = true;
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 document.dispatchEvent(new Event('visibilitychange'));
                 vi.advanceTimersByTime(60_000);
@@ -521,11 +541,13 @@ describe('useAnalysisTrigger', () => {
 
             // Coming back fires an immediate reload + resumes the schedule.
             hidden = false;
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 document.dispatchEvent(new Event('visibilitychange'));
             });
             expect(router.reload).toHaveBeenCalledTimes(2);
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 vi.advanceTimersByTime(20_000);
             });
@@ -542,7 +564,10 @@ describe('useAnalysisTrigger', () => {
     it('invokes onUpdate callback with next payload', async () => {
         const onUpdate = vi.fn();
         const next = payload({ status: 'queued', id: 7 });
-        fetchMock.mockResolvedValue({ ok: true, json: async () => next });
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve(next),
+        });
 
         const { result } = renderHook(() =>
             useAnalysisTrigger(payload(), [], { onUpdate }),
@@ -582,7 +607,7 @@ describe('triggerAnalysis', () => {
     it('issues the same request the hook does, so the bulk control cannot drift from it', async () => {
         fetchMock.mockResolvedValue({
             ok: true,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
         const analysis = payload({
             subject_id: 8,

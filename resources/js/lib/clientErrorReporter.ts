@@ -54,7 +54,7 @@ export function installGlobalErrorReporting(): void {
     window.addEventListener('error', (event: ErrorEvent) => {
         reportClientError({
             message: event.message || 'Uncaught error',
-            stack: event.error?.stack ?? null,
+            stack: (event.error as Error | null | undefined)?.stack ?? null,
             url: window.location.href,
         });
     });

@@ -25,8 +25,8 @@ describe('usePendingPost', () => {
             {},
             expect.objectContaining({
                 preserveScroll: true,
-                onStart: expect.any(Function),
-                onFinish: expect.any(Function),
+                onStart: expect.any(Function) as unknown,
+                onFinish: expect.any(Function) as unknown,
             }),
         );
     });

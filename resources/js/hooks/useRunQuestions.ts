@@ -52,7 +52,7 @@ function isPending(question: RunQuestion): boolean {
 
 async function isRunCap(response: Response): Promise<boolean> {
     try {
-        const body: { error?: string } = await response.json();
+        const body = (await response.json()) as { error?: string };
         return body.error === 'run_cap';
     } catch {
         return false;
@@ -130,7 +130,7 @@ export function useRunQuestions(activityId: number) {
         if (!response.ok) {
             return { generation, body: null };
         }
-        const body: ThreadBody = await response.json();
+        const body = (await response.json()) as ThreadBody;
 
         return { generation, body };
     }, [url, isStale]);
@@ -214,7 +214,7 @@ export function useRunQuestions(activityId: number) {
             try {
                 const response = await postJson(url, { question });
                 if (response.status === 201) {
-                    const row: AskedQuestion = await response.json();
+                    const row = (await response.json()) as AskedQuestion;
                     pollsLeftRef.current = MAX_POLLS;
                     setStalled(false);
                     setQuestions((prev) =>

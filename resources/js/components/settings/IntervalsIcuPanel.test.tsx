@@ -95,11 +95,11 @@ describe('IntervalsIcuPanel', () => {
         expect(router.delete).toHaveBeenCalledOnce();
         expect(router.delete).toHaveBeenCalledWith('/settings/intervals-icu', {
             preserveScroll: true,
-            onSuccess: expect.any(Function),
+            onSuccess: expect.any(Function) as unknown,
         });
         expect(showToast).not.toHaveBeenCalled();
 
-        vi.mocked(router.delete).mock.calls[0]?.[1]?.onSuccess?.({} as never);
+        vi.mocked(router).delete.mock.calls[0]?.[1]?.onSuccess?.({} as never);
 
         expect(showToast).toHaveBeenCalledExactlyOnceWith(
             'intervals.icu disconnected',

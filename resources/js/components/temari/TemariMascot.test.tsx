@@ -16,7 +16,7 @@ function svgOf(container: HTMLElement): SVGSVGElement {
         throw new Error('TemariMascot rendered no svg');
     }
 
-    return svg as SVGSVGElement;
+    return svg;
 }
 
 const arcs = (svg: SVGSVGElement, which: 'outer' | 'inner') =>

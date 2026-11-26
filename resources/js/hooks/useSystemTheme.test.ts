@@ -24,7 +24,7 @@ function mockMatchMedia() {
                 }
             },
         ),
-    })) as unknown as typeof window.matchMedia;
+    }));
 }
 
 function fireOsChange(nowMatches: boolean) {

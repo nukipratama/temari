@@ -26,9 +26,9 @@ function stubRailGeometry(scrollWidth: number, clientWidth: number) {
 }
 
 const maskImages = new WeakMap<CSSStyleDeclaration, string>();
-const styleProto: object = Object.getPrototypeOf(
+const styleProto = Object.getPrototypeOf(
     document.createElement('ul').style,
-);
+) as object;
 
 /** jsdom has no `maskImage` accessor, so the value React writes is recorded here. */
 beforeAll(() => {

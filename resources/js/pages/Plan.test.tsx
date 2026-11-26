@@ -447,7 +447,7 @@ describe('Plan', () => {
         renderPlan({
             weeks: [
                 {
-                    ...defined(BASE_PROPS.weeks![0]),
+                    ...defined(BASE_PROPS.weeks[0]),
                     days: [
                         day({
                             skipped: true,
@@ -488,13 +488,13 @@ describe('Plan', () => {
     describe('writes', () => {
         type Optimistic = (props: unknown) => { weeks: PlanWeek[] };
         const patchOptions = () =>
-            vi.mocked(router.patch).mock.calls.at(-1)?.[2] as NonNullable<
+            vi.mocked(router).patch.mock.calls.at(-1)?.[2] as NonNullable<
                 Parameters<typeof router.patch>[2]
             >;
         const optimistic = () => patchOptions().optimistic as Optimistic;
         const skippedWeeks = (): PlanWeek[] => [
             {
-                ...defined(BASE_PROPS.weeks![0]),
+                ...defined(BASE_PROPS.weeks[0]),
                 days: [
                     day({
                         skipped: true,
@@ -542,7 +542,7 @@ describe('Plan', () => {
                 skipped: true,
                 actions: { skip: false, restore: true },
             });
-            expect(days?.[1]).toEqual(BASE_PROPS.weeks![0]!.days[1]);
+            expect(days?.[1]).toEqual(BASE_PROPS.weeks[0]!.days[1]);
         });
 
         it('flips the day back to planned before the server answers a restore', () => {
@@ -596,7 +596,7 @@ describe('Plan', () => {
         const skippedWeek = () => ({
             weeks: [
                 {
-                    ...defined(BASE_PROPS.weeks![0]),
+                    ...defined(BASE_PROPS.weeks[0]),
                     days: [
                         day({
                             skipped: true,

@@ -35,6 +35,7 @@ function loadWorker() {
             openWindow,
         },
     };
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call -- evaluates the service worker source under test
     new Function('self', 'caches', source)(worker, {});
 
     async function dispatch(type: string, event: object): Promise<void> {
@@ -73,7 +74,7 @@ function jsonData(value: unknown): PushData {
     return { json: () => value, text: () => JSON.stringify(value) };
 }
 
-const fallback = [
+const fallback: unknown[] = [
     'Temari',
     expect.objectContaining({
         body: 'Something new is in your inbox.',
@@ -167,6 +168,7 @@ function loadNavigationWorker(cachedOffline: Response | undefined) {
         keys: () => Promise.resolve([]),
         match: () => Promise.resolve(cachedOffline),
     };
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval, @typescript-eslint/no-unsafe-call -- evaluates the service worker source under test
     new Function('self', 'caches', source)(worker, caches);
 
     async function activate(): Promise<void> {

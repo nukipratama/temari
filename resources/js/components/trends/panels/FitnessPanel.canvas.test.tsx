@@ -91,6 +91,7 @@ describe('FitnessPanel on a real Chart.js canvas', () => {
         expect(afterRange.fillRectXs).toContain(x.getPixelForValue(335));
         expect(afterRange.moveToXs).toContain(x.getPixelForValue(355));
 
+        // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
         await act(async () => {
             document.documentElement.setAttribute('data-theme', 'dark');
         });
@@ -110,6 +111,7 @@ describe('FitnessPanel on a real Chart.js canvas', () => {
         const stroke = vi
             .spyOn(chart.ctx, 'stroke')
             .mockImplementation(function (this: CanvasRenderingContext2D) {
+                // eslint-disable-next-line @typescript-eslint/no-base-to-string -- a gradient records as [object CanvasGradient], which no colour assertion matches
                 strokeStyles.push(String(this.strokeStyle));
             });
         const afterHover = drawAndRecord(chart);

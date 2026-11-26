@@ -332,7 +332,7 @@ export default function RunLenses({
                 {isChainHead && !paused && (
                     <div className="mt-3 flex justify-end">
                         <PillButton
-                            onClick={triggerAll}
+                            onClick={() => void triggerAll()}
                             disabled={bulkPending || cooling}
                             aria-label={cooldownAriaLabel(
                                 cooldownRemaining,

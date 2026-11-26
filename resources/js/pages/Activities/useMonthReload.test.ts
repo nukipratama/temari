@@ -9,7 +9,7 @@ import useMonthReload from './useMonthReload';
 const PROPS = ['month', 'cells'];
 
 function handler<T extends 'start' | 'finish'>(name: T) {
-    const call = [...vi.mocked(router.on).mock.calls]
+    const call = [...vi.mocked(router).on.mock.calls]
         .reverse()
         .find(([event]) => event === name);
     if (!call) {

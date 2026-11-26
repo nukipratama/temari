@@ -99,10 +99,13 @@ describe('rasterising', () => {
         drawn = '';
         fontsResolved = false;
 
-        vi.stubGlobal('fetch', async () => ({
-            ok: true,
-            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-        }));
+        vi.stubGlobal('fetch', () =>
+            Promise.resolve({
+                ok: true,
+                arrayBuffer: () =>
+                    Promise.resolve(new Uint8Array([1, 2, 3]).buffer),
+            }),
+        );
         vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
             if (blob instanceof Blob && blob.type.startsWith('image/svg')) {
                 void blob.text().then((body) => {
@@ -131,7 +134,9 @@ describe('rasterising', () => {
         Object.defineProperty(globalThis.Image.prototype, 'src', {
             configurable: true,
             set(this: HTMLImageElement) {
-                setTimeout(() => this.onload?.(new Event('load')), 0);
+                setTimeout(() => {
+                    this.onload?.(new Event('load'));
+                }, 0);
             },
         });
     });
@@ -185,9 +190,7 @@ describe('rasterising', () => {
     });
 
     it('still draws when the faces cannot be fetched', async () => {
-        vi.stubGlobal('fetch', async () => {
-            throw new Error('offline');
-        });
+        vi.stubGlobal('fetch', () => Promise.reject(new Error('offline')));
         resetEmbeddedFonts();
 
         const print = await renderPrint(
@@ -207,7 +210,8 @@ describe('rasterising', () => {
             .mockRejectedValueOnce(new Error('offline'))
             .mockResolvedValue({
                 ok: true,
-                arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+                arrayBuffer: () =>
+                    Promise.resolve(new Uint8Array([1, 2, 3]).buffer),
             });
         vi.stubGlobal('fetch', fetchFaces);
 
@@ -220,12 +224,17 @@ describe('rasterising', () => {
     });
 
     it('never embeds an error page as a face', async () => {
-        vi.stubGlobal('fetch', async () => ({
-            ok: false,
-            status: 404,
-            arrayBuffer: async () =>
-                new TextEncoder().encode('<html>not found</html>').buffer,
-        }));
+        vi.stubGlobal('fetch', () =>
+            Promise.resolve({
+                ok: false,
+                status: 404,
+                arrayBuffer: () =>
+                    Promise.resolve(
+                        new TextEncoder().encode('<html>not found</html>')
+                            .buffer,
+                    ),
+            }),
+        );
 
         const print = await renderPrint(
             makeCardFacts(),
@@ -240,10 +249,13 @@ describe('rasterising', () => {
     });
 
     it('fetches the faces once across prints after a successful fetch', async () => {
-        const fetchFaces = vi.fn(async () => ({
-            ok: true,
-            arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-        }));
+        const fetchFaces = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                arrayBuffer: () =>
+                    Promise.resolve(new Uint8Array([1, 2, 3]).buffer),
+            }),
+        );
         vi.stubGlobal('fetch', fetchFaces);
 
         await renderPrint(makeCardFacts(), ALL_FACTS, 'ticket', 'feed');
@@ -256,7 +268,9 @@ describe('rasterising', () => {
         Object.defineProperty(globalThis.Image.prototype, 'src', {
             configurable: true,
             set(this: HTMLImageElement) {
-                setTimeout(() => this.onerror?.(new Event('error')), 0);
+                setTimeout(() => {
+                    this.onerror?.(new Event('error'));
+                }, 0);
             },
         });
 

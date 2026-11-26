@@ -9,7 +9,9 @@ import { defined } from '@/test/defined';
 
 import { useCardPrints } from './useCardPrints';
 
-const renderPrint = vi.hoisted(() => vi.fn());
+const renderPrint = vi.hoisted(() =>
+    vi.fn<(...args: unknown[]) => Promise<Print>>(),
+);
 vi.mock('@/lib/card/print', async (importOriginal) => ({
     ...(await importOriginal<typeof import('@/lib/card/print')>()),
     renderPrint,
@@ -32,7 +34,7 @@ const facts = makeCardFacts();
 beforeEach(() => {
     issued = 0;
     renderPrint.mockReset();
-    renderPrint.mockImplementation(async () => print());
+    renderPrint.mockImplementation(() => Promise.resolve(print()));
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 });
 
@@ -55,9 +57,7 @@ describe('useCardPrints', () => {
             ({ aspect }: { aspect: 'story' | 'feed' }) =>
                 useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
             {
-                initialProps: { aspect: 'story' } as {
-                    aspect: 'story' | 'feed';
-                },
+                initialProps: { aspect: 'story' },
             },
         );
 
@@ -85,9 +85,7 @@ describe('useCardPrints', () => {
             ({ aspect }: { aspect: 'story' | 'feed' }) =>
                 useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
             {
-                initialProps: { aspect: 'story' } as {
-                    aspect: 'story' | 'feed';
-                },
+                initialProps: { aspect: 'story' },
             },
         );
 
@@ -111,9 +109,7 @@ describe('useCardPrints', () => {
             ({ aspect }: { aspect: 'story' | 'feed' }) =>
                 useCardPrints(facts, ALL_FACTS, aspect, 'broadsheet'),
             {
-                initialProps: { aspect: 'story' } as {
-                    aspect: 'story' | 'feed';
-                },
+                initialProps: { aspect: 'story' },
             },
         );
 
@@ -144,7 +140,7 @@ describe('useCardPrints', () => {
             expect(result.current.states.broadsheet.failed).toBe(true),
         );
 
-        renderPrint.mockImplementation(async () => print());
+        renderPrint.mockImplementation(() => Promise.resolve(print()));
         act(() => result.current.retry());
 
         await waitFor(() =>

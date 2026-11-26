@@ -3,7 +3,7 @@ import polylineCodec from '@mapbox/polyline';
 /** Decode a Google-encoded polyline into lat/lng pairs; `[]` when empty or undecodable. */
 export function decodePolyline(polyline: string): Array<[number, number]> {
     try {
-        return polylineCodec.decode(polyline) as Array<[number, number]>;
+        return polylineCodec.decode(polyline);
     } catch {
         return [];
     }

@@ -343,6 +343,7 @@ describe('AnalysisStatus', () => {
             expect(screen.getByRole('status')).toBeInTheDocument();
 
             // Poll past the 30-attempt cap; the slot retires and notifies.
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 vi.advanceTimersByTime(20 * 60 * 1000);
             });
@@ -516,6 +517,7 @@ describe('AnalysisStatus', () => {
                 screen.getByRole('button', { name: /Wait 0:04/ }),
             ).toBeInTheDocument();
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 vi.advanceTimersByTime(1000);
             });
@@ -523,6 +525,7 @@ describe('AnalysisStatus', () => {
                 screen.getByRole('button', { name: /Wait 0:03/ }),
             ).toBeInTheDocument();
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 vi.advanceTimersByTime(4000);
             });
@@ -539,10 +542,10 @@ describe('AnalysisStatus', () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: false,
             status: 429,
-            json: async () => ({}),
+            json: () => Promise.resolve({}),
         });
         const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        globalThis.fetch = fetchMock;
         document.head.innerHTML = '<meta name="csrf-token" content="t" />';
 
         try {
@@ -552,6 +555,7 @@ describe('AnalysisStatus', () => {
                 />,
             );
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 fireEvent.click(screen.getByRole('button', { name: /reread/ }));
             });
