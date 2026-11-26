@@ -16,8 +16,8 @@ function fireBefore(
     viewTransition?: Visit['viewTransition'],
 ): Visit {
     const handler = vi
-        .mocked(router.on)
-        .mock.calls.at(-1)?.[1] as BeforeHandler;
+        .mocked(router)
+        .on.mock.calls.at(-1)?.[1] as BeforeHandler;
     const visit: Visit = { showProgress, viewTransition };
     handler({ detail: { visit } });
 
@@ -37,7 +37,7 @@ describe('useViewTransitions', () => {
     it('arms a transition on a real navigation', () => {
         renderHook(() => useViewTransitions());
 
-        expect(vi.mocked(router.on).mock.calls.at(-1)?.[0]).toBe('before');
+        expect(vi.mocked(router).on.mock.calls.at(-1)?.[0]).toBe('before');
         expect(fireBefore(true).viewTransition).toBe(true);
     });
 

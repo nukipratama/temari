@@ -40,7 +40,7 @@ async function openSheet() {
 }
 
 function lastPostOptions() {
-    const call = vi.mocked(router.post).mock.calls[0];
+    const call = vi.mocked(router).post.mock.calls[0];
 
     return defined(call)[2] as { onSuccess?: () => void };
 }

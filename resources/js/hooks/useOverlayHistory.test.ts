@@ -25,8 +25,8 @@ let onVisitSuccess: () => void;
 
 function inertiaHandler(name: string) {
     return vi
-        .mocked(router.on)
-        .mock.calls.find(([event]) => event === name)?.[1];
+        .mocked(router)
+        .on.mock.calls.find(([event]) => event === name)?.[1];
 }
 
 beforeAll(() => {

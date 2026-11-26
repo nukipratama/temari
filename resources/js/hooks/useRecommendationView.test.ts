@@ -48,9 +48,11 @@ it('records only an intersecting selected panel in a visible document, once', ()
     );
     expect(postJson).toHaveBeenCalledWith('/plan/recommendations/shown', {
         token: 'signed-advice',
-        observation_id: expect.any(String),
+        observation_id: expect.any(String) as unknown,
     });
-    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+    });
     expect(postJson).toHaveBeenCalledTimes(1);
     unmount();
     expect(disconnect).toHaveBeenCalledOnce();

@@ -73,7 +73,9 @@ describe('RunHydratingNotice', () => {
         setVisibility('visible');
         render(<RunHydratingNotice hydrating />);
 
-        act(() => vi.advanceTimersByTime(8000 * 40));
+        act(() => {
+            vi.advanceTimersByTime(8000 * 40);
+        });
 
         expect(reload).toHaveBeenCalledTimes(30);
     });
@@ -94,7 +96,9 @@ describe('RunHydratingNotice', () => {
             /this page refreshes itself/i,
         );
 
-        act(() => vi.advanceTimersByTime(8000 * 40));
+        act(() => {
+            vi.advanceTimersByTime(8000 * 40);
+        });
 
         const notice = screen.getByRole('status');
         expect(notice).not.toHaveTextContent(/this page refreshes itself/i);
@@ -109,7 +113,9 @@ describe('RunHydratingNotice', () => {
             screen.queryByRole('button', { name: /check again/i }),
         ).toBeNull();
 
-        act(() => vi.advanceTimersByTime(8000 * 40));
+        act(() => {
+            vi.advanceTimersByTime(8000 * 40);
+        });
         reload.mockClear();
 
         fireEvent.click(screen.getByRole('button', { name: /check again/i }));

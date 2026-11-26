@@ -260,7 +260,7 @@ describe('MobileTopBar while a phone pushes or pops', () => {
         untrack = trackTabVisits(() => component);
         stop = startPushStack(() => component);
         render(<MobileTopBar />);
-        const start = [...vi.mocked(router.on).mock.calls]
+        const start = [...vi.mocked(router).on.mock.calls]
             .reverse()
             .find(([event]) => event === 'start')?.[1] as (
             event: GlobalEvent<'start'>,

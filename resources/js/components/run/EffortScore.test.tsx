@@ -183,7 +183,7 @@ describe('EffortPicker', () => {
 
     it('shows no toast and stays open when a clear is refused', () => {
         vi.mocked(router.delete).mockImplementationOnce((_url, options) => {
-            options?.onError?.({} as never);
+            options?.onError?.({});
         });
         const onClose = vi.fn();
         renderPicker(3, onClose);
@@ -208,7 +208,7 @@ describe('EffortPicker', () => {
         fireEvent.change(slider(), { target: { value: '4' } });
         fireEvent.click(screen.getByRole('button', { name: 'save' }));
 
-        const options = defined(vi.mocked(router.patch).mock.calls[0])[2] as {
+        const options = defined(vi.mocked(router).patch.mock.calls[0])[2] as {
             onStart: () => void;
             onFinish: () => void;
             onSuccess: () => void;

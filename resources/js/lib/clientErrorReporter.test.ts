@@ -53,7 +53,7 @@ describe('clientErrorReporter', () => {
                 mock: { calls: [string, { body: string }][] };
             }
         ).mock.calls[0];
-        const body = JSON.parse(defined(call)[1].body);
+        const body: unknown = JSON.parse(defined(call)[1].body);
         expect(body).toMatchObject({
             message: 'boom',
             url: 'https://t/activities',

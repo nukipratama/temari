@@ -82,7 +82,7 @@ describe('QualityOverrideAction', () => {
         );
 
         expect(router.post).toHaveBeenCalledOnce();
-        expect(vi.mocked(router.post).mock.calls[0]?.slice(0, 2)).toEqual([
+        expect(vi.mocked(router).post.mock.calls[0]?.slice(0, 2)).toEqual([
             '/plan/sessions/7/override',
             {},
         ]);
@@ -106,7 +106,7 @@ describe('QualityOverrideAction', () => {
         ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'ease it again' }));
 
-        expect(vi.mocked(router.delete).mock.calls[0]?.[0]).toBe(
+        expect(vi.mocked(router).delete.mock.calls[0]?.[0]).toBe(
             '/plan/sessions/7/override',
         );
     });

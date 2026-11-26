@@ -142,15 +142,16 @@ describe('NarrationCard', () => {
         const fetchMock = vi.fn().mockResolvedValue({
             ok: true,
             status: 200,
-            json: async () => payload({ status: 'queued' }),
+            json: () => Promise.resolve(payload({ status: 'queued' })),
         });
         const original = globalThis.fetch;
-        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        globalThis.fetch = fetchMock;
         document.head.innerHTML = '<meta name="csrf-token" content="t" />';
 
         try {
             render(<NarrationCard analysis={payload({ status: 'failed' })} />);
 
+            // eslint-disable-next-line @typescript-eslint/require-await -- async act flushes the effects and promises the callback queues
             await act(async () => {
                 fireEvent.click(
                     screen.getByRole('button', { name: /try again/ }),

@@ -125,6 +125,7 @@ describe('MetricExplainer', () => {
 
     describe('viewport-edge alignment', () => {
         const originalGetBoundingClientRect =
+            // eslint-disable-next-line vitest/unbound-method -- saved only to restore onto the prototype
             Element.prototype.getBoundingClientRect;
         const originalInnerWidth = window.innerWidth;
 

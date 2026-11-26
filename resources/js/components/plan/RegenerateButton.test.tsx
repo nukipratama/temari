@@ -55,7 +55,7 @@ describe('RegenerateButton', () => {
         render(<RegenerateButton cooldownSeconds={null} />);
         await confirmRegenerate();
         const { onStart, onFinish } = defined(
-            vi.mocked(router.post).mock.calls[0],
+            vi.mocked(router).post.mock.calls[0],
         )[2] as { onStart: () => void; onFinish: () => void };
 
         act(() => onStart());

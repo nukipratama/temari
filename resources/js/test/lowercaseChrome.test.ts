@@ -1,14 +1,14 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
-const sources = import.meta.glob(
+const sources = import.meta.glob<string>(
     ['../components/**/*.{ts,tsx}', '../pages/**/*.{ts,tsx}'],
     {
         eager: true,
         import: 'default',
         query: '?raw',
     },
-) as Record<string, string>;
+);
 
 const EXCLUDED = [
     /\.test\.tsx?$/,

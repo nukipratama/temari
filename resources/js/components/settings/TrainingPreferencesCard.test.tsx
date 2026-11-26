@@ -203,7 +203,7 @@ describe('TrainingPreferencesCard', () => {
         await saveAndConfirm();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
-        const [, , options] = vi.mocked(router.patch).mock.calls[0] as [
+        const [, , options] = vi.mocked(router).patch.mock.calls[0] as [
             string,
             unknown,
             {

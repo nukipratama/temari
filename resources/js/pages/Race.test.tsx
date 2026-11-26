@@ -224,8 +224,8 @@ describe('Race', () => {
             await screen.findByRole('button', { name: 'update race' }),
         );
         act(() => {
-            vi.mocked(router.post)
-                .mock.calls.at(-1)?.[2]
+            vi.mocked(router)
+                .post.mock.calls.at(-1)?.[2]
                 ?.onSuccess?.({} as never);
         });
 
@@ -396,7 +396,7 @@ describe('Race', () => {
             screen.getByRole('button', { name: 'i did not run it' }),
         );
 
-        expect(vi.mocked(router.post).mock.calls.at(-1)?.[0]).toBe(
+        expect(vi.mocked(router).post.mock.calls.at(-1)?.[0]).toBe(
             '/race/9/outcome',
         );
     });

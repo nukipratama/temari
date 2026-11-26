@@ -203,7 +203,9 @@ export function slideHistoryTraversals(
             const swapped = untilPageSwapped();
             replaying = true;
             window.dispatchEvent(
-                new PopStateEvent('popstate', { state: event.state }),
+                new PopStateEvent('popstate', {
+                    state: event.state as unknown,
+                }),
             );
             replaying = false;
 

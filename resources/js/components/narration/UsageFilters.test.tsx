@@ -21,7 +21,7 @@ function renderFilters(
 ) {
     return render(
         <UsageFilters
-            range={'custom' as RangeToken}
+            range={'custom'}
             from="2026-05-01"
             to="2026-05-19"
             kind={null}

@@ -293,7 +293,7 @@ export default function AnalysisStatus({
         const rereadButton = canRegenerate && (
             <button
                 type="button"
-                onClick={trigger}
+                onClick={() => void trigger()}
                 disabled={cooling || pending}
                 aria-label={cooldownAriaLabel(cooldownRemaining, 'reread')}
                 aria-describedby={
@@ -460,7 +460,7 @@ export default function AnalysisStatus({
                 {canTrigger && (
                     <button
                         type="button"
-                        onClick={trigger}
+                        onClick={() => void trigger()}
                         disabled={pending}
                         className={cn(TRIGGER_CLASS, TRIGGER_TONE)}
                     >

@@ -137,7 +137,7 @@ describe('lazyIsland', () => {
                 createElement(Island, { label }),
             );
 
-        const actEnvironment = Reflect.get(
+        const actEnvironment: unknown = Reflect.get(
             globalThis,
             'IS_REACT_ACT_ENVIRONMENT',
         );
