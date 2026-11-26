@@ -65,6 +65,7 @@ export default defineConfig({
         isolateDesignCatalogue(),
     ],
     build: {
+        target: 'es2025',
         rolldownOptions: {
             output: {
                 // Split heavy vendors into their own chunks so a page that doesn't use
