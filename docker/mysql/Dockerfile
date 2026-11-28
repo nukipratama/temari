@@ -2,7 +2,7 @@
 # Baked, not bind-mounted, because the CI runner is docker-out-of-docker.
 # Digest-pinned; compose.prod.yaml tags the built image with this same version. Refresh after a bump with:
 #   docker buildx imagetools inspect mysql:<ver> --format '{{.Manifest.Digest}}'
-FROM mysql:9.7.4@sha256:df90258da46f6e7ff8574ff84f17618aba0765cac749928299c69fd4e7cb8ad8
+FROM mysql:9.7.4@sha256:1f2ca53a9e94ff9f1f313099fa7dc7fb2f72e180ca5b2ef83574031e451bbbf1
 COPY init/01-databases.sh /docker-entrypoint-initdb.d/01-databases.sh
 # mysqlbinlog ships in the client package, not the minimal server: install the one matching
 # this server's exact version so scripts/deploy/replay-binlogs.sh finds it, with no network at recovery time.
