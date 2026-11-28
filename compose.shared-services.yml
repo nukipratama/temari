@@ -29,7 +29,7 @@ services:
         networks: [shared-services]
 
     redis:
-        image: 'redis:8.10-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3'
+        image: 'redis:8.12-alpine@sha256:5af80107c1eeecb484a2269b80a26d12bfa6521787da4663bd9f19f60a163483'
         container_name: temari-shared-redis
         restart: unless-stopped
         # scripts/worktree assigns 3 indices per slot (SLOT*3..+2), so slots 0-3 use 0-11.
@@ -76,7 +76,7 @@ services:
         networks: [shared-services]
 
     redis-test:
-        image: 'redis:8.10-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3'
+        image: 'redis:8.12-alpine@sha256:5af80107c1eeecb484a2269b80a26d12bfa6521787da4663bd9f19f60a163483'
         container_name: temari-shared-redis-test
         restart: unless-stopped
         # Each test slot (0-3) owns 32 indices, 2 per parallel worker

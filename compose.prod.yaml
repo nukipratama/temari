@@ -74,7 +74,7 @@ x-redis-prod-base: &redis-prod-base
   # Digest-pinned (like the app + mysql images) so a floating-tag repush can't
   # drift the cache/queue engine on a cold pull. Refresh after a bump with:
   #   docker buildx imagetools inspect redis:8.10-alpine --format '{{.Manifest.Digest}}'
-  image: redis:8.10-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+  image: redis:8.12-alpine@sha256:5af80107c1eeecb484a2269b80a26d12bfa6521787da4663bd9f19f60a163483
   restart: unless-stopped
   networks: [internal]
   logging: *logging
