@@ -4,7 +4,7 @@
 # syntax out from under us (a worker-directive rename took prod down once).
 # = dunglas/frankenphp:1.13.6-php8.5-alpine (PHP 8.5.13). Refresh after a bump with:
 #   docker buildx imagetools inspect dunglas/frankenphp:1-php8.5-alpine --format '{{.Manifest.Digest}}'
-FROM dunglas/frankenphp:1.13.6-php8.5-alpine@sha256:0b064e00fd2cc0c72546da62f02daeee709635879730d34cbde1922ea43e6b94 AS frankenphp-base
+FROM dunglas/frankenphp:1.14.0-php8.5-alpine@sha256:45b44e677ae199015523e2e4d4a3543cf852d15e9c2aa6dca0f441a959f749dc AS frankenphp-base
 
 # Single pinned Node toolchain reused by the dev stage (copied in) and the
 # assets build, so dev/CI/prod all run the same Node.
