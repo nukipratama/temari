@@ -15,7 +15,7 @@ FROM node:26.13.1-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43dd
 # Single pinned Composer, copied into the dev stage and built on by the vendor stage.
 # = composer:2.11.1. Refresh after a bump with:
 #   docker buildx imagetools inspect composer:2 --format '{{json .Manifest.Digest}}'
-FROM composer:2.11.2@sha256:5bcb28b8d0edc4091125f8218f9d088f998bdfc843f8fbb9a4beb4dcd8625684 AS composer-src
+FROM composer:2.11.2@sha256:cd3a90dc5624c59a2f9ddf80dad08569f06416db31de519024f249d63bca554b AS composer-src
 
 # ─── Stage: dev ─────────────────────────────────────────────────────────────
 # Local dev target — FrankenPHP traditional mode (no Octane worker).
